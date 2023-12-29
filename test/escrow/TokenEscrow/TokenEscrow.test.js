@@ -322,6 +322,18 @@ describe('TokenEscrow', function () {
       // Assert
       await expect(onERC1155BatchReceived).to.be.revertedWithCustomError(this.contract, 'InvalidInventory');
     });
+    it('should revert if any of the updated amount greater than 1', async function () {
+      // Arrange
+      const tokenId = 1;
+      // mint tokens for user
+      await this.orbMock.safeMint(user.address, tokenId, 2, '0x');
+
+      // Act
+      const tx = this.orbMock.connect(user).safeBatchTransferFrom(user.address, this.contract.address, [tokenId], [2], '0x');
+
+      // Assert
+      await expect(tx).to.be.revertedWithCustomError(this.contract, 'BalanceExceeded').withArgs(tokenId, 2);
+    });
     it('should receive ERC1155 tokens', async function () {
       // Arrange
       const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
