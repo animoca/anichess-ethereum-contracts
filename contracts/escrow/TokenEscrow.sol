@@ -116,11 +116,11 @@ contract TokenEscrow is ForwarderRegistryContext, TokenRecovery, ERC1155TokenRec
         }
         for (uint256 i = 0; i < ids.length; i++) {
             uint256 id = ids[i];
-            escrowedNFTs[from][id] += values[i];
-            uint256 updatedBalance = escrowedNFTs[from][id];
-            if (updatedBalance > 1) {
-                revert BalanceExceeded(id, updatedBalance);
+            uint256 newBalance = escrowedNFTs[from][id] + values[i];
+            if (newBalance > 1) {
+                revert BalanceExceeded(id, newBalance);
             }
+            escrowedNFTs[from][id] = newBalance;
         }
         emit DepositTokens(from, ids);
         return IERC1155TokenReceiver.onERC1155BatchReceived.selector;
