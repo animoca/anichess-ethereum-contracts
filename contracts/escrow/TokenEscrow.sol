@@ -81,7 +81,7 @@ contract TokenEscrow is ForwarderRegistryContext, TokenRecovery, ERC1155TokenRec
             if (senderBalance < value) {
                 revert InsufficientBalance(id, senderBalance);
             }
-            escrowedNFTs[sender][id] -= value;
+            escrowedNFTs[sender][id] = senderBalance - value;
         }
 
         emit WithdrawTokens(sender, ids);
