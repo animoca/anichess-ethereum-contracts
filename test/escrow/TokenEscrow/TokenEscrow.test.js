@@ -167,7 +167,7 @@ describe('TokenEscrow', function () {
       const tx = await this.contract.connect(user).deposit([tokenId, tokenId_2], [amount, amount_2]);
 
       // Assert
-      await expect(tx).to.emit(this.contract, 'DepositTokens').withArgs(user.address, [tokenId, tokenId_2]);
+      await expect(tx).to.emit(this.contract, 'DepositTokens').withArgs(user.address, [tokenId, tokenId_2], [1, 1]);
     });
   });
 
@@ -258,7 +258,7 @@ describe('TokenEscrow', function () {
       const tx = await this.contract.connect(user).withdraw([tokenId, tokenId_2], [1, 1]);
 
       // Assert
-      await expect(tx).to.emit(this.contract, 'WithdrawTokens').withArgs(user.address, [tokenId, tokenId_2]);
+      await expect(tx).to.emit(this.contract, 'WithdrawTokens').withArgs(user.address, [tokenId, tokenId_2], [1, 1]);
       await expect(tx)
         .to.emit(this.orbMock, 'TransferBatch')
         .withArgs(this.contract.address, this.contract.address, user.address, [tokenId, tokenId_2], [1, 1]);
@@ -436,7 +436,7 @@ describe('TokenEscrow', function () {
         .safeBatchTransferFrom(user.address, this.contract.address, [tokenId, tokenId_2], [amount, amount_2], '0x');
 
       // Assert
-      await expect(tx).to.emit(this.contract, 'DepositTokens').withArgs(user.address, [tokenId, tokenId_2]);
+      await expect(tx).to.emit(this.contract, 'DepositTokens').withArgs(user.address, [tokenId, tokenId_2], [1, 1]);
       await expect(tx)
         .to.emit(this.orbMock, 'TransferBatch')
         .withArgs(user.address, user.address, this.contract.address, [tokenId, tokenId_2], [amount, amount_2]);
@@ -455,13 +455,13 @@ describe('TokenEscrow', function () {
     });
   });
 
-  describe('msgData', () => {
+  describe('msgData', function () {
     it('should return the msgData', async function () {
       await this.contract.msgData();
     });
   });
 
-  describe('behaveLikeForwarderRegistryContext', () => {
+  describe('behaveLikeForwarderRegistryContext', function () {
     describe('forwarderRegistry()', function () {
       it('returns the address of the ForwarderRegistry', async function () {
         expect(await this.contract.forwarderRegistry()).to.equal(await getForwarderRegistryAddress());

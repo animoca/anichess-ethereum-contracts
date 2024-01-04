@@ -1,12 +1,12 @@
 {
   "name": "@animoca/anichess-ethereum-contracts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Solidity contracts for the Anichess project.",
   "author": "author",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git@github.com:animoca/anichess-ethereum-contracts.git"
+    "url": "https://github.com/animoca/anichess-ethereum-contracts.git"
   },
   "scripts": {
     "postinstall": "bash -c 'for cfg in .vscode/settings.json .vscode/extensions.json .vscode/launch.json; do cp -n ${cfg}.default ${cfg} || :; done'",
