@@ -2,6 +2,21 @@
 
 Solidity contracts for the Anichess project.
 
+
+## Installation
+
+To install the module in your project, add it as an npm dependency:
+
+```bash
+yarn add -D @animoca/anichess-ethereum-contracts
+```
+
+or
+
+```bash
+npm add --save-dev @animoca/anichess-ethereum-contracts
+```
+
 ## Development
 
 Install the dependencies:

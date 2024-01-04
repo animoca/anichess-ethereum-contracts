@@ -15,10 +15,10 @@ import {TokenRecovery} from "@animoca/ethereum-contracts/contracts/security/Toke
 /// @notice Contract that allows users to escrow tokens for use in the Anichess Game.
 contract TokenEscrow is ForwarderRegistryContext, TokenRecovery, ERC1155TokenReceiver {
     /// @notice Emitted when tokens are deposited
-    event DepositTokens(address indexed user, uint256[] ids);
+    event DepositTokens(address indexed user, uint256[] ids, uint256[] values);
 
     /// @notice Emitted when tokens are withdrawn
-    event WithdrawTokens(address indexed user, uint256[] ids);
+    event WithdrawTokens(address indexed user, uint256[] ids, uint256[] values);
 
     // Custom errors
     error InvalidInventory();
@@ -84,7 +84,7 @@ contract TokenEscrow is ForwarderRegistryContext, TokenRecovery, ERC1155TokenRec
             escrowedNFTs[sender][id] = senderBalance - value;
         }
 
-        emit WithdrawTokens(sender, ids);
+        emit WithdrawTokens(sender, ids, values);
 
         TOKEN_INVENTORY.safeBatchTransferFrom(address(this), sender, ids, values, "");
     }
@@ -122,7 +122,7 @@ contract TokenEscrow is ForwarderRegistryContext, TokenRecovery, ERC1155TokenRec
             }
             escrowedNFTs[from][id] = newBalance;
         }
-        emit DepositTokens(from, ids);
+        emit DepositTokens(from, ids, values);
         return IERC1155TokenReceiver.onERC1155BatchReceived.selector;
     }
 
