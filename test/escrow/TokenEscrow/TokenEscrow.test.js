@@ -1,6 +1,5 @@
 const {ethers} = require('hardhat');
 const {deployOrbMockFixture} = require('../../helper');
-const {faker} = require('@faker-js/faker');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
 const {supportsInterfaces} = require('@animoca/ethereum-contracts/test/contracts/introspection/behaviors/SupportsInterface.behavior');
 const {beforeEach, before} = require('mocha');
@@ -84,8 +83,8 @@ describe('TokenEscrow', function () {
   describe('deposit', function () {
     it('should revert if the length of the tokenIds and amounts arrays are not equal', async function () {
       // Arrange
-      const tokenId = faker.number.int({min: 1, max: 1000});
-      const amount = faker.number.int({min: 1, max: 1000});
+      const tokenId = 1;
+      const amount = 1;
 
       // Act
       await this.orbMock.connect(user).setApprovalForAll(this.contract.address, true);
@@ -97,7 +96,7 @@ describe('TokenEscrow', function () {
     });
     it('should transfer ERC1155 tokens from the caller to the escrow contract', async function () {
       // Arrange
-      const tokenId = faker.number.int({min: 1, max: 1000});
+      const tokenId = 1;
       const amount = 1;
       // mint tokens
       await this.orbMock.safeMint(user.address, tokenId, amount, '0x');
@@ -131,7 +130,7 @@ describe('TokenEscrow', function () {
     });
     it('should support depositing ERC1155 tokens in multiple tokenIds', async function () {
       // Arrange
-      const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
+      const [tokenId, tokenId_2] = [1, 2];
       const amount = 1;
       const amount_2 = 1;
       // mint tokens
@@ -154,7 +153,7 @@ describe('TokenEscrow', function () {
     });
     it('should emit DepositTokens events', async function () {
       // Arrange
-      const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
+      const [tokenId, tokenId_2] = [1, 2];
       const amount = 1;
       const amount_2 = 1;
 
@@ -174,8 +173,8 @@ describe('TokenEscrow', function () {
   describe('withdraw', function () {
     it('should revert if the length of the tokenIds and amounts arrays are not equal', async function () {
       // Arrange
-      const tokenId = faker.number.int({min: 1, max: 1000});
-      const amount = faker.number.int({min: 1, max: 1000});
+      const tokenId = 1;
+      const amount = 1;
 
       // Act
       const withdraw = this.contract.connect(user).withdraw([tokenId], [amount, amount]);
@@ -185,8 +184,8 @@ describe('TokenEscrow', function () {
     });
     it('should revert if the escrowed balance of the caller is less than the amount to withdraw', async function () {
       // Arrange
-      const tokenId = faker.number.int({min: 1, max: 1000});
-      const amount = faker.number.int({min: 1001, max: 2000});
+      const tokenId = 1;
+      const amount = 1;
 
       // Act
       const withdraw = this.contract.connect(user).withdraw([tokenId], [amount]);
@@ -196,7 +195,7 @@ describe('TokenEscrow', function () {
     });
     it('should decrement the balance of the escrowedToken for the tokenId', async function () {
       // Arrange
-      const tokenId = faker.number.int({min: 1, max: 1000});
+      const tokenId = 1;
       // mint tokens
       await this.orbMock.safeMint(user.address, tokenId, 1, '0x');
       await this.orbMock.connect(user).safeBatchTransferFrom(user.address, this.contract.address, [tokenId], [1], '0x');
@@ -212,7 +211,7 @@ describe('TokenEscrow', function () {
     });
     it('should support withdrawing ERC1155 tokens with different tokenIds', async function () {
       // Arrange
-      const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
+      const [tokenId, tokenId_2] = [1, 2];
       // mint tokens
       await this.orbMock.safeMint(user.address, tokenId, 1, '0x');
       await this.orbMock.safeMint(user.address, tokenId_2, 1, '0x');
@@ -234,7 +233,7 @@ describe('TokenEscrow', function () {
     });
     it('should revert if the cumulated withdrawal amount exceed the balance of the escrowedToken for the tokenId', async function () {
       // Arrange
-      const tokenId = faker.number.int({min: 1, max: 1000});
+      const tokenId = 1;
       // mint tokens
       await this.orbMock.safeMint(user.address, tokenId, 1, '0x');
       await this.orbMock.connect(user).safeBatchTransferFrom(user.address, this.contract.address, [tokenId], [1], '0x');
@@ -247,7 +246,7 @@ describe('TokenEscrow', function () {
     });
     it('should emit a WithdrawTokens events', async function () {
       // Arrange
-      const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
+      const [tokenId, tokenId_2] = [1, 2];
       // mint tokens
       await this.orbMock.safeMint(user.address, tokenId, 1, '0x');
       await this.orbMock.safeMint(user.address, tokenId_2, 1, '0x');
@@ -265,7 +264,7 @@ describe('TokenEscrow', function () {
     });
     it('should transfer ERC1155 tokens to the caller from the escrow contract', async function () {
       // Arrange
-      const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
+      const [tokenId, tokenId_2] = [1, 2];
 
       // mint tokens
       await this.orbMock.safeMint(user.address, tokenId, 1, '0x');
@@ -291,7 +290,7 @@ describe('TokenEscrow', function () {
   describe('onERC1155Received', function () {
     it('should revert if the method is being triggered', async function () {
       // Arrange
-      const tokenId = faker.number.int({min: 1, max: 1000});
+      const tokenId = 1;
       const amount = 1;
       // mint tokens
       await this.orbMock.safeMint(user.address, tokenId, amount, '0x');
@@ -307,7 +306,7 @@ describe('TokenEscrow', function () {
   describe('onERC1155BatchReceived', function () {
     it('should revert if the caller is not the inventory contract', async function () {
       // Arrange
-      const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
+      const [tokenId, tokenId_2] = [1, 2];
       const amount = 1;
       const amount_2 = 1;
       // mint tokens
@@ -336,7 +335,7 @@ describe('TokenEscrow', function () {
     });
     it('should receive ERC1155 tokens', async function () {
       // Arrange
-      const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
+      const [tokenId, tokenId_2] = [1, 2];
       const amount = 1;
       const amount_2 = 1;
       // mint tokens
@@ -358,7 +357,7 @@ describe('TokenEscrow', function () {
     });
     it('should increment the balance of the escrowedToken for the tokenId', async function () {
       // Arrange
-      const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
+      const [tokenId, tokenId_2] = [1, 2];
       const amount = 1;
       const amount_2 = 1;
       // mint tokens
@@ -380,7 +379,7 @@ describe('TokenEscrow', function () {
     });
     it('should support receiving ERC1155 tokens from multiple users with the same tokenId', async function () {
       // Arrange
-      const tokenId = faker.number.int({min: 1, max: 1000});
+      const tokenId = 1;
       const amount = 1;
       const amount_2 = 1;
       // mint tokens for user and user2
@@ -399,7 +398,7 @@ describe('TokenEscrow', function () {
     });
     it('should support receiving ERC1155 tokens from multiple users with different tokenIds', async function () {
       // Arrange
-      const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
+      const [tokenId, tokenId_2] = [1, 2];
       const amount = 1;
       const amount_2 = 1;
       // mint tokens for user and user2
@@ -422,7 +421,7 @@ describe('TokenEscrow', function () {
     });
     it('should emit a DepositTokens event through safeBatchTransferFrom of ORB contract', async function () {
       // Arrange
-      const [tokenId, tokenId_2] = faker.helpers.uniqueArray(() => faker.number.int({min: 1, max: 1000}), 2);
+      const [tokenId, tokenId_2] = [1, 2];
       const amount = 1;
       const amount_2 = 1;
 
