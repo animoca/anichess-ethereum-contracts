@@ -12,6 +12,11 @@
   resolved "https://registry.npmjs.org/@animoca/ethereum-contract-helpers/-/ethereum-contract-helpers-0.0.4.tgz#482a2f1dc666d6ef31417bd26201b6e04e14a81d"
   integrity sha512-0WQ9Q1j2fTdnBxvpsBfdlOBNoqFuNJCc0ieNey5rMVEsKbaM6MSpJ+FhmhRg+FpiXbqdxjw+t27P8MByLAgE9w==
 
+"@animoca/ethereum-contracts-3.0.0@npm:@animoca/ethereum-contracts@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.npmjs.org/@animoca/ethereum-contracts/-/ethereum-contracts-3.0.0.tgz#300c1e8d93d048e64bd7e7de16ca502d593ffa73"
+  integrity sha512-0q/nXUGArV0Piyr2PGVMzS93L6K0h3F2BNFPeTUBB1xqT2QonUuDZpjWhCoUlaKKdOl6TLB5+wjBNpGJSHOzdQ==
+
 "@animoca/ethereum-contracts@=1.1.1":
   version "1.1.1"
   resolved "https://registry.npmjs.org/@animoca/ethereum-contracts/-/ethereum-contracts-1.1.1.tgz#b3986397064454712cb6de88cd992baf7fb2da8e"
