@@ -70,13 +70,6 @@ describe('AnichessERC1155MerkleClaim', function () {
     this.root = this.tree.getHexRoot();
 
     this.leaves.forEach((leaf, index) => (this.elements[index].proof = this.tree.getHexProof(keccak256(leaf))));
-    this.elements.forEach(
-      (el) =>
-        (el.data = ethers.utils.defaultAbiCoder.encode(
-          ['bytes32', 'bytes32[]', 'address', 'uint256[]', 'uint256[]'],
-          [this.epochId, el.proof, el.recipient, el.tokenIds, el.amounts]
-        ))
-    );
 
     this.contract = await deployContract('AnichessERC1155MerkleClaim', this.root, rewardsContractAddress, forwarderRegistryAddress);
     await this.rewardContract.grantRole(await this.rewardContract.MINTER_ROLE(), this.contract.address);
@@ -140,72 +133,73 @@ describe('AnichessERC1155MerkleClaim', function () {
   context('claim(bytes calldata data)', function () {
     it('reverts with AlreadyClaimed if the leaf is claimed twice', async function () {
       // Arrange
-      await this.contract.connect(claimer1).claim(this.elements[0].data);
+      const proofInfo = this.elements[0];
+      const {proof, recipient, tokenIds, amounts} = proofInfo;
+      await this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenIds, amounts);
 
       // Act
 
       // Assert
-      await expect(this.contract.connect(claimer1).claim(this.elements[0].data))
+      await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenIds, amounts))
         .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
-        .withArgs(this.elements[0].recipient, this.elements[0].tokenIds, this.elements[0].amounts, this.epochId);
+        .withArgs(recipient, tokenIds, amounts, this.epochId);
     });
     it('reverts with InvalidProof if the proof can not be verified', async function () {
       // Arrange
-      const data = ethers.utils.defaultAbiCoder.encode(
-        ['bytes32', 'bytes32[]', 'address', 'uint256[]', 'uint256[]'],
-        [this.epochId, this.elements[1].proof, this.elements[0].recipient, this.elements[0].tokenIds, this.elements[0].amounts]
-      );
+      const proofInfo = this.elements[0];
+      const {recipient, tokenIds, amounts} = proofInfo;
+      const invalidProof = this.elements[1].proof;
 
       // Act
 
       // Assert
-      await expect(this.contract.connect(claimer1).claim(data))
+      await expect(this.contract.connect(claimer1).claim(this.epochId, invalidProof, recipient, tokenIds, amounts))
         .to.revertedWithCustomError(this.contract, 'InvalidProof')
-        .withArgs(this.elements[0].recipient, this.elements[0].tokenIds, this.elements[0].amounts, this.epochId);
+        .withArgs(recipient, tokenIds, amounts, this.epochId);
     });
     it('emits a PayoutClaimed event', async function () {
       // Arrange
-
+      const proofInfo = this.elements[0];
+      const {proof, recipient, tokenIds, amounts} = proofInfo;
       // Act
 
       // Assert
-      await expect(this.contract.connect(claimer1).claim(this.elements[0].data))
+      await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenIds, amounts))
         .to.emit(this.contract, 'PayoutClaimed')
-        .withArgs(this.epochId, this.elements[0].recipient, this.elements[0].tokenIds, this.elements[0].amounts);
+        .withArgs(this.epochId, recipient, tokenIds, amounts);
     });
     it('emit TransferBatch event', async function () {
       // Arrange
+      const proofInfo = this.elements[0];
+      const {proof, recipient, tokenIds, amounts} = proofInfo;
 
       // Act
 
       // Assert
-      await expect(this.contract.connect(claimer1).claim(this.elements[0].data))
+      await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenIds, amounts))
         .to.emit(this.rewardContract, 'TransferBatch')
-        .withArgs(
-          await this.contract.address,
-          ethers.constants.AddressZero,
-          this.elements[0].recipient,
-          this.elements[0].tokenIds,
-          this.elements[0].amounts
-        );
+        .withArgs(await this.contract.address, ethers.constants.AddressZero, recipient, tokenIds, amounts);
     });
     it('mints the reward', async function () {
       // Arrange
-      await this.contract.connect(claimer1).claim(this.elements[0].data);
+      const proofInfo = this.elements[0];
+      const {proof, recipient, tokenIds, amounts} = proofInfo;
+      await this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenIds, amounts);
 
       // Act
 
       // Assert
-      await expect(this.rewardContract.balanceOf(this.elements[0].recipient, this.elements[0].tokenIds[0])).to.eventually.equal(
-        this.elements[0].amounts[0]
-      );
+      await expect(this.rewardContract.balanceOf(recipient, tokenIds[0])).to.eventually.equal(amounts[0]);
     });
 
     it('Should update the claim status', async function () {
       // Arrange
+      const proofInfo = this.elements[0];
+      const {proof, recipient, tokenIds, amounts} = proofInfo;
+
       // Act
       const before = await this.contract.claimStatus(keccak256(this.leaves[0]));
-      await this.contract.connect(claimer1).claim(this.elements[0].data);
+      await this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenIds, amounts);
       const after = await this.contract.claimStatus(keccak256(this.leaves[0]));
 
       // Assert
@@ -215,14 +209,14 @@ describe('AnichessERC1155MerkleClaim', function () {
 
     it('can claim for another wallet', async function () {
       // Arrange
-      await this.contract.connect(claimer1).claim(this.elements[1].data);
+      const proofInfo = this.elements[1];
+      const {proof, recipient, tokenIds, amounts} = proofInfo;
+      await this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenIds, amounts);
 
       // Act
 
       // Assert
-      await expect(this.rewardContract.balanceOf(this.elements[1].recipient, this.elements[1].tokenIds[0])).to.eventually.equal(
-        this.elements[1].amounts[0]
-      );
+      await expect(this.rewardContract.balanceOf(recipient, tokenIds[0])).to.eventually.equal(amounts[0]);
     });
   });
 });
