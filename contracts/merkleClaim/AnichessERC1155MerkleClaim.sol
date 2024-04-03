@@ -98,7 +98,7 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
      * @param epochId The epoch ID for the claim.
      * @param merkleRoot The Merkle root of the claim.
      * @param startTime The start time of the claim window.
-     * @param endTime The end time of the claim window.     
+     * @param endTime The end time of the claim window.
      */
     function setEpochMerkleRoot(bytes32 epochId, bytes32 merkleRoot, uint256 startTime, uint256 endTime) external {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
