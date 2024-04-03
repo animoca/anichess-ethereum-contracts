@@ -333,7 +333,7 @@ describe('AnichessERC1155MerkleClaim', function () {
         // Assert
         await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenId, amount))
           .to.emit(this.contract, 'PayoutClaimed')
-          .withArgs(this.epochId, recipient, tokenId, amount);
+          .withArgs(this.epochId, recipient, this.root, tokenId, amount);
       });
     });
   });

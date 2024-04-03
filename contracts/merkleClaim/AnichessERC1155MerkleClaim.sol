@@ -11,10 +11,9 @@ import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/i
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 /**
- * @title Anichess The Missing Orbs Claim Contract
+ * @title Anichess ERC1155 Merkle Claim Contract
  * @dev This contract allows users to claim rewards based on a Merkle proof, which verifies that they are
  * @dev entitled to the rewards without revealing the entire list of recipients.
- * @notice This contract uses a Merkle Tree to allow users to claim tokens if they possess a valid proof.
  */
 contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnership {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
@@ -27,7 +26,7 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
         uint256 endTime;
     }
 
-    /// @notice The ERC1155Mintable reward contract interface.
+    /// @notice The ERC1155Mintable reward contract.
     IERC1155Mintable public immutable REWARD_CONTRACT;
 
     /// @notice The total number of tokens that can be minted in this contract.
@@ -36,40 +35,40 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
     /// @notice The total number of tokens that have been claimed.
     uint256 public noOfTokensClaimed;
 
-    /// @notice The claimInfos , mapping from the epoch ID to the claim window.
+    /// @notice Mapping from the epoch ID to the claim window.
     mapping(bytes32 => ClaimWindow) public claimWindows;
 
-    /// @notice Mapping from leafhash to store claim status to prevent double claiming.
+    /// @notice Mapping from leafhash to the claim status.
     mapping(bytes32 => bool) public claimStatus;
 
-    /// @notice Event emitted when a payout is claimed.
-    event PayoutClaimed(bytes32 indexed epochId, address indexed recipient, uint256 id, uint256 value);
+    /// @notice Emitted when a payout is claimed.
+    event PayoutClaimed(bytes32 indexed epochId, address indexed recipient, bytes32 merkleRoot, uint256 id, uint256 value);
 
-    /// @notice Event emitted when a claim window is set.
+    /// @notice Emitted when a claim window is set.
     event SetEpochMerkleRoot(bytes32 indexed epochId, bytes32 indexed merkleRoot, uint256 startTime, uint256 endTime);
 
-    /// @notice Error thrown when the payout has already been claimed.
+    /// @notice Thrown when the payout has already been claimed.
     error AlreadyClaimed(bytes32 epochId, address recipient, uint256 id, uint256 value);
 
-    /// @notice Error thrown when the proof provided for the claim is invalid.
+    /// @notice Thrown when the proof provided for the claim is invalid.
     error InvalidProof(bytes32 epochId, address recipient, uint256 id, uint256 value);
 
-    /// @notice Error thrown when the claim window is closed or has not yet opened.
+    /// @notice Thrown when the claim window is closed or has not yet opened.
     error OutOfClaimWindow(bytes32 epochId, uint256 currentTime);
 
-    /// @notice Error thrown when the number of tokens claimed exceeds the mint supply.
+    /// @notice Thrown when the number of tokens claimed exceeds the mint supply.
     error ExceededMintSupply(bytes32 epochId, address recipient, uint256 id, uint256 value, uint256 totalClaimed);
 
-    /// @notice Error thrown when the claim window has already been set.
+    /// @notice Thrown when the epoch ID exists.
     error EpochIdAlreadyExists(bytes32 epochId);
 
-    /// @notice Error thrown when the epoch ID is invalid.
+    /// @notice Thrown when the epoch ID does not exist.
     error EpochIdNotExists(bytes32 epochId);
 
     /**
      * @notice Constructor for the AnichessERC1155MerkleClaim contract.
      * @param mintSupply The total number of tokens that can be minted in this contract.
-     * @param rewardContract The ERC1155Mintable reward contract interface.
+     * @param rewardContract The ERC1155Mintable reward contract.
      * @param forwarderRegistry The forwarder registry contract.
      */
     constructor(
@@ -92,18 +91,18 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
     }
 
     /**
-     * @notice Sets the merkle root for a specific epoch.
-     * @dev Only the contract owner can set the claim window.
+     * @notice Sets the merkle root for a specific epoch with start and end time.
+     * @dev Reverts if the _msgSender() is not the owner.
+     * @dev Reverts if the epoch ID has already been set.
+     * @dev Emits a SetEpochMerkleRoot event.
      * @param epochId The epoch ID for the claim.
-     * @param startTime The start time of the claim window.
-     * @param endTime The end time of the claim window.
      * @param merkleRoot The Merkle root of the claim.
-     * @dev Throws if the claim window has already been set.
+     * @param startTime The start time of the claim window.
+     * @param endTime The end time of the claim window.     
      */
     function setEpochMerkleRoot(bytes32 epochId, bytes32 merkleRoot, uint256 startTime, uint256 endTime) external {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
 
-        // Ensure the epochId has not been set before.
         if (claimWindows[epochId].merkleRoot != bytes32(0)) {
             revert EpochIdAlreadyExists(epochId);
         }
@@ -115,16 +114,16 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
 
     /**
      * @notice Claims the payout for a specific epoch.
+     * @dev Reverts if the epoch ID does not exist
+     * @dev Reverts if the claim window is closed or has not yet opened.
+     * @dev Reverts if the proof provided for the claim is invalid.
+     * @dev Reverts if the payout has already been claimed.
+     * @dev Reverts if the number of tokens claimed exceeds the mint supply.
      * @param epochId The epoch ID for the claim.
      * @param proof The Merkle proof for the claim.
      * @param recipient The recipient of the payout.
      * @param id The ID of the token to claim.
      * @param value The value of the token to claim.
-     * @dev Throws if the claim window has not been set.
-     * @dev Throws if the claim window is closed or has not yet opened.
-     * @dev Throws if the proof provided for the claim is invalid.
-     * @dev Throws if the payout has already been claimed.
-     * @dev Throws if the number of tokens claimed exceeds the mint supply.
      */
     function claim(bytes32 epochId, bytes32[] calldata proof, address recipient, uint256 id, uint256 value) external {
         ClaimWindow storage claimWindow = claimWindows[epochId];
@@ -150,6 +149,6 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
 
         REWARD_CONTRACT.safeMint(recipient, id, value, "");
 
-        emit PayoutClaimed(epochId, recipient, id, value);
+        emit PayoutClaimed(epochId, recipient, claimWindow.merkleRoot, id, value);
     }
 }
