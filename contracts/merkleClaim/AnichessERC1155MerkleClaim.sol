@@ -58,13 +58,13 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
     error OutOfClaimWindow(bytes32 epochId, uint256 currentTime);
 
     /// @notice Error thrown when the number of tokens claimed exceeds the mint supply.
-    error ExceededMintSupply(bytes32 epochId, address recipient, uint256 amount, uint256 totalClaimed);
+    error ExceededMintSupply(bytes32 epochId, address recipient, uint256 id, uint256 value, uint256 totalClaimed);
 
     /// @notice Error thrown when the claim window has already been set.
-    error EpochIdAlreadySet(bytes32 epochId);
+    error EpochIdAlreadyExists(bytes32 epochId);
 
     /// @notice Error thrown when the epoch ID is invalid.
-    error EpochIdNotSet(bytes32 epochId);
+    error EpochIdNotExists(bytes32 epochId);
 
     /**
      * @notice Constructor for the AnichessERC1155MerkleClaim contract.
@@ -77,8 +77,8 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
         IERC1155Mintable rewardContract,
         IForwarderRegistry forwarderRegistry
     ) ForwarderRegistryContext(forwarderRegistry) ContractOwnership(msg.sender) {
-        REWARD_CONTRACT = rewardContract;
         MINT_SUPPLY = mintSupply;
+        REWARD_CONTRACT = rewardContract;
     }
 
     /// @inheritdoc ForwarderRegistryContextBase
@@ -105,7 +105,7 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
 
         // Ensure the epochId has not been set before.
         if (claimWindows[epochId].merkleRoot != bytes32(0)) {
-            revert EpochIdAlreadySet(epochId);
+            revert EpochIdAlreadyExists(epochId);
         }
 
         claimWindows[epochId] = ClaimWindow(merkleRoot, startTime, endTime);
@@ -129,9 +129,8 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
     function claim(bytes32 epochId, bytes32[] calldata proof, address recipient, uint256 id, uint256 value) external {
         ClaimWindow storage claimWindow = claimWindows[epochId];
         if (claimWindow.merkleRoot == bytes32(0)) {
-            revert EpochIdNotSet(epochId);
+            revert EpochIdNotExists(epochId);
         }
-
         if (block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime) {
             revert OutOfClaimWindow(epochId, block.timestamp);
         }
@@ -143,7 +142,7 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
 
         uint256 prevNoOfTokensClaimed = noOfTokensClaimed;
         if (prevNoOfTokensClaimed + value > MINT_SUPPLY) {
-            revert ExceededMintSupply(epochId, recipient, value, prevNoOfTokensClaimed + value);
+            revert ExceededMintSupply(epochId, recipient, id, value, prevNoOfTokensClaimed + value);
         }
 
         noOfTokensClaimed = prevNoOfTokensClaimed + value;
