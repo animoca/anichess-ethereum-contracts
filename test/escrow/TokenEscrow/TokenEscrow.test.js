@@ -1,9 +1,9 @@
 const {ethers} = require('hardhat');
 const {deployOrbMockFixture} = require('../../helper');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
-const {supportsInterfaces} = require('@animoca/ethereum-contracts/test/contracts/introspection/behaviors/SupportsInterface.behavior');
+const {supportsInterfaces} = require('@animoca/ethereum-contracts-1.1.1/test/contracts/introspection/behaviors/SupportsInterface.behavior');
 const {beforeEach, before} = require('mocha');
-const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
+const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts-1.1.1/test/helpers/registries');
 
 describe('TokenEscrow', function () {
   let accounts, deployer, relayer, user, user2, user3, user4;

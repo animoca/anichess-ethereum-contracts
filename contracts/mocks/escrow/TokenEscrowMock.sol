@@ -2,8 +2,8 @@
 pragma solidity 0.8.17;
 
 import {TokenEscrow} from "../../escrow/TokenEscrow.sol";
-import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
-import {IERC1155} from "@animoca/ethereum-contracts/contracts/token/ERC1155/interfaces/IERC1155.sol";
+import {IForwarderRegistry} from "@animoca/ethereum-contracts-1.1.1/contracts/metatx/interfaces/IForwarderRegistry.sol";
+import {IERC1155} from "@animoca/ethereum-contracts-1.1.1/contracts/token/ERC1155/interfaces/IERC1155.sol";
 
 /// @title ORBNFTMock Contract
 /// @notice Mock contract for testing purposes, extends the ORBNFT contract.

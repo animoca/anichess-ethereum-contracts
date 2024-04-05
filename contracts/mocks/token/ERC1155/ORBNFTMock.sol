@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {IOperatorFilterRegistry} from "@animoca/ethereum-contracts/contracts/token/royalty/interfaces/IOperatorFilterRegistry.sol";
+import {IOperatorFilterRegistry} from "@animoca/ethereum-contracts-1.1.1/contracts/token/royalty/interfaces/IOperatorFilterRegistry.sol";
 import {ORBNFT} from "../../../token/ERC1155/ORBNFT.sol";
 
 /// @title ORBNFTMock Contract

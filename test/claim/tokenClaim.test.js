@@ -1,7 +1,5 @@
 const {ethers} = require('hardhat');
-const {getOperatorFilterRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
-const {logger} = require('ethers');
-const {getAddress} = require('ethers/lib/utils');
+const {getOperatorFilterRegistryAddress} = require('@animoca/ethereum-contracts-1.1.1/test/helpers/registries');
 
 describe('ORBNFTClaimTest', function () {
   let deployer, tokenHolder, payoutWallet, claimer, recipient, signer, other, MINTER_ROLE;

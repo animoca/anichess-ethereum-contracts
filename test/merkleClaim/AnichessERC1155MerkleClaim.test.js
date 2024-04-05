@@ -4,7 +4,7 @@ const {MerkleTree} = require('merkletreejs');
 const keccak256 = require('keccak256');
 const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
-const {getOperatorFilterRegistryAddress, getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
+const {getOperatorFilterRegistryAddress, getForwarderRegistryAddress} = require('@animoca/ethereum-contracts-1.1.1/test/helpers/registries');
 const helpers = require('@nomicfoundation/hardhat-network-helpers');
 
 let tokenMetadataResolverWithBaseURI = undefined;

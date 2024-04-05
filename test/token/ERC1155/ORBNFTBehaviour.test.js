@@ -1,7 +1,6 @@
 const {runBehaviorTests} = require('@animoca/ethereum-contract-helpers/src/test/run');
-const {getOperatorFilterRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
-const {behavesLikeERC1155} = require('@animoca/ethereum-contracts/test/behaviors');
-const {ethers} = require('hardhat');
+const {getOperatorFilterRegistryAddress} = require('@animoca/ethereum-contracts-1.1.1/test/helpers/registries');
+const {behavesLikeERC1155} = require('@animoca/ethereum-contracts-1.1.1/test/behaviors');
 
 const baseMetadataURI = 'uri';
 

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
-import {ERC1155TokenReceiver} from "@animoca/ethereum-contracts/contracts/token/ERC1155/ERC1155TokenReceiver.sol";
-import {IERC1155TokenReceiver} from "@animoca/ethereum-contracts/contracts/token/ERC1155/interfaces/IERC1155TokenReceiver.sol";
-import {IERC1155} from "@animoca/ethereum-contracts/contracts/token/ERC1155/interfaces/IERC1155.sol";
-import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
-import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
-import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
+import {ContractOwnership} from "@animoca/ethereum-contracts-1.1.1/contracts/access/ContractOwnership.sol";
+import {ERC1155TokenReceiver} from "@animoca/ethereum-contracts-1.1.1/contracts/token/ERC1155/ERC1155TokenReceiver.sol";
+import {IERC1155TokenReceiver} from "@animoca/ethereum-contracts-1.1.1/contracts/token/ERC1155/interfaces/IERC1155TokenReceiver.sol";
+import {IERC1155} from "@animoca/ethereum-contracts-1.1.1/contracts/token/ERC1155/interfaces/IERC1155.sol";
+import {ForwarderRegistryContext} from "@animoca/ethereum-contracts-1.1.1/contracts/metatx/ForwarderRegistryContext.sol";
+import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts-1.1.1/contracts/metatx/base/ForwarderRegistryContextBase.sol";
+import {IForwarderRegistry} from "@animoca/ethereum-contracts-1.1.1/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {TokenRecovery} from "@animoca/ethereum-contracts/contracts/security/TokenRecovery.sol";
+import {TokenRecovery} from "@animoca/ethereum-contracts-1.1.1/contracts/security/TokenRecovery.sol";
 
 /// @title TokenEscrow contract
 /// @notice Contract that allows users to escrow tokens for use in the Anichess Game.

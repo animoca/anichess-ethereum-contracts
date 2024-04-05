@@ -2,7 +2,6 @@
 pragma solidity 0.8.17;
 
 import {TokenClaim} from "contracts/claim/TokenClaim.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract NonReentrantAttack {
     TokenClaim public tokenClaim;

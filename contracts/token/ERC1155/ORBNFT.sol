@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {IOperatorFilterRegistry} from "@animoca/ethereum-contracts/contracts/token/royalty/interfaces/IOperatorFilterRegistry.sol";
-import {AccessControlStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/AccessControlStorage.sol";
-import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
-import {ERC1155Storage} from "@animoca/ethereum-contracts/contracts/token/ERC1155/libraries/ERC1155Storage.sol";
-import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
-import {ERC1155Mintable} from "@animoca/ethereum-contracts/contracts/token/ERC1155/ERC1155Mintable.sol";
-import {ERC1155Burnable} from "@animoca/ethereum-contracts/contracts/token/ERC1155/ERC1155Burnable.sol";
-import {ERC1155MetadataURIWithBaseURI} from "@animoca/ethereum-contracts/contracts/token/ERC1155/ERC1155MetadataURIWithBaseURI.sol";
-import {ERC2981} from "@animoca/ethereum-contracts/contracts/token/royalty/ERC2981.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {ERC1155WithOperatorFilterer} from "@animoca/ethereum-contracts/contracts/token/ERC1155/ERC1155WithOperatorFilterer.sol";
-import {TokenRecovery} from "@animoca/ethereum-contracts/contracts/security/TokenRecovery.sol";
+import {IOperatorFilterRegistry} from "@animoca/ethereum-contracts-1.1.1/contracts/token/royalty/interfaces/IOperatorFilterRegistry.sol";
+import {ContractOwnership} from "@animoca/ethereum-contracts-1.1.1/contracts/access/ContractOwnership.sol";
+import {ERC1155Mintable} from "@animoca/ethereum-contracts-1.1.1/contracts/token/ERC1155/ERC1155Mintable.sol";
+import {ERC1155Burnable} from "@animoca/ethereum-contracts-1.1.1/contracts/token/ERC1155/ERC1155Burnable.sol";
+import {ERC1155MetadataURIWithBaseURI} from "@animoca/ethereum-contracts-1.1.1/contracts/token/ERC1155/ERC1155MetadataURIWithBaseURI.sol";
+import {ERC2981} from "@animoca/ethereum-contracts-1.1.1/contracts/token/royalty/ERC2981.sol";
+import {ERC1155WithOperatorFilterer} from "@animoca/ethereum-contracts-1.1.1/contracts/token/ERC1155/ERC1155WithOperatorFilterer.sol";
+import {TokenRecovery} from "@animoca/ethereum-contracts-1.1.1/contracts/security/TokenRecovery.sol";
 
 /// @title ORBNFT Contract
 /// @notice Contract that extends ERC1155 standard with minting, burning, metadata, and royalty support.

@@ -3,10 +3,9 @@ pragma solidity 0.8.17;
 
 import {IORBNFT} from "./interface/IORBNFT.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {AccessControlStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/AccessControlStorage.sol";
-import {Pause, PauseStorage, ContractOwnership} from "@animoca/ethereum-contracts/contracts/lifecycle/Pause.sol";
-import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
-import {TokenRecovery} from "@animoca/ethereum-contracts/contracts/security/TokenRecovery.sol";
+import {Pause, PauseStorage, ContractOwnership} from "@animoca/ethereum-contracts-1.1.1/contracts/lifecycle/Pause.sol";
+import {ContractOwnershipStorage} from "@animoca/ethereum-contracts-1.1.1/contracts/access/libraries/ContractOwnershipStorage.sol";
+import {TokenRecovery} from "@animoca/ethereum-contracts-1.1.1/contracts/security/TokenRecovery.sol";
 
 /// @title TokenClaim Contract
 /// @notice Allows users to claim tokens based on a signature verification process.
