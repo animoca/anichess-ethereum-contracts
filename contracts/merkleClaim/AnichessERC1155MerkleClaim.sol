@@ -61,22 +61,23 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext {
     /**
      * @notice Allows eligible users to claim their rewards using a Merkle proof.
      * @dev Claims the payout based on the proof provided, marks it as claimed, and mints the tokens.
-     * @param data Encoded data containing the Merkle root, epoch ID, proof, recipient address, token IDs, and token amounts to claim.
+     * @param epochId The epoch ID for the claim.
+     * @param proof The Merkle proof for the claim.
+     * @param recipient The address of the recipient.
+     * @param ids The array of token IDs to claim.
+     * @param values The array of token values to claim.
+     * @dev Throws if the claim has already been claimed.
+     * @dev Throws if the proof is invalid.
      */
-    function claim(bytes calldata data) external {
-        (bytes32 epochId, bytes32[] memory proof, address recipient, uint256[] memory _ids, uint256[] memory _values) = abi.decode(
-            data,
-            (bytes32, bytes32[], address, uint256[], uint256[])
-        );
+    function claim(bytes32 epochId, bytes32[] memory proof, address recipient, uint256[] memory ids, uint256[] memory values) external {
+        bytes32 leaf = keccak256(abi.encodePacked(recipient, ids, values, epochId));
 
-        bytes32 leaf = keccak256(abi.encodePacked(recipient, _ids, _values, epochId));
+        if (claimStatus[leaf]) revert AlreadyClaimed(recipient, ids, values, epochId);
+        if (!proof.verify(MERKLE_ROOT, leaf)) revert InvalidProof(recipient, ids, values, epochId);
 
-        if (claimStatus[leaf]) revert AlreadyClaimed(recipient, _ids, _values, epochId);
-        if (!proof.verify(MERKLE_ROOT, leaf)) revert InvalidProof(recipient, _ids, _values, epochId);
-
-        REWARD_CONTRACT.safeBatchMint(recipient, _ids, _values, "");
         claimStatus[leaf] = true;
+        REWARD_CONTRACT.safeBatchMint(recipient, ids, values, "");
 
-        emit PayoutClaimed(epochId, recipient, _ids, _values);
+        emit PayoutClaimed(epochId, recipient, ids, values);
     }
 }
