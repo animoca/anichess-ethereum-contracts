@@ -69,7 +69,7 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext {
      * @dev Throws if the claim has already been claimed.
      * @dev Throws if the proof is invalid.
      */
-    function claim(bytes32 epochId, bytes32[] memory proof, address recipient, uint256[] memory ids, uint256[] memory values) external {
+    function claim(bytes32 epochId, bytes32[] calldata proof, address recipient, uint256[] calldata ids, uint256[] calldata values) external {
         bytes32 leaf = keccak256(abi.encodePacked(recipient, ids, values, epochId));
 
         if (claimStatus[leaf]) revert AlreadyClaimed(recipient, ids, values, epochId);
