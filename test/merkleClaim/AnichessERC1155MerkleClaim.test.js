@@ -4,7 +4,11 @@ const {MerkleTree} = require('merkletreejs');
 const keccak256 = require('keccak256');
 const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
-const {getOperatorFilterRegistryAddress, getForwarderRegistryAddress} = require('@animoca/ethereum-contracts-1.1.1/test/helpers/registries');
+const {
+  getOperatorFilterRegistryAddress,
+  getForwarderRegistryAddress,
+  getTokenMetadataResolverWithBaseURIAddress,
+} = require('@animoca/ethereum-contracts/test/helpers/registries');
 const helpers = require('@nomicfoundation/hardhat-network-helpers');
 
 describe('AnichessERC1155MerkleClaim', function () {
@@ -13,10 +17,10 @@ describe('AnichessERC1155MerkleClaim', function () {
   });
 
   const fixture = async function () {
-    const tokenMetadataResolverWithBaseURI = await deployContract('TokenMetadataResolverWithBaseURI');
-    const metadataResolverAddress = tokenMetadataResolverWithBaseURI.address;
+    const metadataResolverAddress = await getTokenMetadataResolverWithBaseURIAddress();
     const forwarderRegistryAddress = await getForwarderRegistryAddress();
     const operatorFilterRegistryAddress = await getOperatorFilterRegistryAddress();
+
     this.rewardContract = await deployContract(
       'ERC1155FullBurn',
       'Anichess The Missing Orbs',
@@ -25,7 +29,7 @@ describe('AnichessERC1155MerkleClaim', function () {
       operatorFilterRegistryAddress,
       forwarderRegistryAddress
     );
-    const rewardsContractAddress = this.rewardContract.address;
+    const rewardsContractAddress = await this.rewardContract.getAddress();
 
     this.tokenId = 1;
     this.mintSupply = 3;
@@ -38,9 +42,10 @@ describe('AnichessERC1155MerkleClaim', function () {
       forwarderRegistryAddress
     );
 
-    this.epochId = ethers.utils.formatBytes32String('test-epoch-id');
+    this.epochId = ethers.encodeBytes32String('test-epoch-id');
     this.whitelist = [claimer1.address, claimer2.address, claimer3.address, claimer4.address];
-    this.leaves = this.whitelist.map((walletAddress) => ethers.utils.solidityPack(['bytes32', 'address'], [this.epochId, walletAddress]));
+
+    this.leaves = this.whitelist.map((walletAddress) => ethers.solidityPacked(['bytes32', 'address'], [this.epochId, walletAddress]));
     this.tree = new MerkleTree(this.leaves, keccak256, {hashLeaves: true, sortPairs: true});
     this.root = this.tree.getHexRoot();
     this.merkleClaimDataArr = this.leaves.map((leaf, index) => ({
@@ -49,7 +54,7 @@ describe('AnichessERC1155MerkleClaim', function () {
       epochId: this.epochId,
     }));
 
-    await this.rewardContract.grantRole(await this.rewardContract.MINTER_ROLE(), this.contract.address);
+    await this.rewardContract.grantRole(await this.rewardContract.MINTER_ROLE(), await this.contract.getAddress());
   };
 
   beforeEach(async function () {
@@ -64,13 +69,15 @@ describe('AnichessERC1155MerkleClaim', function () {
       expect(await this.contract.MINT_SUPPLY()).to.equal(this.mintSupply);
     });
     it('sets the rewards contract', async function () {
-      expect(await this.contract.REWARD_CONTRACT()).to.equal(this.rewardContract.address);
+      expect(await this.contract.REWARD_CONTRACT()).to.equal(await this.rewardContract.getAddress());
     });
   });
 
   describe('setEpochMerkleRoot(bytes32 epochId, bytes32 merkleRoot, uint256 startTime, uint256 endTime)', function () {
-    it('reverts with "Ownership: not the owner" if the caller is not the owner', async function () {
-      await expect(this.contract.connect(other).setEpochMerkleRoot(this.epochId, this.root, 0, 0)).to.revertedWith('Ownership: not the owner');
+    it('reverts with "NotContractOwner" if the caller is not the owner', async function () {
+      await expect(this.contract.connect(other).setEpochMerkleRoot(this.epochId, this.root, 0, 0))
+        .to.revertedWithCustomError(this.contract, 'NotContractOwner')
+        .withArgs(other.address);
     });
 
     it('reverts with "EpochIdAlreadyExists" if the epoch has already started', async function () {
@@ -93,7 +100,7 @@ describe('AnichessERC1155MerkleClaim', function () {
         await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
         const claimWindowAfter = await this.contract.claimWindows(this.epochId);
 
-        expect(claimWindowBefore.merkleRoot).to.equal(ethers.constants.HashZero);
+        expect(claimWindowBefore.merkleRoot).to.equal(ethers.ZeroHash);
         expect(claimWindowAfter.merkleRoot).to.equal(this.root);
         expect(claimWindowBefore.startTime).to.equal(0);
         expect(claimWindowAfter.startTime).to.equal(startTime);
@@ -220,7 +227,7 @@ describe('AnichessERC1155MerkleClaim', function () {
         const merkleClaimData = this.merkleClaimDataArr[0];
         const {recipient, epochId, proof} = merkleClaimData;
 
-        const leafHash = keccak256(ethers.utils.solidityPack(['bytes32', 'address'], [epochId, recipient]));
+        const leafHash = keccak256(ethers.solidityPacked(['bytes32', 'address'], [epochId, recipient]));
         const claimStatusBefore = await this.contract.claimStatus(leafHash);
         await this.contract.connect(claimer1).claim(epochId, proof, recipient);
         const claimStatusAfter = await this.contract.claimStatus(leafHash);
@@ -264,9 +271,7 @@ describe('AnichessERC1155MerkleClaim', function () {
     it('mock: _msgData()', async function () {
       // Arrange
       const forwarderRegistryAddress = await getForwarderRegistryAddress();
-      const filterRegistryAddress = await getOperatorFilterRegistryAddress();
-      this.rewardContract = await deployContract('ORBNFT', filterRegistryAddress, 'ORBNFT', 'ORB');
-      const rewardsContractAddress = this.rewardContract.address;
+      const rewardsContractAddress = await this.contract.getAddress();
 
       this.contract = await deployContract(
         'AnichessERC1155MerkleClaimMock',
@@ -275,19 +280,13 @@ describe('AnichessERC1155MerkleClaim', function () {
         rewardsContractAddress,
         forwarderRegistryAddress
       );
-
-      // Act
-
-      // Assert
       expect(await this.contract.connect(claimer1).__msgData()).to.be.exist;
     });
 
     it('mock: _msgSender()', async function () {
       // Arrange
       const forwarderRegistryAddress = await getForwarderRegistryAddress();
-      const filterRegistryAddress = await getOperatorFilterRegistryAddress();
-      this.rewardContract = await deployContract('ORBNFT', filterRegistryAddress, 'ORBNFT', 'ORB');
-      const rewardsContractAddress = this.rewardContract.address;
+      const rewardsContractAddress = await this.contract.getAddress();
 
       this.contract = await deployContract(
         'AnichessERC1155MerkleClaimMock',

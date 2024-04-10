@@ -2,10 +2,10 @@
 pragma solidity 0.8.22;
 
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {IERC1155Mintable} from "@animoca/ethereum-contracts-1.1.1/contracts/token/ERC1155/interfaces/IERC1155Mintable.sol";
+import {IERC1155Mintable} from "@animoca/ethereum-contracts/contracts/token/ERC1155/interfaces/IERC1155Mintable.sol";
 import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
-import {ContractOwnership} from "@animoca/ethereum-contracts-1.1.1/contracts/access/ContractOwnership.sol";
-import {ContractOwnershipStorage} from "@animoca/ethereum-contracts-1.1.1/contracts/access/libraries/ContractOwnershipStorage.sol";
+import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
+import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
 import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
