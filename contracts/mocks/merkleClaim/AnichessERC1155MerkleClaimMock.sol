@@ -7,10 +7,11 @@ import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/i
 
 contract AnichessERC1155MerkleClaimMock is AnichessERC1155MerkleClaim {
     constructor(
+        uint256 tokenId,
         uint256 mintSupply,
         IERC1155Mintable rewardContract,
         IForwarderRegistry forwarderRegistry
-    ) AnichessERC1155MerkleClaim(mintSupply, rewardContract, forwarderRegistry) {}
+    ) AnichessERC1155MerkleClaim(tokenId, mintSupply, rewardContract, forwarderRegistry) {}
 
     function __msgSender() external view returns (address) {
         return _msgSender();

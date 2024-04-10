@@ -7,25 +7,14 @@ const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtu
 const {getOperatorFilterRegistryAddress, getForwarderRegistryAddress} = require('@animoca/ethereum-contracts-1.1.1/test/helpers/registries');
 const helpers = require('@nomicfoundation/hardhat-network-helpers');
 
-let tokenMetadataResolverWithBaseURI = undefined;
-async function deployTokenMetadataResolverWithBaseURI() {
-  if (tokenMetadataResolverWithBaseURI === undefined) {
-    tokenMetadataResolverWithBaseURI = await deployContract('TokenMetadataResolverWithBaseURI');
-  }
-  return tokenMetadataResolverWithBaseURI;
-}
-
-async function getTokenMetadataResolverWithBaseURIAddress() {
-  return (await deployTokenMetadataResolverWithBaseURI()).address;
-}
-
 describe('AnichessERC1155MerkleClaim', function () {
   before(async function () {
     [deployer, claimer1, claimer2, claimer3, claimer4, other] = await ethers.getSigners();
   });
 
   const fixture = async function () {
-    const metadataResolverAddress = await getTokenMetadataResolverWithBaseURIAddress();
+    const tokenMetadataResolverWithBaseURI = await deployContract('TokenMetadataResolverWithBaseURI');
+    const metadataResolverAddress = tokenMetadataResolverWithBaseURI.address;
     const forwarderRegistryAddress = await getForwarderRegistryAddress();
     const operatorFilterRegistryAddress = await getOperatorFilterRegistryAddress();
     this.rewardContract = await deployContract(
@@ -38,47 +27,29 @@ describe('AnichessERC1155MerkleClaim', function () {
     );
     const rewardsContractAddress = this.rewardContract.address;
 
-    // setup merkle data
-    this.epochId = ethers.utils.hexZeroPad('0x9a794a09cf7b4fb99e2e3d4aeac42eab', 32);
-    this.mintSupply = 5000;
-    this.elements = [
-      {
-        recipient: claimer1.address,
-        tokenId: 1,
-        amount: 1,
-      },
-      {
-        recipient: claimer2.address,
-        tokenId: 2,
-        amount: 2,
-      },
-      {
-        recipient: claimer3.address,
-        tokenId: 3,
-        amount: 3,
-      },
-      {
-        recipient: claimer4.address, // claimer4 will not be able to claim since the mint supply is 5000
-        tokenId: 4,
-        amount: this.mintSupply + 1,
-      },
-    ];
-    this.leaves = this.elements.map((el) =>
-      ethers.utils.solidityPack(['bytes32', 'address', 'uint256', 'uint256'], [this.epochId, el.recipient, el.tokenId, el.amount])
+    this.tokenId = 1;
+    this.mintSupply = 3;
+
+    this.contract = await deployContract(
+      'AnichessERC1155MerkleClaim',
+      this.tokenId,
+      this.mintSupply,
+      rewardsContractAddress,
+      forwarderRegistryAddress
     );
 
+    this.epochId = ethers.utils.formatBytes32String('test-epoch-id');
+    this.whitelist = [claimer1.address, claimer2.address, claimer3.address, claimer4.address];
+    this.leaves = this.whitelist.map((walletAddress) => ethers.utils.solidityPack(['bytes32', 'address'], [this.epochId, walletAddress]));
     this.tree = new MerkleTree(this.leaves, keccak256, {hashLeaves: true, sortPairs: true});
     this.root = this.tree.getHexRoot();
+    this.merkleClaimDataArr = this.leaves.map((leaf, index) => ({
+      proof: this.tree.getHexProof(keccak256(leaf, index)),
+      recipient: this.whitelist[index],
+      epochId: this.epochId,
+    }));
 
-    this.leaves.forEach((leaf, index) => {
-      this.elements[index].proof = this.tree.getHexProof(keccak256(leaf));
-      this.elements[index].leafHash = keccak256(leaf);
-    });
-    this.contract = await deployContract('AnichessERC1155MerkleClaim', this.mintSupply, rewardsContractAddress, forwarderRegistryAddress);
     await this.rewardContract.grantRole(await this.rewardContract.MINTER_ROLE(), this.contract.address);
-
-    // push one block to make sure the epoch has started
-    await helpers.mine(1);
   };
 
   beforeEach(async function () {
@@ -86,44 +57,28 @@ describe('AnichessERC1155MerkleClaim', function () {
   });
 
   describe('constructor', function () {
+    it('sets the token id', async function () {
+      expect(await this.contract.TOKEN_ID()).to.equal(this.tokenId);
+    });
     it('set the mint supply', async function () {
-      // Arrange
-
-      // Act
-
-      // Assert
-
       expect(await this.contract.MINT_SUPPLY()).to.equal(this.mintSupply);
     });
     it('sets the rewards contract', async function () {
-      // Arrange
-
-      // Act
-
-      // Assert
       expect(await this.contract.REWARD_CONTRACT()).to.equal(this.rewardContract.address);
     });
   });
 
   describe('setEpochMerkleRoot(bytes32 epochId, bytes32 merkleRoot, uint256 startTime, uint256 endTime)', function () {
     it('reverts with "Ownership: not the owner" if the caller is not the owner', async function () {
-      // Arrange
-
-      // Act
-
-      // Assert
       await expect(this.contract.connect(other).setEpochMerkleRoot(this.epochId, this.root, 0, 0)).to.revertedWith('Ownership: not the owner');
     });
 
     it('reverts with "EpochIdAlreadyExists" if the epoch has already started', async function () {
-      // Arrange
       const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
       const endTime = startTime + 1; // unit: seconds
+
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
 
-      // Act
-
-      // Assert
       await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
         .to.revertedWithCustomError(this.contract, 'EpochIdAlreadyExists')
         .withArgs(this.epochId);
@@ -131,19 +86,15 @@ describe('AnichessERC1155MerkleClaim', function () {
 
     context('when successful', function () {
       it('sets the epoch merkle root', async function () {
-        // Arrange
         const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
         const endTime = startTime + 1; // unit: seconds
 
-        // Act
         const claimWindowBefore = await this.contract.claimWindows(this.epochId);
         await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
         const claimWindowAfter = await this.contract.claimWindows(this.epochId);
 
-        // Assert
         expect(claimWindowBefore.merkleRoot).to.equal(ethers.constants.HashZero);
         expect(claimWindowAfter.merkleRoot).to.equal(this.root);
-
         expect(claimWindowBefore.startTime).to.equal(0);
         expect(claimWindowAfter.startTime).to.equal(startTime);
         expect(claimWindowBefore.endTime).to.equal(0);
@@ -151,13 +102,9 @@ describe('AnichessERC1155MerkleClaim', function () {
       });
 
       it('emits a SetEpochMerkleRoot event', async function () {
-        // Arrange
         const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
         const endTime = startTime + 1; // unit: seconds
 
-        // Act
-
-        // Assert
         await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
           .to.emit(this.contract, 'SetEpochMerkleRoot')
           .withArgs(this.epochId, this.root, BigInt(startTime), endTime);
@@ -165,175 +112,150 @@ describe('AnichessERC1155MerkleClaim', function () {
     });
   });
 
-  describe('claim(bytes32 epochId, bytes32[] calldata proof, address recipient, uint256 id, uint256 value)', function () {
+  describe('claim(bytes32 epochId, bytes32[] calldata proof, address recipient)', function () {
     it('reverts with "EpochIdNotExists" if the epoch has not been set', async function () {
-      // Arrange
-      const proofInfo = this.elements[0];
-      const {proof, recipient, tokenId, amount} = proofInfo;
+      const merkleClaimData = this.merkleClaimDataArr[0];
+      const {proof, recipient, epochId} = merkleClaimData;
 
-      // Act
-
-      // Assert
-      await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenId, amount))
+      await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
         .withArgs(this.epochId);
     });
     it('reverts with "OutOfClaimWindow" if the epoch has not started', async function () {
-      // Arrange
       const startTime = (await helpers.time.latest()) + 100; // unit: seconds
       const endTime = startTime + 1; // unit: seconds
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
 
-      const proofInfo = this.elements[0];
-      const {proof, recipient, tokenId, amount} = proofInfo;
-
-      // Act
+      const merkleClaimData = this.merkleClaimDataArr[0];
+      const {proof, recipient, epochId} = merkleClaimData;
       const latestBlockTimestamp = await helpers.time.latest();
 
-      // Assert
       expect(latestBlockTimestamp).to.be.lessThan(startTime);
       expect(latestBlockTimestamp).to.be.lessThan(endTime);
-      await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenId, amount))
+      await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
-        .withArgs(this.epochId, latestBlockTimestamp + 1);
+        .withArgs(epochId, latestBlockTimestamp + 1);
     });
     it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
-      // Arrange
       const startTime = (await helpers.time.latest()) - 100; // unit: seconds
       const endTime = await helpers.time.latest(); // unit: seconds
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
 
-      const proofInfo = this.elements[0];
-      const {proof, recipient, tokenId, amount} = proofInfo;
-
-      // Act
+      const merkleClaimData = this.merkleClaimDataArr[0];
+      const {proof, recipient, epochId} = merkleClaimData;
       const latestBlockTimestamp = await helpers.time.latest();
 
-      // Assert
       expect(latestBlockTimestamp).to.be.greaterThan(startTime);
       expect(latestBlockTimestamp).to.be.greaterThan(endTime);
-      await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenId, amount))
+      await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
-        .withArgs(this.epochId, latestBlockTimestamp + 1);
+        .withArgs(epochId, latestBlockTimestamp + 1);
     });
     it('reverts with "InvalidProof" if the proof can not be verified', async function () {
-      // Arrange
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-      const proofInfo = this.elements[0];
-      const {recipient, tokenId, amount} = proofInfo;
-      const invalidProof = this.elements[1].proof;
 
-      // Act
+      const merkleClaimData = this.merkleClaimDataArr[0];
+      const {recipient, epochId} = merkleClaimData;
+      const invalidProof = this.merkleClaimDataArr[1].proof;
 
-      // Assert
-      await expect(this.contract.connect(claimer1).claim(this.epochId, invalidProof, recipient, tokenId, amount))
+      await expect(this.contract.connect(claimer1).claim(epochId, invalidProof, recipient))
         .to.revertedWithCustomError(this.contract, 'InvalidProof')
-        .withArgs(this.epochId, recipient, tokenId, amount);
+        .withArgs(epochId, recipient);
     });
     it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {
-      // Arrange
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-      const proofInfo = this.elements[0];
-      const {proof, recipient, tokenId, amount} = proofInfo;
-      await this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenId, amount);
 
-      // Act
+      const merkleClaimData = this.merkleClaimDataArr[0];
+      const {recipient, epochId, proof} = merkleClaimData;
+      await this.contract.connect(claimer1).claim(epochId, proof, recipient);
 
-      // Assert
-      await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenId, amount))
+      await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
-        .withArgs(this.epochId, recipient, tokenId, amount);
+        .withArgs(this.epochId, recipient);
     });
     it('reverts with "ExceededMintSupply" if the mint supply has been exceeded', async function () {
-      // Arrange
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-      // initial claim
-      const firstProofInfo = this.elements[0];
-      const {proof: firstProof, recipient: firstRecipient, tokenId: firstTokenId, amount: firstAmount} = firstProofInfo;
-      await this.contract.connect(claimer1).claim(this.epochId, firstProof, firstRecipient, firstTokenId, firstAmount);
-      // current claim
-      const currentProofInfo = this.elements[3];
-      const {proof, recipient, tokenId, amount} = currentProofInfo;
 
-      // Act
+      await this.contract
+        .connect(claimer1)
+        .claim(this.merkleClaimDataArr[0].epochId, this.merkleClaimDataArr[0].proof, this.merkleClaimDataArr[0].recipient);
+      await this.contract
+        .connect(claimer1)
+        .claim(this.merkleClaimDataArr[1].epochId, this.merkleClaimDataArr[1].proof, this.merkleClaimDataArr[1].recipient);
+      await this.contract
+        .connect(claimer1)
+        .claim(this.merkleClaimDataArr[2].epochId, this.merkleClaimDataArr[2].proof, this.merkleClaimDataArr[2].recipient);
 
-      // Assert
-      await expect(this.contract.connect(claimer2).claim(this.epochId, proof, recipient, tokenId, amount))
-        .to.revertedWithCustomError(this.contract, 'ExceededMintSupply')
-        .withArgs(this.epochId, recipient, tokenId, amount, firstAmount + amount);
+      await expect(
+        this.contract
+          .connect(claimer1)
+          .claim(this.merkleClaimDataArr[3].epochId, this.merkleClaimDataArr[3].proof, this.merkleClaimDataArr[3].recipient)
+      ).to.revertedWithCustomError(this.contract, 'ExceededMintSupply');
     });
     context('when successful', function () {
       it('should update the noOfTokensClaimed', async function () {
-        // Arrange
         const startTime = await helpers.time.latest(); // unit: seconds
         const endTime = (await helpers.time.latest()) + 100; // unit: seconds
         await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-        const proofInfo = this.elements[0];
-        const {proof, recipient, tokenId, amount} = proofInfo;
+        const merkleClaimData = this.merkleClaimDataArr[0];
+        const {recipient, epochId, proof} = merkleClaimData;
 
-        // Act
         const noOfTokensClaimedBefore = await this.contract.noOfTokensClaimed();
-        await this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenId, amount);
+        await this.contract.connect(claimer1).claim(epochId, proof, recipient);
         const noOfTokensClaimedAfter = await this.contract.noOfTokensClaimed();
 
-        // Assert
         expect(noOfTokensClaimedBefore).to.equal(0);
-        expect(noOfTokensClaimedAfter).to.equal(amount);
+        expect(noOfTokensClaimedAfter).to.equal(1);
       });
       it('should update the claimStatus', async function () {
-        // Arrange
         const startTime = await helpers.time.latest(); // unit: seconds
         const endTime = (await helpers.time.latest()) + 100; // unit: seconds
         await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-        const proofInfo = this.elements[0];
-        const {proof, recipient, tokenId, amount, leafHash} = proofInfo;
+        const merkleClaimData = this.merkleClaimDataArr[0];
+        const {recipient, epochId, proof} = merkleClaimData;
 
-        // Act
+        const leafHash = keccak256(ethers.utils.solidityPack(['bytes32', 'address'], [epochId, recipient]));
         const claimStatusBefore = await this.contract.claimStatus(leafHash);
-        await this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenId, amount);
+        await this.contract.connect(claimer1).claim(epochId, proof, recipient);
         const claimStatusAfter = await this.contract.claimStatus(leafHash);
 
-        // Assert
         expect(claimStatusBefore).to.equal(false);
         expect(claimStatusAfter).to.equal(true);
       });
       it('should update the recipient balance', async function () {
-        // Arrange
         const startTime = await helpers.time.latest(); // unit: seconds
         const endTime = (await helpers.time.latest()) + 100; // unit: seconds
         await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-        const proofInfo = this.elements[0];
-        const {proof, recipient, tokenId, amount} = proofInfo;
+        const merkleClaimData = this.merkleClaimDataArr[0];
+        const {recipient, epochId, proof} = merkleClaimData;
 
-        // Act
-        const balanceBefore = await this.rewardContract.balanceOf(recipient, tokenId);
-        await this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenId, amount);
-        const balanceAfter = await this.rewardContract.balanceOf(recipient, tokenId);
+        const balanceBefore = await this.rewardContract.balanceOf(recipient, this.tokenId);
+        await this.contract.connect(claimer1).claim(epochId, proof, recipient);
+        const balanceAfter = await this.rewardContract.balanceOf(recipient, this.tokenId);
 
-        // Assert
         expect(balanceBefore).to.equal(0);
-        expect(balanceAfter).to.equal(amount);
+        expect(balanceAfter).to.equal(1);
       });
       it('emits a PayoutClaimed event', async function () {
         // Arrange
         const startTime = await helpers.time.latest(); // unit: seconds
         const endTime = (await helpers.time.latest()) + 100; // unit: seconds
         await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-        const proofInfo = this.elements[0];
-        const {proof, recipient, tokenId, amount} = proofInfo;
+        const merkleClaimData = this.merkleClaimDataArr[0];
+        const {recipient, epochId, proof} = merkleClaimData;
 
         // Act
 
         // Assert
-        await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient, tokenId, amount))
+        await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
           .to.emit(this.contract, 'PayoutClaimed')
-          .withArgs(this.epochId, recipient, this.root, tokenId, amount);
+          .withArgs(this.epochId, recipient, this.tokenId, 1);
       });
     });
   });
@@ -346,7 +268,13 @@ describe('AnichessERC1155MerkleClaim', function () {
       this.rewardContract = await deployContract('ORBNFT', filterRegistryAddress, 'ORBNFT', 'ORB');
       const rewardsContractAddress = this.rewardContract.address;
 
-      this.contract = await deployContract('AnichessERC1155MerkleClaimMock', this.root, rewardsContractAddress, forwarderRegistryAddress);
+      this.contract = await deployContract(
+        'AnichessERC1155MerkleClaimMock',
+        this.tokenId,
+        this.mintSupply,
+        rewardsContractAddress,
+        forwarderRegistryAddress
+      );
 
       // Act
 
@@ -361,7 +289,13 @@ describe('AnichessERC1155MerkleClaim', function () {
       this.rewardContract = await deployContract('ORBNFT', filterRegistryAddress, 'ORBNFT', 'ORB');
       const rewardsContractAddress = this.rewardContract.address;
 
-      this.contract = await deployContract('AnichessERC1155MerkleClaimMock', this.root, rewardsContractAddress, forwarderRegistryAddress);
+      this.contract = await deployContract(
+        'AnichessERC1155MerkleClaimMock',
+        this.tokenId,
+        this.mintSupply,
+        rewardsContractAddress,
+        forwarderRegistryAddress
+      );
 
       // Act
 
