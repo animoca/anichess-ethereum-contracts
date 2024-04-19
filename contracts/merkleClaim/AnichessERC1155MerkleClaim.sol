@@ -143,12 +143,12 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
 
         if (claimStatus[leaf]) revert AlreadyClaimed(epochId, recipient);
 
-        uint256 prevNoOfTokensClaimed = noOfTokensClaimed;
-        if (prevNoOfTokensClaimed + 1 > MINT_SUPPLY) {
+        uint256 updatedNoOfTokensClaimed = noOfTokensClaimed + 1;
+        if (updatedNoOfTokensClaimed > MINT_SUPPLY) {
             revert ExceededMintSupply();
         }
 
-        noOfTokensClaimed = prevNoOfTokensClaimed + 1;
+        noOfTokensClaimed = updatedNoOfTokensClaimed;
         claimStatus[leaf] = true;
 
         REWARD_CONTRACT.safeMint(recipient, TOKEN_ID, 1, "");
