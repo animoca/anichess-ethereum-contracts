@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.22;
 
-import {AnichessERC1155MerkleClaim} from "../../merkleClaim/AnichessERC1155MerkleClaim.sol";
+import {ERC1155ClaimWindowMerkleClaim} from "../../merkleClaim/ERC1155ClaimWindowMerkleClaim.sol";
 import {IERC1155Mintable} from "@animoca/ethereum-contracts/contracts/token/ERC1155/interfaces/IERC1155Mintable.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 
-contract AnichessERC1155MerkleClaimMock is AnichessERC1155MerkleClaim {
+contract ERC1155ClaimWindowMerkleClaimMock is ERC1155ClaimWindowMerkleClaim {
     constructor(
         uint256 tokenId,
         uint256 mintSupply,
         IERC1155Mintable rewardContract,
         IForwarderRegistry forwarderRegistry
-    ) AnichessERC1155MerkleClaim(tokenId, mintSupply, rewardContract, forwarderRegistry) {}
+    ) ERC1155ClaimWindowMerkleClaim(tokenId, mintSupply, rewardContract, forwarderRegistry) {}
 
     function __msgSender() external view returns (address) {
         return _msgSender();

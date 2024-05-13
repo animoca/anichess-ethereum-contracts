@@ -11,7 +11,7 @@ const {
 } = require('@animoca/ethereum-contracts/test/helpers/registries');
 const helpers = require('@nomicfoundation/hardhat-network-helpers');
 
-describe('AnichessERC1155MerkleClaim', function () {
+describe('ERC1155ClaimWindowMerkleClaim', function () {
   before(async function () {
     [deployer, claimer1, claimer2, claimer3, claimer4, other] = await ethers.getSigners();
   });
@@ -35,7 +35,7 @@ describe('AnichessERC1155MerkleClaim', function () {
     this.mintSupply = 3;
 
     this.contract = await deployContract(
-      'AnichessERC1155MerkleClaim',
+      'ERC1155ClaimWindowMerkleClaim',
       this.tokenId,
       this.mintSupply,
       rewardsContractAddress,
@@ -274,7 +274,7 @@ describe('AnichessERC1155MerkleClaim', function () {
       const rewardsContractAddress = await this.contract.getAddress();
 
       this.contract = await deployContract(
-        'AnichessERC1155MerkleClaimMock',
+        'ERC1155ClaimWindowMerkleClaimMock',
         this.tokenId,
         this.mintSupply,
         rewardsContractAddress,
@@ -289,7 +289,7 @@ describe('AnichessERC1155MerkleClaim', function () {
       const rewardsContractAddress = await this.contract.getAddress();
 
       this.contract = await deployContract(
-        'AnichessERC1155MerkleClaimMock',
+        'ERC1155ClaimWindowMerkleClaimMock',
         this.tokenId,
         this.mintSupply,
         rewardsContractAddress,

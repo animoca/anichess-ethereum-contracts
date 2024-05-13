@@ -11,11 +11,11 @@ import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/i
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 /**
- * @title Anichess ERC1155 Merkle Claim Contract
- * @dev This contract allows users to claim rewards based on a Merkle proof, which verifies that they are
+ * @title ERC1155 Claim Window Merkle Claim Contract
+ * @dev This contract allows users to claim rewards by claim window based on a Merkle proof, which verifies that they are
  * @dev entitled to the rewards without revealing the entire list of recipients.
  */
-contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnership {
+contract ERC1155ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwnership {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using MerkleProof for bytes32[];
 
@@ -69,7 +69,7 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
     error EpochIdNotExists(bytes32 epochId);
 
     /**
-     * @notice Constructor for the AnichessERC1155MerkleClaim contract.
+     * @notice Constructor for the ERC1155ClaimWindowMerkleClaim contract.
      * @param tokenId The token id to be claimed.
      * @param mintSupply The total number of tokens that can be minted in this contract.
      * @param rewardContract The ERC1155Mintable reward contract interface.
