@@ -138,7 +138,8 @@ contract ERC1155ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwne
      */
     function claim(bytes32 epochId, bytes32[] calldata proof, address recipient) external {
         ClaimWindow storage claimWindow = claimWindows[epochId];
-        if (claimWindow.merkleRoot == bytes32(0)) {
+        bytes32 merkleRoot = claimWindow.merkleRoot;
+        if (merkleRoot == bytes32(0)) {
             revert EpochIdNotExists(epochId);
         }
         if (block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime) {
@@ -146,7 +147,7 @@ contract ERC1155ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwne
         }
 
         bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
-        if (!proof.verify(claimWindow.merkleRoot, leaf)) revert InvalidProof(epochId, recipient);
+        if (!proof.verify(merkleRoot, leaf)) revert InvalidProof(epochId, recipient);
 
         if (claimStatus[leaf]) revert AlreadyClaimed(epochId, recipient);
 
