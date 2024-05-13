@@ -68,6 +68,9 @@ contract ERC1155ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwne
     /// @notice Error thrown when the epoch ID does not exist.
     error EpochIdNotExists(bytes32 epochId);
 
+    /// @notice Error thrown when the claim window is invalid.
+    error InvalidClaimWindow(uint256 startTime, uint256 endTime, uint256 currentTime);
+
     /**
      * @notice Constructor for the ERC1155ClaimWindowMerkleClaim contract.
      * @param tokenId The token id to be claimed.
@@ -108,6 +111,10 @@ contract ERC1155ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwne
      */
     function setEpochMerkleRoot(bytes32 epochId, bytes32 merkleRoot, uint256 startTime, uint256 endTime) external {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
+
+        if (startTime >= endTime || endTime <= block.timestamp) {
+            revert InvalidClaimWindow(startTime, endTime, block.timestamp);
+        }
 
         if (claimWindows[epochId].merkleRoot != bytes32(0)) {
             revert EpochIdAlreadyExists(epochId);

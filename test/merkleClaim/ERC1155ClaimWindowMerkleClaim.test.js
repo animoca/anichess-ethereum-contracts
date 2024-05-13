@@ -82,7 +82,7 @@ describe('ERC1155ClaimWindowMerkleClaim', function () {
 
     it('reverts with "EpochIdAlreadyExists" if the epoch has already started', async function () {
       const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
-      const endTime = startTime + 1; // unit: seconds
+      const endTime = startTime + 100; // unit: seconds
 
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
 
@@ -91,10 +91,50 @@ describe('ERC1155ClaimWindowMerkleClaim', function () {
         .withArgs(this.epochId);
     });
 
+    it('reverts with "InvalidClaimWindow" if the start time is equals to the end time', async function () {
+      const currentBlockTime = await helpers.time.latest();
+      const startTime = currentBlockTime; // unit: seconds
+      const endTime = startTime; // unit: seconds
+
+      await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
+        .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
+        .withArgs(startTime, endTime, currentBlockTime + 1);
+    });
+
+    it('reverts with "InvalidClaimWindow" if the start time is greater than the end time', async function () {
+      const currentBlockTime = await helpers.time.latest();
+      const startTime = currentBlockTime + 100; // unit: seconds
+      const endTime = currentBlockTime; // unit: seconds
+
+      await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
+        .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
+        .withArgs(startTime, endTime, currentBlockTime + 1);
+    });
+
+    it(`reverts with "InvalidClaimWindow" if the end time is equals to the current time`, async function () {
+      const currentBlockTime = await helpers.time.latest();
+      const startTime = currentBlockTime - 1; // unit: seconds
+      const endTime = currentBlockTime; // unit: seconds
+
+      await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
+        .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
+        .withArgs(startTime, endTime, currentBlockTime + 1);
+    });
+
+    it('reverts with "InvalidClaimWindow" if the end time is less than the current time', async function () {
+      const currentBlockTime = await helpers.time.latest();
+      const startTime = currentBlockTime - 2; // unit: seconds
+      const endTime = currentBlockTime - 1; // unit: seconds
+
+      await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
+        .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
+        .withArgs(startTime, endTime, currentBlockTime + 1);
+    });
+
     context('when successful', function () {
       it('sets the epoch merkle root', async function () {
         const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
-        const endTime = startTime + 1; // unit: seconds
+        const endTime = startTime + 100; // unit: seconds
 
         const claimWindowBefore = await this.contract.claimWindows(this.epochId);
         await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
@@ -110,7 +150,7 @@ describe('ERC1155ClaimWindowMerkleClaim', function () {
 
       it('emits a SetEpochMerkleRoot event', async function () {
         const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
-        const endTime = startTime + 1; // unit: seconds
+        const endTime = startTime + 100; // unit: seconds
 
         await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
           .to.emit(this.contract, 'SetEpochMerkleRoot')
@@ -145,13 +185,13 @@ describe('ERC1155ClaimWindowMerkleClaim', function () {
     });
     it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
       const startTime = (await helpers.time.latest()) - 100; // unit: seconds
-      const endTime = await helpers.time.latest(); // unit: seconds
+      const endTime = (await helpers.time.latest()) + 100; // unit: seconds
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
 
       const merkleClaimData = this.merkleClaimDataArr[0];
       const {proof, recipient, epochId} = merkleClaimData;
+      await helpers.time.increase(1000);
       const latestBlockTimestamp = await helpers.time.latest();
-
       expect(latestBlockTimestamp).to.be.greaterThan(startTime);
       expect(latestBlockTimestamp).to.be.greaterThan(endTime);
       await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
