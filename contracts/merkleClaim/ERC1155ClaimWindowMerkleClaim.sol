@@ -11,11 +11,11 @@ import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/i
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 /**
- * @title Anichess ERC1155 Merkle Claim Contract
- * @dev This contract allows users to claim rewards based on a Merkle proof, which verifies that they are
+ * @title ERC1155 Claim Window Merkle Claim Contract
+ * @dev This contract allows users to claim rewards by claim window based on a Merkle proof, which verifies that they are
  * @dev entitled to the rewards without revealing the entire list of recipients.
  */
-contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnership {
+contract ERC1155ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwnership {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using MerkleProof for bytes32[];
 
@@ -68,8 +68,11 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
     /// @notice Error thrown when the epoch ID does not exist.
     error EpochIdNotExists(bytes32 epochId);
 
+    /// @notice Error thrown when the claim window is invalid.
+    error InvalidClaimWindow(uint256 startTime, uint256 endTime, uint256 currentTime);
+
     /**
-     * @notice Constructor for the AnichessERC1155MerkleClaim contract.
+     * @notice Constructor for the ERC1155ClaimWindowMerkleClaim contract.
      * @param tokenId The token id to be claimed.
      * @param mintSupply The total number of tokens that can be minted in this contract.
      * @param rewardContract The ERC1155Mintable reward contract interface.
@@ -109,6 +112,10 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
     function setEpochMerkleRoot(bytes32 epochId, bytes32 merkleRoot, uint256 startTime, uint256 endTime) external {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
 
+        if (startTime >= endTime || endTime <= block.timestamp) {
+            revert InvalidClaimWindow(startTime, endTime, block.timestamp);
+        }
+
         if (claimWindows[epochId].merkleRoot != bytes32(0)) {
             revert EpochIdAlreadyExists(epochId);
         }
@@ -131,7 +138,8 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
      */
     function claim(bytes32 epochId, bytes32[] calldata proof, address recipient) external {
         ClaimWindow storage claimWindow = claimWindows[epochId];
-        if (claimWindow.merkleRoot == bytes32(0)) {
+        bytes32 merkleRoot = claimWindow.merkleRoot;
+        if (merkleRoot == bytes32(0)) {
             revert EpochIdNotExists(epochId);
         }
         if (block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime) {
@@ -139,7 +147,7 @@ contract AnichessERC1155MerkleClaim is ForwarderRegistryContext, ContractOwnersh
         }
 
         bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
-        if (!proof.verify(claimWindow.merkleRoot, leaf)) revert InvalidProof(epochId, recipient);
+        if (!proof.verify(merkleRoot, leaf)) revert InvalidProof(epochId, recipient);
 
         if (claimStatus[leaf]) revert AlreadyClaimed(epochId, recipient);
 
