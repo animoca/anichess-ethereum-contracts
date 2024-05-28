@@ -12,11 +12,11 @@ import "hardhat/console.sol";
 /**
  * @title AnichessOrbsBurnPool Contract
  * @dev This contract allows users to burn tokens and calculate rewards based on the amount of tokens burned.
- * @dev The rewards are calculated based on the total amount of tokens burned in the previous cycle.
  */
 contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver {
     using MerkleProof for bytes32[];
 
+    /// @notice The denominator for the multiplier.
     uint256 public immutable DENOMINATOR = 10_000;
 
     /// @notice The IERC1155Burnable erc1155 contracts burn to generate ASH.
@@ -34,7 +34,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     /// @notice The IERC1155 erc1155 contract for unlocking the token multiplier.
     IERC1155Burnable public immutable MISSING_ORB;
 
-    /// @notice The token ID for unlocking the token multiplier.
+    /// @notice The token ID of RoC for unlocking the token multiplier.
     uint256 public immutable MISSING_ORB_TOKEN_ID = 1;
 
     /// @notice The Merkle root for setting the anichess game multiplier.
@@ -55,10 +55,10 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     /// @notice The multiplier info for each user, first 128 bits are the anichess game multiplier numerator, last 128 bits are the token multiplier.
     mapping(address => uint256) public multiplierInfos;
 
-    /// @notice The token weights.
+    /// @notice The token weights for calculating Ash.
     mapping(uint256 => uint256) tokenWeights;
 
-    /// @notice Event emitted when ASHes are generated.
+    /// @notice Event emitted when ASH are generated.
     event AshGenerated(
         address indexed burner,
         uint256 indexed cycle,
@@ -79,7 +79,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     error InconsistentArrays();
 
     /// @notice Error thrown when the token is not approved.
-    error InvalidToken();
+    error InvalidToken(address token);
 
     /// @notice Error thrown when the cycle is invalid.
     error InvalidCycle(uint256 cycle);
@@ -149,7 +149,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
      * @notice Set the token weights.
      * @param tokenIds The token IDs.
      * @param weights The weights for each token.
-     * @dev Throws if the _msgSender is not the contract owner.
      * @dev Throws if the lengths of token IDs and weights are inconsistent.
      * @dev Throws if the token weight is already set.
      */
@@ -166,6 +165,17 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         }
     }
 
+    /**
+     * @notice Set the AnichessGame multiplier numerator.
+     * @param proof The Merkle proof for setting the anichess game multiple numberator.
+     * @param recipient The recipient of the multiplier.
+     * @param currMultiplierInfo The current multiplier info.
+     * @param anichessGameMultiplierNumerator The AnichessGame multiplier numerator.
+     * @dev Throws if the anichess game multiplier numerator is already set.
+     * @dev Throws if the leaf is already consumed.
+     * @dev Throws if the proof is invalid.
+     * @return updatedMultiplierInfo The updated multiplier info.
+     */
     function _setAnichessGameMultiplierNumerator(
         bytes32[] memory proof,
         address recipient,
@@ -173,17 +183,12 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         uint256 anichessGameMultiplierNumerator
     ) internal returns (uint256 updatedMultiplierInfo) {
         bytes32 leaf = keccak256(abi.encodePacked(recipient, anichessGameMultiplierNumerator));
-        if (leafConsumptionStatus[leaf]) {
+        if ((uint128(currMultiplierInfo >> 128) > 0) || leafConsumptionStatus[leaf]) {
             revert AlreadySetAnichessGameMultiplierNumerator(recipient);
         }
 
         if (!proof.verify(MERKLE_ROOT, leaf)) {
             revert InvalidProof();
-        }
-
-        // check if the AnichessGame multiplier numerator is already set
-        if (uint128(currMultiplierInfo >> 128) > 0) {
-            revert AlreadySetAnichessGameMultiplierNumerator(recipient);
         }
 
         // mask the AnichessGame multiplier numerator to keep only the last 128 bits of the existing multiplier
@@ -194,6 +199,13 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         emit UpdateMultiplierInfo(recipient, currMultiplierInfo, updatedMultiplierInfo);
     }
 
+    /**
+     * @notice Get the multiplier info for a wallet.
+     * @param wallet The wallet address.
+     * @return multiplierInfo The multiplier info.
+     * @return anichessGameMultiplierNumerator The AnichessGame multiplier numerator.
+     * @return tokenMultiplier The token multiplier.
+     */    
     function getMultiplierInfo(
         address wallet
     ) public view returns (uint256 multiplierInfo, uint128 anichessGameMultiplierNumerator, uint128 tokenMultiplier) {
@@ -210,11 +222,12 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     }
 
     /**
-     * @notice Set the AnichessGame multiplier
+     * @notice Set the AnichessGame multiplier through a Merkle proof.
      * @param proof The Merkle proof for the claim.
      * @param recipient The recipient of the payout.
      * @param newAnichessGameMultiplierNumerator The AnichessGame multiplier numerator for the recipient.
-     * @dev Throws if the payout has already been claimed.
+     * @dev Throws if the anichess game multiplier numerator is already set.
+     * @dev Throws if the leaf is already consumed.
      * @dev Throws if the proof is invalid.
      */
     function setAnichessGameMultiplierNumerator(bytes32[] calldata proof, address recipient, uint256 newAnichessGameMultiplierNumerator) external {
@@ -222,19 +235,21 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     }
 
     /**
-     * @notice Unlock the token multiplier by burning the multiplier token.
+     * @notice Unlock the token multiplier by burning the Riddle of Chaos.
      * @param from The wallet address.
      * @param id The token ID.
      * @param value The token value.
+     * @param data The data for unlocking the token multiplier.
      * @return The ERC1155Received selector.
      * @dev Throws if the token is invalid.
      * @dev Throws if the token ID is invalid.
      * @dev Throws if the token amount is invalid.
      * @dev Throws if the token multiplier is already unlocked.
+     * @dev If the data is not empty, the proof and the anichessGameMultiplierNumerator are decoded from the data to set the AnichessGame multiplier numerator.
      */
     function onERC1155Received(address, address from, uint256 id, uint256 value, bytes calldata data) external override returns (bytes4) {
         if (msg.sender != address(MISSING_ORB)) {
-            revert InvalidToken();
+            revert InvalidToken(msg.sender);
         }
         if (id != MISSING_ORB_TOKEN_ID) {
             revert InvalidTokenId(msg.sender, id);
@@ -258,8 +273,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         }
 
         // mask the token multiplier to keep only the first 128 bits of the multiplier
-        uint256 updatedMultiplierInfo = (currMultiplierInfo & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000000000000000) |
-            TOKEN_MULTIPLIER;
+        uint256 updatedMultiplierInfo = (currMultiplierInfo & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000000000000000) | TOKEN_MULTIPLIER;
         multiplierInfos[from] = updatedMultiplierInfo;
 
         emit UpdateMultiplierInfo(from, currMultiplierInfo, updatedMultiplierInfo);
@@ -285,7 +299,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         bytes calldata
     ) external override returns (bytes4) {
         if (msg.sender != address(SOURCE_TOKEN)) {
-            revert InvalidToken();
+            revert InvalidToken(msg.sender);
         }
 
         uint256 cycle = currentCycle();
