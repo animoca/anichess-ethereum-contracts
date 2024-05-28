@@ -10,6 +10,7 @@ import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contract
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "hardhat/console.sol";
 
 /**
  * @title AnichessOrbsBurnPool Contract
@@ -20,8 +21,10 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using MerkleProof for bytes32[];
 
-    /// @notice The IERC1155Burnable erc1155 contracts.
-    IERC1155Burnable public immutable TOKEN;
+    uint256 public immutable DENOMINATOR = 10_000;
+
+    /// @notice The IERC1155Burnable erc1155 contracts burn to generate ASH.
+    IERC1155Burnable public immutable SOURCE_TOKEN;
 
     /// @notice The initial time of the contract.
     uint256 public immutable INITIAL_TIME;
@@ -33,22 +36,16 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
     uint256 public immutable MAX_CYCLE;
 
     /// @notice The IERC1155 erc1155 contract for unlocking the token multiplier.
-    IERC1155Burnable public immutable MULTIPLIER_TOKEN;
+    IERC1155Burnable public immutable MISSING_ORB;
 
     /// @notice The token ID for unlocking the token multiplier.
-    uint256 public immutable MULTIPLIER_TOKEN_ID;
+    uint256 public immutable MISSING_ORB_TOKEN_ID = 1;
 
-    /// @notice The Merkle root of the leaderboard multiplier claim.
+    /// @notice The Merkle root for setting the anichess game multiplier.
     bytes32 public immutable MERKLE_ROOT;
 
     /// @notice The token multiplier.
-    uint256 public immutable TOKEN_MULTIPLIER;
-
-    /// @notice The list of tiers to decide the reward pool.
-    uint256[] public tiers;
-
-    /// @notice The list of rewards for each tier.
-    uint256[] public tierRewards;
+    uint256 public immutable MISSING_ORB_MULTIPLIER;
 
     /// @notice The total amount of ASH burned in each cycle.
     mapping(uint256 => uint256) totalAshByCycle;
@@ -56,20 +53,17 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
     /// @notice The total amount of ASH burned by each user in each cycle.
     mapping(uint256 => mapping(address => uint256)) public userAshByCycle;
 
-    /// @notice The claim status for the leaderboard multiplier.
-    mapping(bytes32 => bool) public claimStatus;
+    /// @notice The merkle leaf consumption status for the anichess game multiplier.
+    mapping(bytes32 => bool) public leafConsumptionStatus;
 
-    /// @notice The leaderboard multipliers for each user.
-    mapping(address => uint256) public leaderboardMultiplers;
-
-    /// @notice The token multiplier unlock status for each user.
-    mapping(address => bool) public tokenMultiplerUnlockStatus;
+    /// @notice The multiplier info for each user, first 128 bits are the anichess game multiplier numerator, last 128 bits are the token multiplier.
+    mapping(address => uint256) public multiplierInfos;
 
     /// @notice The token weights.
     mapping(uint256 => uint256) tokenWeights;
 
-    /// @notice Event emitted when tokens are burnt.
-    event TokensBurnt(
+    /// @notice Event emitted when ASHes are generated.
+    event AshGenerated(
         address indexed burner,
         uint256 indexed cycle,
         uint256 timestamp,
@@ -79,26 +73,14 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
         uint256 multiplier
     );
 
-    /// @notice Event emitted when the leaderboard multiplier is claimed.
-    event ClaimLeaderboardMultiplier(address indexed recipient, uint256 multiplier);
-
-    /// @notice Event emitted when the token multiplier is unlocked.
-    event UnlockTokenMultiplier(address wallet, uint256 timestamp);
+    /// @notice Event emitted when the multiplier info is updated.
+    event UpdateMultiplierInfo(address indexed recipient, uint256 curr, uint256 updated);
 
     /// @notice Error thrown when the token ID is invalid.
     error InvalidTokenId(address token, uint256 tokenId);
 
     /// @notice Error thrown when the array lengths are inconsistent.
     error InconsistentArrays();
-
-    /// @notice Error thrown when the tiers are incorrect.
-    error IncorrectTiers();
-
-    /// @notice Error thrown when the tiers are not set.
-    error TiersNotSet();
-
-    /// @notice Error thrown when the tier rewards are incorrect.
-    error IncorrectTierRewards();
 
     /// @notice Error thrown when the token is not approved.
     error InvalidToken();
@@ -110,16 +92,13 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
     error InvalidTokenAmount(uint256 amount, uint256 expectedAmount);
 
     /// @notice Error thrown when the payout has already been claimed.
-    error AlreadyClaimedLeaderboardMultiplier(address recipient);
+    error AlreadySetAnichessGameMultiplierNumerator(address recipient);
 
     /// @notice Error thrown when the wallet already has the token multiplier unlocked.
     error AlreadyUnlockedTokenMultiplier(address wallet);
 
     /// @notice Error thrown when the proof is invalid.
     error InvalidProof();
-
-    /// @notice Error thrown when the tiers are already set.
-    error AlreadySetTiers();
 
     /// @notice Error thrown when the token weight is already set.
     error AlreadySetTokenWeight(uint256 tokenId);
@@ -129,10 +108,11 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
      * @param initialTime The initial time of the contract.
      * @param cycleDuration The duration of each cycle.
      * @param maxCycle The maximum cycle.
-     * @param token The IERC1155Burnable erc1155 contract.
-     * @param merkleRoot The Merkle root of the leaderboard multiplier claim.
-     * @param multiplierToken The IERC1155Burnable erc1155 contract for unlocking the token multiplier.
-     * @param multiplierTokenId The token ID for unlocking the token multiplier.
+     * @param sourceToken The IERC1155Burnable erc1155 contract burn to generate ASH.
+     * @param tokenIds The token IDs.
+     * @param weights The weights for each token.
+     * @param merkleRoot The Merkle root of the AnichessGame multiplier claim.
+     * @param missingOrb The IERC1155Burnable erc1155 missing orb contract for unlocking the token multiplier.
      * @param tokenMultiplier The token multiplier.
      * @param forwarderRegistry The forwarder registry contract.
      */
@@ -140,10 +120,11 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
         uint256 initialTime,
         uint256 cycleDuration,
         uint256 maxCycle,
-        IERC1155Burnable token,
+        IERC1155Burnable sourceToken,
+        uint256[] memory tokenIds,
+        uint256[] memory weights,
         bytes32 merkleRoot,
-        IERC1155Burnable multiplierToken,
-        uint256 multiplierTokenId,
+        IERC1155Burnable missingOrb,
         uint256 tokenMultiplier,
         IForwarderRegistry forwarderRegistry
     ) ForwarderRegistryContext(forwarderRegistry) ContractOwnership(msg.sender) {
@@ -151,10 +132,11 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
         CYCLE_DURATION = cycleDuration;
         MAX_CYCLE = maxCycle;
         MERKLE_ROOT = merkleRoot;
-        MULTIPLIER_TOKEN = multiplierToken;
-        MULTIPLIER_TOKEN_ID = multiplierTokenId;
-        TOKEN = token;
-        TOKEN_MULTIPLIER = tokenMultiplier;
+        MISSING_ORB = missingOrb;
+        SOURCE_TOKEN = sourceToken;
+        MISSING_ORB_MULTIPLIER = tokenMultiplier;
+
+        _setTokenWeights(tokenIds, weights);
     }
 
     /// @inheritdoc ForwarderRegistryContextBase
@@ -168,43 +150,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
     }
 
     /**
-     * @notice Set the tiers and rewards.
-     * @param _tiers The list of tiers.
-     * @param _tierRewards The list of rewards for each tier.
-     * @dev Throws if the _msgSender is not the contract owner.
-     * @dev Throws if the lengths of tiers and rewards are inconsistent.
-     * @dev Throws if the tiers are empty.
-     * @dev Throws if the tiers are already set.
-     * @dev Throws if the tiers are not in increasing order.
-     * @dev Throws if the rewards are not in increasing order.
-     */
-    function setTiers(uint256[] calldata _tiers, uint256[] calldata _tierRewards) external {
-        ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
-        if (_tiers.length != _tierRewards.length) {
-            revert InconsistentArrays();
-        }
-
-        if (_tiers.length == 0) {
-            revert IncorrectTiers();
-        }
-        if (tiers.length > 0) {
-            revert AlreadySetTiers();
-        }
-
-        // check if tiers are in increasing order
-        for (uint256 i = 1; i < _tiers.length; i++) {
-            if (_tiers[i] < _tiers[i - 1]) {
-                revert IncorrectTiers();
-            }
-            if (_tierRewards[i] < _tierRewards[i - 1]) {
-                revert IncorrectTierRewards();
-            }
-        }
-        tiers = _tiers;
-        tierRewards = _tierRewards;
-    }
-
-    /**
      * @notice Set the token weights.
      * @param tokenIds The token IDs.
      * @param weights The weights for each token.
@@ -212,8 +157,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
      * @dev Throws if the lengths of token IDs and weights are inconsistent.
      * @dev Throws if the token weight is already set.
      */
-    function setTokensWeight(uint256[] memory tokenIds, uint256[] memory weights) external {
-        ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
+    function _setTokenWeights(uint256[] memory tokenIds, uint256[] memory weights) internal {
         if (tokenIds.length != weights.length) {
             revert InconsistentArrays();
         }
@@ -226,18 +170,38 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
         }
     }
 
-    /**
-     * @notice Get the multiplier for the user.
-     * @param wallet The wallet address.
-     * @return multiplier The multiplier for the user.
-     */
-    function getMultiplier(address wallet) public view returns (uint256 multiplier) {
-        uint256 leaderboardMultiplier = leaderboardMultiplers[wallet];
-        multiplier = leaderboardMultiplier == 0 ? 1 : leaderboardMultiplier;
-        bool isTokenMultiplierUnlocked = tokenMultiplerUnlockStatus[wallet];
-        if (isTokenMultiplierUnlocked) {
-            multiplier *= TOKEN_MULTIPLIER;
+    function _setAnichessGameMultiplierNumerator(
+        bytes32[] memory proof,
+        address recipient,
+        uint256 currMultiplierInfo,
+        uint256 newAnichessGameMultiplierNumerator
+    ) internal returns (uint256 updatedMultiplierInfo) {
+        bytes32 leaf = keccak256(abi.encodePacked(recipient, newAnichessGameMultiplierNumerator));
+        if (leafConsumptionStatus[leaf]) {
+            revert AlreadySetAnichessGameMultiplierNumerator(recipient);
         }
+
+        if (!proof.verify(MERKLE_ROOT, leaf)) {
+            revert InvalidProof();
+        }
+        uint128 anichessGameMultiplierNumerator = uint128(currMultiplierInfo >> 128);
+        if (anichessGameMultiplierNumerator > 0) {
+            revert AlreadySetAnichessGameMultiplierNumerator(recipient);
+        }
+
+        // mask the AnichessGame multiplier numerator to keep only the last 128 bits of the existing multiplier
+        updatedMultiplierInfo = (currMultiplierInfo & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) | (uint256(newAnichessGameMultiplierNumerator) << 128);
+        multiplierInfos[recipient] = updatedMultiplierInfo;
+        leafConsumptionStatus[leaf] = true;
+
+        emit UpdateMultiplierInfo(recipient, currMultiplierInfo, updatedMultiplierInfo);
+    }
+
+    function getMultiplierInfo(
+        address wallet
+    ) public view returns (uint256 multiplierInfo, uint128 anichessGameMultiplierNumerator, uint128 tokenMultiplier) {
+        multiplierInfo = multiplierInfos[wallet];
+        return (multiplierInfo, uint128(multiplierInfo >> 128), uint128(multiplierInfo));
     }
 
     /**
@@ -249,68 +213,15 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
     }
 
     /**
-     * @notice Get the reward for the cycle.
-     * @param cycle The cycle number.
-     * @return reward The reward for the cycle.
-     * @dev Throws if the cycle is invalid.
-     * @dev Throws if the tiers are not set.
-     */
-    function getCycleReward(uint256 cycle) public view returns (uint256) {
-        if (cycle > currentCycle() || cycle > MAX_CYCLE) {
-            revert InvalidCycle(cycle);
-        }
-
-        if (tiers.length == 0) {
-            revert TiersNotSet();
-        }
-
-        uint256 prevTotalAsh = cycle == 0 ? 0 : totalAshByCycle[cycle - 1];
-
-        for (uint256 i = 1; i <= tiers.length; i++) {
-            if (prevTotalAsh < tiers[i]) {
-                return tierRewards[i - 1];
-            }
-        }
-        return tierRewards[tiers.length - 1];
-    }
-
-    /**
-     * @notice Get the user reward for the cycle.
-     * @param cycle The cycle number.
-     * @param wallet The wallet address.
-     * @return reward The reward for the user.
-     * @dev Throws if the cycle is invalid.
-     */
-    function getUserReward(uint256 cycle, address wallet) external view returns (uint256) {
-        if (cycle > currentCycle() || cycle > MAX_CYCLE) {
-            revert InvalidCycle(cycle);
-        }
-        uint256 cycleReward = getCycleReward(cycle);
-        uint256 userAsh = userAshByCycle[cycle][wallet];
-        return (userAsh * cycleReward) / totalAshByCycle[cycle];
-    }
-
-    /**
-     * @notice Claims the leaderboard multiplier
+     * @notice Set the AnichessGame multiplier
      * @param proof The Merkle proof for the claim.
      * @param recipient The recipient of the payout.
-     * @param multiplier The multiplier for the recipient.
+     * @param newAnichessGameMultiplierNumerator The AnichessGame multiplier numerator for the recipient.
      * @dev Throws if the payout has already been claimed.
      * @dev Throws if the proof is invalid.
      */
-    function claimLeaderboardMultiplier(bytes32[] calldata proof, address recipient, uint256 multiplier) external {
-        bytes32 leaf = keccak256(abi.encodePacked(recipient, multiplier));
-        if (claimStatus[leaf]) {
-            revert AlreadyClaimedLeaderboardMultiplier(recipient);
-        }
-        if (!proof.verify(MERKLE_ROOT, leaf)) {
-            revert InvalidProof();
-        }
-
-        leaderboardMultiplers[recipient] = multiplier;
-        claimStatus[leaf] = true;
-
-        emit ClaimLeaderboardMultiplier(recipient, multiplier);
+    function setAnichessGameMultiplierNumerator(bytes32[] calldata proof, address recipient, uint256 newAnichessGameMultiplierNumerator) external {
+        _setAnichessGameMultiplierNumerator(proof, recipient, multiplierInfos[recipient], newAnichessGameMultiplierNumerator);
     }
 
     /**
@@ -324,23 +235,37 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
      * @dev Throws if the token amount is invalid.
      * @dev Throws if the token multiplier is already unlocked.
      */
-    function onERC1155Received(address, address from, uint256 id, uint256 value, bytes calldata) external override returns (bytes4) {
-        if (msg.sender != address(MULTIPLIER_TOKEN)) {
+    function onERC1155Received(address, address from, uint256 id, uint256 value, bytes calldata data) external override returns (bytes4) {
+        if (msg.sender != address(MISSING_ORB)) {
             revert InvalidToken();
         }
-        if (id != MULTIPLIER_TOKEN_ID) {
+        if (id != MISSING_ORB_TOKEN_ID) {
             revert InvalidTokenId(msg.sender, id);
         }
 
         if (value != 1) {
             revert InvalidTokenAmount(value, 1);
         }
-        if (tokenMultiplerUnlockStatus[from]) {
+
+        uint256 currMultiplierInfo = multiplierInfos[from];
+
+        // unlock the token multiplier if data is not empty
+        if (data.length > 0) {
+            // decode proof & newAnichessGameMultiplierNumerator from data
+            (bytes32[] memory proof, uint256 anichessGameMultiplierNumerator) = abi.decode(data, (bytes32[], uint256));
+            (currMultiplierInfo) = _setAnichessGameMultiplierNumerator(proof, from, currMultiplierInfo, anichessGameMultiplierNumerator);
+        }
+
+        if (uint128(currMultiplierInfo) > 0) {
             revert AlreadyUnlockedTokenMultiplier(from);
         }
 
-        tokenMultiplerUnlockStatus[from] = true;
-        emit UnlockTokenMultiplier(from, block.timestamp);
+        // mask the token multiplier to keep only the first 128 bits of the multiplier
+        uint256 updatedMultiplierInfo = (currMultiplierInfo & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000000000000000) |
+            MISSING_ORB_MULTIPLIER;
+        multiplierInfos[from] = updatedMultiplierInfo;
+
+        emit UpdateMultiplierInfo(from, currMultiplierInfo, updatedMultiplierInfo);
 
         return this.onERC1155Received.selector;
     }
@@ -362,7 +287,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
         uint256[] calldata values,
         bytes calldata
     ) external override returns (bytes4) {
-        if (msg.sender != address(TOKEN)) {
+        if (msg.sender != address(SOURCE_TOKEN)) {
             revert InvalidToken();
         }
 
@@ -381,9 +306,14 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
             totalAsh += (values[i] * weight);
         }
 
-        // get the multiplier
-        uint256 multiplier = getMultiplier(from);
-        totalAsh *= multiplier;
+        // boost the total ash based on the multipliers
+        (uint256 multiplier, uint128 anichessGameMultiplierNumerator, uint128 tokenMultiplier) = getMultiplierInfo(from);
+        if (tokenMultiplier > 0) {
+            totalAsh *= tokenMultiplier;
+        }
+        if (anichessGameMultiplierNumerator > 0) {
+            totalAsh = (totalAsh * anichessGameMultiplierNumerator) / DENOMINATOR;
+        }
 
         // update the user status
         userAshByCycle[cycle][from] += totalAsh;
@@ -391,7 +321,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver,
         totalAshByCycle[cycle] += totalAsh;
 
         IERC1155Burnable(msg.sender).batchBurnFrom(from, ids, values);
-        emit TokensBurnt(from, cycle, block.timestamp, ids, values, totalAsh, multiplier);
+        emit AshGenerated(from, cycle, block.timestamp, ids, values, totalAsh, multiplier);
 
         return this.onERC1155BatchReceived.selector;
     }
