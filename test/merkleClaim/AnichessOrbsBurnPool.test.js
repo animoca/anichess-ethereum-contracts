@@ -11,14 +11,14 @@ const {
 } = require('@animoca/ethereum-contracts/test/helpers/registries');
 const helpers = require('@nomicfoundation/hardhat-network-helpers');
 
-describe('AnichessOrbsBurnPool', function () {
+describe.only('AnichessOrbsBurnPool', function () {
   before(async function () {
     [deployer, user1, user2, user3, user4, other] = await ethers.getSigners();
   });
 
   const fixture = async function () {
     const metadataResolverAddress = await getTokenMetadataResolverWithBaseURIAddress();
-    const forwarderRegistryAddress = await getForwarderRegistryAddress();
+    this.forwarderRegistryAddress = await getForwarderRegistryAddress();
     const operatorFilterRegistryAddress = await getOperatorFilterRegistryAddress();
 
     this.orb = await deployContract(
@@ -27,7 +27,7 @@ describe('AnichessOrbsBurnPool', function () {
       'ORB',
       metadataResolverAddress,
       operatorFilterRegistryAddress,
-      forwarderRegistryAddress
+      this.forwarderRegistryAddress
     );
     this.missingOrb = await deployContract(
       'ERC1155FullBurn',
@@ -35,12 +35,12 @@ describe('AnichessOrbsBurnPool', function () {
       'MORB',
       metadataResolverAddress,
       operatorFilterRegistryAddress,
-      forwarderRegistryAddress
+      this.forwarderRegistryAddress
     );
 
     this.initialTime = await helpers.time.latest();
     this.cycleDuration = 60 * 60 * 24; // 1 day
-    this.maxCycles = 10;
+    this.maxCycle = 10;
     this.tokenIds = [
       1, // Pawn
       2, // Knight
@@ -96,14 +96,14 @@ describe('AnichessOrbsBurnPool', function () {
       'AnichessOrbsBurnPool',
       this.initialTime,
       this.cycleDuration,
-      this.maxCycles,
+      this.maxCycle,
       await this.orb.getAddress(),
       this.tokenIds,
       this.tokenWeights,
       this.root,
       await this.missingOrb.getAddress(),
       this.tokenMultiplier,
-      forwarderRegistryAddress
+      this.forwarderRegistryAddress
     );
 
     await this.orb.grantRole(await this.orb.MINTER_ROLE(), deployer.address);
@@ -115,11 +115,67 @@ describe('AnichessOrbsBurnPool', function () {
   });
 
   describe('constructor', function () {
-    it('sets the initial time', async function () {
-      expect(await this.contract.INITIAL_TIME()).to.equal(this.initialTime);
+    it('reverts if the cycle duration is 0', async function () {
+      await expect(
+        deployContract(
+          'AnichessOrbsBurnPool',
+          this.initialTime,
+          0,
+          this.maxCycle,
+          await this.orb.getAddress(),
+          this.tokenIds,
+          this.tokenWeights,
+          this.root,
+          await this.missingOrb.getAddress(),
+          this.tokenMultiplier,
+          this.forwarderRegistryAddress
+        )
+      ).to.be.revertedWithCustomError(this.contract, 'ZeroCycleDuration');
     });
-    it('set the cycle duration', async function () {
-      expect(await this.contract.CYCLE_DURATION()).to.equal(this.cycleDuration);
+    it('reverts if the max cycle is 0', async function () {
+      await expect(
+        deployContract(
+          'AnichessOrbsBurnPool',
+          this.initialTime,
+          this.cycleDuration,
+          0,
+          await this.orb.getAddress(),
+          this.tokenIds,
+          this.tokenWeights,
+          this.root,
+          await this.missingOrb.getAddress(),
+          this.tokenMultiplier,
+          this.forwarderRegistryAddress
+        )
+      ).to.be.revertedWithCustomError(this.contract, 'ZeroMaxCycle');
+    });
+    context('when successful', function () {
+      it('sets the initial time', async function () {
+        expect(await this.contract.INITIAL_TIME()).to.equal(this.initialTime);
+      });
+      it('set the cycle duration', async function () {
+        expect(await this.contract.CYCLE_DURATION()).to.equal(this.cycleDuration);
+      });
+      it('set the max cycle', async function () {
+        expect(await this.contract.MAX_CYCLE()).to.equal(this.maxCycle);
+      });
+      it('set the merkle root', async function () {
+        expect(await this.contract.MERKLE_ROOT()).to.equal(this.root);
+      });
+      it('set the missing orb contract', async function () {
+        expect(await this.contract.MISSING_ORB()).to.equal(await this.missingOrb.getAddress());
+      });
+      it('set the source token contract', async function () {
+        expect(await this.contract.SOURCE_TOKEN()).to.equal(await this.orb.getAddress());
+      });
+      it('set the token multiplier', async function () {
+        expect(await this.contract.TOKEN_MULTIPLIER()).to.equal(this.tokenMultiplier);
+      });
+      it('set the token weights', async function () {
+        for (let i = 0; i < this.tokenIds.length; i++) {
+          expect(await this.contract.tokenWeights(this.tokenIds[i])).to.equal(this.tokenWeights[i]);
+        }
+      });
     });
   });
 
@@ -143,8 +199,8 @@ describe('AnichessOrbsBurnPool', function () {
           expect(multiplierInfoBefore[2]).to.equal(0);
 
           expect(multiplierInfoAfter[0]).to.be.ok;
-          expect(Number(multiplierInfoAfter[1])).to.equal(multiplierNumerator);
-          expect(Number(multiplierInfoAfter[2])).to.equal(this.tokenMultiplier);
+          expect(multiplierInfoAfter[1]).to.equal(multiplierNumerator);
+          expect(multiplierInfoAfter[2]).to.equal(this.tokenMultiplier);
         });
       });
     });

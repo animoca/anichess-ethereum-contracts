@@ -56,7 +56,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     mapping(address => uint256) public multiplierInfos;
 
     /// @notice The token weights for calculating Ash.
-    mapping(uint256 => uint256) tokenWeights;
+    mapping(uint256 => uint256) public tokenWeights;
 
     /// @notice Event emitted when ASH are generated.
     event AshGenerated(
@@ -99,6 +99,12 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     /// @notice Error thrown when the token weight is already set.
     error AlreadySetTokenWeight(uint256 tokenId);
 
+    /// @notice Error thrown when the cycle duration is invalid.
+    error ZeroCycleDuration();
+
+    /// @notice Error thrown when the cycle is invalid.
+    error ZeroMaxCycle();
+
     /**
      * @notice Constructor for the AnichessOrbsBurnPool contract.
      * @param initialTime The initial time of the contract.
@@ -125,7 +131,13 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         IForwarderRegistry forwarderRegistry
     ) ForwarderRegistryContext(forwarderRegistry) {
         INITIAL_TIME = initialTime;
+        if (cycleDuration == 0) {
+            revert ZeroCycleDuration();
+        }
         CYCLE_DURATION = cycleDuration;
+        if (maxCycle == 0) {
+            revert ZeroMaxCycle();
+        }
         MAX_CYCLE = maxCycle;
         MERKLE_ROOT = merkleRoot;
         MISSING_ORB = missingOrb;
@@ -158,10 +170,10 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         }
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
-            if (tokenWeights[i] > 0) {
+            if (tokenWeights[tokenIds[i]] > 0) {
                 revert AlreadySetTokenWeight(tokenIds[i]);
             }
-            tokenWeights[i] = weights[i];
+            tokenWeights[tokenIds[i]] = weights[i];
         }
     }
 
@@ -205,7 +217,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
      * @return multiplierInfo The multiplier info.
      * @return anichessGameMultiplierNumerator The AnichessGame multiplier numerator.
      * @return tokenMultiplier The token multiplier.
-     */    
+     */
     function getMultiplierInfo(
         address wallet
     ) public view returns (uint256 multiplierInfo, uint128 anichessGameMultiplierNumerator, uint128 tokenMultiplier) {
