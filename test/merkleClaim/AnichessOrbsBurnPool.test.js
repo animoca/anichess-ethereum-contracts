@@ -11,7 +11,7 @@ const {
 } = require('@animoca/ethereum-contracts/test/helpers/registries');
 const helpers = require('@nomicfoundation/hardhat-network-helpers');
 
-describe.only('AnichessOrbsBurnPool', function () {
+describe('AnichessOrbsBurnPool', function () {
   before(async function () {
     [deployer, user1, user2, user3, user4, other] = await ethers.getSigners();
   });
