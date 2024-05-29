@@ -115,7 +115,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
      * @param maxCycle The maximum cycle.
      * @param orbOfPower The IERC1155Burnable erc1155 contract burn to generate ASH.
      * @param tokenIds The token IDs.
-     * @param _tokenWeights The weights for each token.
+     * @param weights The weights for each token.
      * @param merkleRoot The Merkle root of the AnichessGame multiplier claim.
      * @param missingOrb The IERC1155Burnable erc1155 missing orb contract for setting the token multiplier.
      * @param tokenMultiplier The token multiplier.
@@ -129,7 +129,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         uint256 maxCycle,
         IERC1155Burnable orbOfPower,
         uint256[] memory tokenIds,
-        uint256[] memory _tokenWeights,
+        uint256[] memory weights,
         bytes32 merkleRoot,
         IERC1155Burnable missingOrb,
         uint256 tokenMultiplier,
@@ -149,7 +149,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         ORB_OF_POWER = orbOfPower;
         TOKEN_MULTIPLIER = tokenMultiplier;
 
-        _setTokenWeights(tokenIds, _tokenWeights);
+        _setTokenWeights(tokenIds, weights);
     }
 
     /// @inheritdoc ForwarderRegistryContextBase
@@ -165,12 +165,12 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     /**
      * @notice Set the token weights.
      * @param tokenIds The token IDs.
-     * @param _tokenWeights The weights for each token.
+     * @param weights The weights for each token.
      * @dev Throws if the lengths of token IDs and weights are inconsistent.
      * @dev Throws if the token weight is already set.
      */
-    function _setTokenWeights(uint256[] memory tokenIds, uint256[] memory _tokenWeights) internal {
-        if (tokenIds.length != _tokenWeights.length) {
+    function _setTokenWeights(uint256[] memory tokenIds, uint256[] memory weights) internal {
+        if (tokenIds.length != weights.length) {
             revert InconsistentArrays();
         }
 
@@ -178,7 +178,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
             if (tokenWeights[tokenIds[i]] > 0) {
                 revert AlreadySetTokenWeight(tokenIds[i]);
             }
-            tokenWeights[tokenIds[i]] = _tokenWeights[i];
+            tokenWeights[tokenIds[i]] = weights[i];
         }
     }
 
