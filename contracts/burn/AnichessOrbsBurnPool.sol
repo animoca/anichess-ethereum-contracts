@@ -16,6 +16,7 @@ import "hardhat/console.sol";
 contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver {
     using MerkleProof for bytes32[];
 
+    /// @notice The token configuration for setting the token weight.
     struct TokenConfig {
         uint256 tokenId;
         uint256 weight;
