@@ -16,6 +16,11 @@ import "hardhat/console.sol";
 contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver {
     using MerkleProof for bytes32[];
 
+    struct TokenConfig {
+        uint256 tokenId;
+        uint256 weight;
+    }
+
     /// @notice The denominator for the multiplier.
     uint256 immutable DENOMINATOR = 10_000;
 
@@ -108,11 +113,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     /// @notice Error thrown when the token weight is invalid.
     error ZeroTokenWeight(uint256 tokenId);
 
-    struct TokenConfig {
-        uint256 tokenId;
-        uint256 weight;
-    }
-
     /**
      * @notice Constructor for the AnichessOrbsBurnPool contract.
      * @param initialTime The initial time of the contract.
@@ -149,10 +149,10 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         ORB_OF_POWER = orbOfPower;
 
         for (uint256 i = 0; i < tokenConfigs.length; i++) {
-            if (tokenConfigs[i].weight == 0){
+            if (tokenConfigs[i].weight == 0) {
                 revert ZeroTokenWeight(tokenConfigs[i].tokenId);
             }
-             if (tokenWeights[tokenConfigs[i].tokenId] > 0) {
+            if (tokenWeights[tokenConfigs[i].tokenId] > 0) {
                 revert AlreadySetTokenWeight(tokenConfigs[i].tokenId);
             }
             tokenWeights[tokenConfigs[i].tokenId] = tokenConfigs[i].weight;
