@@ -41,7 +41,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     bytes32 public immutable MERKLE_ROOT;
 
     /// @notice The token multiplier.
-    uint256 public immutable TOKEN_MULTIPLIER;
+    uint256 public immutable TOKEN_MULTIPLIER = 2;
 
     /// @notice The total amount of ASH generated in each cycle.
     mapping(uint256 => uint256) public totalAshByCycle;
@@ -75,9 +75,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     /// @notice Error thrown when the token ID is invalid.
     error InvalidTokenId(address token, uint256 tokenId);
 
-    /// @notice Error thrown when the array lengths are inconsistent.
-    error InconsistentArrays();
-
     /// @notice Error thrown when the token is not approved.
     error InvalidToken(address token);
 
@@ -108,17 +105,22 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     /// @notice Error thrown when the leaf is already consumed.
     error AlreadyConsumedLeaf(bytes32 leaf);
 
+    /// @notice Error thrown when the token weight is invalid.
+    error ZeroTokenWeight(uint256 tokenId);
+
+    struct TokenConfig {
+        uint256 tokenId;
+        uint256 weight;
+    }
+
     /**
      * @notice Constructor for the AnichessOrbsBurnPool contract.
      * @param initialTime The initial time of the contract.
      * @param cycleDuration The duration of each cycle.
      * @param maxCycle The maximum cycle.
      * @param orbOfPower The IERC1155Burnable erc1155 contract burn to generate ASH.
-     * @param tokenIds The token IDs.
-     * @param weights The weights for each token.
      * @param merkleRoot The Merkle root of the AnichessGame multiplier claim.
      * @param missingOrb The IERC1155Burnable erc1155 missing orb contract for setting the token multiplier.
-     * @param tokenMultiplier The token multiplier.
      * @param forwarderRegistry The forwarder registry contract.
      * @dev Throws if the cycle duration is zero.
      * @dev Throws if the max cycle is zero.
@@ -128,11 +130,9 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         uint256 cycleDuration,
         uint256 maxCycle,
         IERC1155Burnable orbOfPower,
-        uint256[] memory tokenIds,
-        uint256[] memory weights,
+        TokenConfig[] memory tokenConfigs,
         bytes32 merkleRoot,
         IERC1155Burnable missingOrb,
-        uint256 tokenMultiplier,
         IForwarderRegistry forwarderRegistry
     ) ForwarderRegistryContext(forwarderRegistry) {
         INITIAL_TIME = initialTime;
@@ -147,9 +147,16 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         MERKLE_ROOT = merkleRoot;
         MISSING_ORB = missingOrb;
         ORB_OF_POWER = orbOfPower;
-        TOKEN_MULTIPLIER = tokenMultiplier;
 
-        _setTokenWeights(tokenIds, weights);
+        for (uint256 i = 0; i < tokenConfigs.length; i++) {
+            if (tokenConfigs[i].weight == 0){
+                revert ZeroTokenWeight(tokenConfigs[i].tokenId);
+            }
+             if (tokenWeights[tokenConfigs[i].tokenId] > 0) {
+                revert AlreadySetTokenWeight(tokenConfigs[i].tokenId);
+            }
+            tokenWeights[tokenConfigs[i].tokenId] = tokenConfigs[i].weight;
+        }
     }
 
     /// @inheritdoc ForwarderRegistryContextBase
@@ -160,26 +167,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     /// @inheritdoc ForwarderRegistryContextBase
     function _msgData() internal view virtual override(ForwarderRegistryContextBase) returns (bytes calldata) {
         return ForwarderRegistryContextBase._msgData();
-    }
-
-    /**
-     * @notice Set the token weights.
-     * @param tokenIds The token IDs.
-     * @param weights The weights for each token.
-     * @dev Throws if the lengths of token IDs and weights are inconsistent.
-     * @dev Throws if the token weight is already set.
-     */
-    function _setTokenWeights(uint256[] memory tokenIds, uint256[] memory weights) internal {
-        if (tokenIds.length != weights.length) {
-            revert InconsistentArrays();
-        }
-
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            if (tokenWeights[tokenIds[i]] > 0) {
-                revert AlreadySetTokenWeight(tokenIds[i]);
-            }
-            tokenWeights[tokenIds[i]] = weights[i];
-        }
     }
 
     /**

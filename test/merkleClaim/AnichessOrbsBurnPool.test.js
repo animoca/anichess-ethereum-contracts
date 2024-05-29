@@ -53,23 +53,35 @@ describe('AnichessOrbsBurnPool', function () {
     this.initialTime = await helpers.time.latest();
     this.cycleDuration = 60 * 60 * 24; // 1 day
     this.maxCycle = 10;
-    this.tokenIds = [
-      1, // Pawn
-      2, // Knight
-      3, // Bishop
-      4, // Rook
-      5, // Queen
-      6, // King
-      7, // Whisper of Chaos
-    ];
-    this.tokenWeights = [
-      1, // Pawn
-      3, // Knight
-      3, // Bishop
-      5, // Rook
-      9, // Queen
-      25, // King
-      16, // Whisper of Chaos
+    this.tokenConfigs = [
+      {
+        tokenId: 1, // Pawn
+        weight: 1,
+      },
+      {
+        tokenId: 2, // Knight
+        weight: 3,
+      },
+      {
+        tokenId: 3, // Bishop
+        weight: 3,
+      },
+      {
+        tokenId: 4, // Rook
+        weight: 5,
+      },
+      {
+        tokenId: 5, // Queen
+        weight: 9,
+      },
+      {
+        tokenId: 6, // King
+        weight: 25,
+      },
+      {
+        tokenId: 7, // Whisper of Chaos
+        weight: 16,
+      },
     ];
 
     this.leaderboardData = [
@@ -110,19 +122,15 @@ describe('AnichessOrbsBurnPool', function () {
       multiplierNumerator: this.leaderboardData[index].multiplierNumerator,
     }));
 
-    this.tokenMultiplier = 2;
-
     this.contract = await deployContract(
       'AnichessOrbsBurnPool',
       this.initialTime,
       this.cycleDuration,
       this.maxCycle,
       await this.orb.getAddress(),
-      this.tokenIds,
-      this.tokenWeights,
+      this.tokenConfigs,
       this.root,
       await this.missingOrb.getAddress(),
-      this.tokenMultiplier,
       this.forwarderRegistryAddress
     );
 
@@ -143,11 +151,9 @@ describe('AnichessOrbsBurnPool', function () {
           0,
           this.maxCycle,
           await this.orb.getAddress(),
-          this.tokenIds,
-          this.tokenWeights,
+          this.tokenConfigs,
           this.root,
           await this.missingOrb.getAddress(),
-          this.tokenMultiplier,
           this.forwarderRegistryAddress
         )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroCycleDuration');
@@ -160,16 +166,14 @@ describe('AnichessOrbsBurnPool', function () {
           this.cycleDuration,
           0,
           await this.orb.getAddress(),
-          this.tokenIds,
-          this.tokenWeights,
+          this.tokenConfigs,
           this.root,
           await this.missingOrb.getAddress(),
-          this.tokenMultiplier,
           this.forwarderRegistryAddress
         )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroMaxCycle');
     });
-    it('reverts if the token ids and token weights length do not match', async function () {
+    it('reverts if the token weight is zero', async function () {
       await expect(
         deployContract(
           'AnichessOrbsBurnPool',
@@ -177,14 +181,19 @@ describe('AnichessOrbsBurnPool', function () {
           this.cycleDuration,
           this.maxCycle,
           await this.orb.getAddress(),
-          this.tokenIds.slice(0, -1),
-          this.tokenWeights,
+          [
+            {
+              tokenId: 1,
+              weight: 0,
+            },
+          ],
           this.root,
           await this.missingOrb.getAddress(),
-          this.tokenMultiplier,
           this.forwarderRegistryAddress
         )
-      ).to.be.revertedWithCustomError(this.contract, 'InconsistentArrays');
+      )
+        .to.be.revertedWithCustomError(this.contract, 'ZeroTokenWeight')
+        .withArgs(1);
     });
     it('reverts if the token weight has already been set', async function () {
       await expect(
@@ -194,11 +203,18 @@ describe('AnichessOrbsBurnPool', function () {
           this.cycleDuration,
           this.maxCycle,
           await this.orb.getAddress(),
-          [1, 1],
-          [1, 3],
+          [
+            {
+              tokenId: 1,
+              weight: 1,
+            },
+            {
+              tokenId: 1,
+              weight: 2,
+            },
+          ],
           this.root,
           await this.missingOrb.getAddress(),
-          this.tokenMultiplier,
           this.forwarderRegistryAddress
         )
       )
@@ -224,12 +240,9 @@ describe('AnichessOrbsBurnPool', function () {
       it('set the orb of power token contract', async function () {
         expect(await this.contract.ORB_OF_POWER()).to.equal(await this.orb.getAddress());
       });
-      it('set the token multiplier', async function () {
-        expect(await this.contract.TOKEN_MULTIPLIER()).to.equal(this.tokenMultiplier);
-      });
       it('set the token weights', async function () {
-        for (let i = 0; i < this.tokenIds.length; i++) {
-          expect(await this.contract.tokenWeights(this.tokenIds[i])).to.equal(this.tokenWeights[i]);
+        for (let i = 0; i < this.tokenConfigs.length; i++) {
+          expect(await this.contract.tokenWeights(this.tokenConfigs[i].tokenId)).to.equal(this.tokenConfigs[i].weight);
         }
       });
     });
@@ -362,7 +375,7 @@ describe('AnichessOrbsBurnPool', function () {
         const multiplierInfoAfter = await this.contract.multiplierInfos(user1.address);
         const [gameMultiplierNumeratorAfter, tokenMultiplierAfter] = formatMultiplierInfos(multiplierInfoAfter);
 
-        const expectedMultiplierInfo = (BigInt(0) << BigInt(128)) | BigInt(this.tokenMultiplier);
+        const expectedMultiplierInfo = (BigInt(0) << BigInt(128)) | BigInt(2);
 
         expect(multiplierInfoBefore).to.equal(0);
         expect(gameMultiplierNumeratorBefore).to.equal(0);
@@ -370,7 +383,7 @@ describe('AnichessOrbsBurnPool', function () {
 
         expect(multiplierInfoAfter).to.be.equal(expectedMultiplierInfo);
         expect(gameMultiplierNumeratorAfter).to.equal(0);
-        expect(tokenMultiplierAfter).to.equal(this.tokenMultiplier);
+        expect(tokenMultiplierAfter).to.equal(2);
       });
       it('should update the token multiplier fragment info when the anichess game multiplier numerator fragment has been set', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
@@ -386,7 +399,7 @@ describe('AnichessOrbsBurnPool', function () {
         const [gameMultiplierNumeratorAfter, tokenMultiplierAfter] = formatMultiplierInfos(multiplierInfoAfter);
 
         const expectedMultiplierInfoBefore = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(0);
-        const expectedMultiplierInfoAfter = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(this.tokenMultiplier);
+        const expectedMultiplierInfoAfter = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(2);
 
         expect(multiplierInfoBefore).to.be.equal(expectedMultiplierInfoBefore);
         expect(gameMultiplierNumeratorBefore).to.equal(multiplierNumerator);
@@ -394,14 +407,14 @@ describe('AnichessOrbsBurnPool', function () {
 
         expect(multiplierInfoAfter).to.be.equal(expectedMultiplierInfoAfter);
         expect(gameMultiplierNumeratorAfter).to.equal(multiplierNumerator);
-        expect(tokenMultiplierAfter).to.equal(this.tokenMultiplier);
+        expect(tokenMultiplierAfter).to.equal(2);
       });
       it('emits an UpdateMultiplierInfo event', async function () {
         await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
 
         await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x'))
           .to.emit(this.contract, 'UpdateMultiplierInfo')
-          .withArgs(user1.address, 0, BigInt(this.tokenMultiplier));
+          .withArgs(user1.address, 0, BigInt(2));
       });
     });
 
@@ -445,7 +458,7 @@ describe('AnichessOrbsBurnPool', function () {
         const multiplierInfoAfter = await this.contract.multiplierInfos(user1.address);
         const [multiplierNumeratorAfter, tokenMultiplierAfter] = formatMultiplierInfos(multiplierInfoAfter);
 
-        const expectedMultiplierInfo = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(this.tokenMultiplier);
+        const expectedMultiplierInfo = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(2);
 
         expect(multiplierInfoBefore).to.equal(0);
         expect(multiplierNumeratorBefore).to.equal(0);
@@ -453,7 +466,7 @@ describe('AnichessOrbsBurnPool', function () {
 
         expect(multiplierInfoAfter).to.be.equal(expectedMultiplierInfo);
         expect(multiplierNumeratorAfter).to.equal(multiplierNumerator);
-        expect(tokenMultiplierAfter).to.equal(this.tokenMultiplier);
+        expect(tokenMultiplierAfter).to.equal(2);
       });
       it('emits two UpdateMultiplierInfo events', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
@@ -461,7 +474,7 @@ describe('AnichessOrbsBurnPool', function () {
 
         await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
 
-        const multiplierInfoAfterSetTokenMultiplier = BigInt(this.tokenMultiplier);
+        const multiplierInfoAfterSetTokenMultiplier = BigInt(2);
         const multiplierInfoAfterSetAnichessGameMultiplierNumerator =
           (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(multiplierInfoAfterSetTokenMultiplier);
 
@@ -497,10 +510,8 @@ describe('AnichessOrbsBurnPool', function () {
         this.maxCycle,
         await this.orb.getAddress(),
         [],
-        [],
         this.root,
         await this.missingOrb.getAddress(),
-        this.tokenMultiplier,
         this.forwarderRegistryAddress
       );
       await this.orb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
@@ -520,7 +531,10 @@ describe('AnichessOrbsBurnPool', function () {
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
         const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
 
-        const expectedAsh = tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenWeights[this.tokenIds.indexOf(tokenId)], 0);
+        const expectedAsh = tokenIds.reduce(
+          (acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight,
+          0
+        );
         expect(ashBefore).to.equal(0);
         expect(ashAfter).to.equal(expectedAsh);
       });
@@ -537,7 +551,8 @@ describe('AnichessOrbsBurnPool', function () {
         const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh =
-          tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenWeights[this.tokenIds.indexOf(tokenId)], 0) * this.tokenMultiplier;
+          tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
+          2;
 
         expect(ashBefore).to.equal(0);
         expect(ashAfter).to.equal(expectedAsh);
@@ -557,7 +572,7 @@ describe('AnichessOrbsBurnPool', function () {
         const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh = Math.floor(
-          (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenWeights[this.tokenIds.indexOf(tokenId)], 0) *
+          (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
             Number(anichessGameMultiplierNumerator)) /
             10000
         );
@@ -583,7 +598,7 @@ describe('AnichessOrbsBurnPool', function () {
         const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh = Math.floor(
-          (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenWeights[this.tokenIds.indexOf(tokenId)], 0) *
+          (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
             Number(anichessGameMultiplierNumerator) *
             Number(tokenMultiplier)) /
             10000
@@ -602,7 +617,10 @@ describe('AnichessOrbsBurnPool', function () {
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
         const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
 
-        const expectedAsh = tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenWeights[this.tokenIds.indexOf(tokenId)], 0);
+        const expectedAsh = tokenIds.reduce(
+          (acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight,
+          0
+        );
         expect(ashBefore).to.equal(0);
         expect(ashAfter).to.equal(expectedAsh);
       });
@@ -616,7 +634,10 @@ describe('AnichessOrbsBurnPool', function () {
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
         const ashAfter = await this.contract.totalAshByCycle(await this.contract.currentCycle());
 
-        const expectedAsh = tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenWeights[this.tokenIds.indexOf(tokenId)], 0);
+        const expectedAsh = tokenIds.reduce(
+          (acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight,
+          0
+        );
         expect(ashBefore).to.equal(0);
         expect(ashAfter).to.equal(expectedAsh);
       });
@@ -637,7 +658,10 @@ describe('AnichessOrbsBurnPool', function () {
         const currentTime = await helpers.time.latest();
         await helpers.time.setNextBlockTimestamp(currentTime + 10);
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
-        const expectedAsh = tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenWeights[this.tokenIds.indexOf(tokenId)], 0);
+        const expectedAsh = tokenIds.reduce(
+          (acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight,
+          0
+        );
         const multiplier = await this.contract.multiplierInfos(user1.address);
         await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x'))
           .to.emit(this.contract, 'GenerateAsh')
@@ -655,11 +679,9 @@ describe('AnichessOrbsBurnPool', function () {
         this.cycleDuration,
         this.maxCycle,
         await this.orb.getAddress(),
-        this.tokenIds,
-        this.tokenWeights,
+        this.tokenConfigs,
         this.root,
         await this.missingOrb.getAddress(),
-        this.tokenMultiplier,
         this.forwarderRegistryAddress
       );
       expect(await this.contract.connect(user1).__msgData()).to.be.exist;
@@ -672,11 +694,9 @@ describe('AnichessOrbsBurnPool', function () {
         this.cycleDuration,
         this.maxCycle,
         await this.orb.getAddress(),
-        this.tokenIds,
-        this.tokenWeights,
+        this.tokenConfigs,
         this.root,
         await this.missingOrb.getAddress(),
-        this.tokenMultiplier,
         this.forwarderRegistryAddress
       );
 
