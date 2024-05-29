@@ -85,7 +85,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     error InvalidCycle(uint256 cycle);
 
     /// @notice Error thrown when the token amount is invalid.
-    error InvalidTokenAmount(uint256 amount, uint256 expectedAmount);
+    error InvalidTokenValue(uint256 value, uint256 expectedValue);
 
     /// @notice Error thrown when the payout has already been claimed.
     error AlreadySetAnichessGameMultiplierNumerator(address recipient);
@@ -276,17 +276,10 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         }
 
         if (value != 1) {
-            revert InvalidTokenAmount(value, 1);
+            revert InvalidTokenValue(value, 1);
         }
 
         uint256 currMultiplierInfo = multiplierInfos[from];
-
-        // unlock the token multiplier if data is not empty
-        if (data.length > 0) {
-            // decode proof & newAnichessGameMultiplierNumerator from data
-            (bytes32[] memory proof, uint256 anichessGameMultiplierNumerator) = abi.decode(data, (bytes32[], uint256));
-            (currMultiplierInfo) = _setAnichessGameMultiplierNumerator(proof, from, currMultiplierInfo, anichessGameMultiplierNumerator);
-        }
 
         if (uint128(currMultiplierInfo) > 0) {
             revert AlreadyUnlockedTokenMultiplier(from);
@@ -297,6 +290,13 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         multiplierInfos[from] = updatedMultiplierInfo;
 
         emit UpdateMultiplierInfo(from, currMultiplierInfo, updatedMultiplierInfo);
+
+        // unlock the token multiplier if data is not empty
+        if (data.length > 0) {
+            // decode proof & newAnichessGameMultiplierNumerator from data
+            (bytes32[] memory proof, uint256 anichessGameMultiplierNumerator) = abi.decode(data, (bytes32[], uint256));
+            _setAnichessGameMultiplierNumerator(proof, from, updatedMultiplierInfo, anichessGameMultiplierNumerator);
+        }
 
         return this.onERC1155Received.selector;
     }

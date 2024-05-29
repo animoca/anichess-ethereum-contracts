@@ -195,8 +195,9 @@ describe('AnichessOrbsBurnPool', function () {
       await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data);
 
       const multiplierInfo = await this.contract.getMultiplierInfo(recipient);
+      const expectedMultiplierInfo = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(this.tokenMultiplier);
 
-      expect(multiplierInfo[0]).to.be.ok;
+      expect(multiplierInfo[0]).to.be.equal(expectedMultiplierInfo);
       expect(multiplierInfo[1]).to.equal(multiplierNumerator);
       expect(multiplierInfo[2]).to.equal(this.tokenMultiplier);
     });
@@ -283,28 +284,152 @@ describe('AnichessOrbsBurnPool', function () {
   });
 
   describe('onERC1155Received(address, address from, uint256 id, uint256 value, bytes calldata data)', function () {
+    it('reverts if the msg.sender is not the source token contract', async function () {
+      await expect(this.contract.connect(other).onERC1155Received(other.address, user1.address, 1, 1, '0x'))
+        .to.be.revertedWithCustomError(this.contract, 'InvalidToken')
+        .withArgs(other.address);
+    });
+
+    it('reverts if the id is not tokenId 1', async function () {
+      await this.missingOrb.connect(deployer).safeMint(user1.address, 2, 1, '0x');
+
+      await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 2, 1, '0x'))
+        .to.be.revertedWithCustomError(this.contract, 'InvalidTokenId')
+        .withArgs(await this.missingOrb.getAddress(), 2);
+    });
+
+    it('reverts if the value is not 1', async function () {
+      await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 2, '0x');
+
+      await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 2, '0x'))
+        .to.be.revertedWithCustomError(this.contract, 'InvalidTokenValue')
+        .withArgs(2, 1);
+    });
+
+    it('reverts if the token multiplier has already been set', async function () {
+      await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 2, '0x');
+
+      await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x');
+
+      await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x'))
+        .to.be.revertedWithCustomError(this.contract, 'AlreadyUnlockedTokenMultiplier')
+        .withArgs(user1.address);
+    });
+
     context('when successful', function () {
-      context('when the data is not empty', function () {
-        it('unlock token multiplier', async function () {
-          const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-          const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+      it('should update the token multiplier fragment info when the anichess game multiplier numerator fragment has not been set', async function () {
+        await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
 
-          await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+        const multiplierInfoBefore = await this.contract.getMultiplierInfo(user1.address);
 
-          const multiplierInfoBefore = await this.contract.getMultiplierInfo(user1.address);
+        await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x');
 
-          await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data);
+        const multiplierInfoAfter = await this.contract.getMultiplierInfo(user1.address);
 
-          const multiplierInfoAfter = await this.contract.getMultiplierInfo(user1.address);
+        const expectedMultiplierInfo = (BigInt(0) << BigInt(128)) | BigInt(this.tokenMultiplier);
 
-          expect(multiplierInfoBefore[0]).to.equal(0);
-          expect(multiplierInfoBefore[1]).to.equal(0);
-          expect(multiplierInfoBefore[2]).to.equal(0);
+        expect(multiplierInfoBefore[0]).to.equal(0);
+        expect(multiplierInfoBefore[1]).to.equal(0);
+        expect(multiplierInfoBefore[2]).to.equal(0);
 
-          expect(multiplierInfoAfter[0]).to.be.ok;
-          expect(multiplierInfoAfter[1]).to.equal(multiplierNumerator);
-          expect(multiplierInfoAfter[2]).to.equal(this.tokenMultiplier);
-        });
+        expect(multiplierInfoAfter[0]).to.be.equal(expectedMultiplierInfo);
+        expect(multiplierInfoAfter[1]).to.equal(0);
+        expect(multiplierInfoAfter[2]).to.equal(this.tokenMultiplier);
+      });
+      it('should update the token multiplier fragment info when the anichess game multiplier numerator fragment has been set', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+
+        const multiplierInfoBefore = await this.contract.getMultiplierInfo(user1.address);
+
+        await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+        await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x');
+
+        const multiplierInfoAfter = await this.contract.getMultiplierInfo(user1.address);
+
+        const expectedMultiplierInfoBefore = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(0);
+        const expectedMultiplierInfoAfter = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(this.tokenMultiplier);
+
+        expect(multiplierInfoBefore[0]).to.be.equal(expectedMultiplierInfoBefore);
+        expect(multiplierInfoBefore[1]).to.equal(multiplierNumerator);
+        expect(multiplierInfoBefore[2]).to.equal(0);
+
+        expect(multiplierInfoAfter[0]).to.be.equal(expectedMultiplierInfoAfter);
+        expect(multiplierInfoAfter[1]).to.equal(multiplierNumerator);
+        expect(multiplierInfoAfter[2]).to.equal(this.tokenMultiplier);
+      });
+      it('emits an UpdateMultiplierInfo event', async function () {
+        await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+
+        await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x'))
+          .to.emit(this.contract, 'UpdateMultiplierInfo')
+          .withArgs(user1.address, 0, BigInt(this.tokenMultiplier));
+      });
+    });
+
+    context('when the data input field is not empty', function () {
+      it('reverts if the anichess game multiplier numerator fragment has already been set', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+        await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+
+        await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data))
+          .to.be.revertedWithCustomError(this.contract, 'AlreadySetAnichessGameMultiplierNumerator')
+          .withArgs(user1.address);
+      });
+
+      it('reverts if the data input does not contain the correct proof', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        const {proof: incorrectProof} = this.merkleClaimDataArr[1];
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [incorrectProof, multiplierNumerator]);
+
+        await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+
+        await expect(
+          this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data)
+        ).to.be.revertedWithCustomError(this.contract, 'InvalidProof');
+      });
+
+      it('unlock anichess game multiplier numerator & token multiplier at the same time', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+        await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+
+        const multiplierInfoBefore = await this.contract.getMultiplierInfo(user1.address);
+
+        await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data);
+
+        const multiplierInfoAfter = await this.contract.getMultiplierInfo(user1.address);
+
+        const expectedMultiplierInfo = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(this.tokenMultiplier);
+
+        expect(multiplierInfoBefore[0]).to.equal(0);
+        expect(multiplierInfoBefore[1]).to.equal(0);
+        expect(multiplierInfoBefore[2]).to.equal(0);
+
+        expect(multiplierInfoAfter[0]).to.be.equal(expectedMultiplierInfo);
+        expect(multiplierInfoAfter[1]).to.equal(multiplierNumerator);
+        expect(multiplierInfoAfter[2]).to.equal(this.tokenMultiplier);
+      });
+      it('emits two UpdateMultiplierInfo events', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+        await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+
+        const multiplierInfoAfterSetTokenMultiplier = BigInt(this.tokenMultiplier);
+        const multiplierInfoAfterSetAnichessGameMultiplierNumerator =
+          (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(multiplierInfoAfterSetTokenMultiplier);
+
+        await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data))
+          .to.emit(this.contract, 'UpdateMultiplierInfo')
+          .withArgs(user1.address, 0, multiplierInfoAfterSetTokenMultiplier)
+          .and.to.emit(this.contract, 'UpdateMultiplierInfo')
+          .withArgs(user1.address, multiplierInfoAfterSetTokenMultiplier, multiplierInfoAfterSetAnichessGameMultiplierNumerator);
       });
     });
   });
