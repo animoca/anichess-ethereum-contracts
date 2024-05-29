@@ -105,6 +105,9 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     /// @notice Error thrown when the cycle is invalid.
     error ZeroMaxCycle();
 
+    /// @notice Error thrown when the leaf is already consumed.
+    error AlreadyConsumedLeaf(bytes32 leaf);
+
     /**
      * @notice Constructor for the AnichessOrbsBurnPool contract.
      * @param initialTime The initial time of the contract.
@@ -117,6 +120,8 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
      * @param missingOrb The IERC1155Burnable erc1155 missing orb contract for unlocking the token multiplier.
      * @param tokenMultiplier The token multiplier.
      * @param forwarderRegistry The forwarder registry contract.
+     * @dev Throws if the cycle duration is zero.
+     * @dev Throws if the max cycle is zero.
      */
     constructor(
         uint256 initialTime,
@@ -194,9 +199,12 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         uint256 currMultiplierInfo,
         uint256 anichessGameMultiplierNumerator
     ) internal returns (uint256 updatedMultiplierInfo) {
-        bytes32 leaf = keccak256(abi.encodePacked(recipient, anichessGameMultiplierNumerator));
-        if ((uint128(currMultiplierInfo >> 128) > 0) || leafConsumptionStatus[leaf]) {
+        if ((uint128(currMultiplierInfo >> 128) > 0)) {
             revert AlreadySetAnichessGameMultiplierNumerator(recipient);
+        }
+        bytes32 leaf = keccak256(abi.encodePacked(recipient, anichessGameMultiplierNumerator));
+        if (leafConsumptionStatus[leaf]) {
+            revert AlreadyConsumedLeaf(leaf);
         }
 
         if (!proof.verify(MERKLE_ROOT, leaf)) {

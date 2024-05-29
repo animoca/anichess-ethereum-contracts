@@ -13,7 +13,7 @@ const helpers = require('@nomicfoundation/hardhat-network-helpers');
 
 describe('AnichessOrbsBurnPool', function () {
   before(async function () {
-    [deployer, user1, user2, user3, user4, other] = await ethers.getSigners();
+    [deployer, user1, user2, user3, user4, user5, other] = await ethers.getSigners();
   });
 
   const fixture = async function () {
@@ -76,6 +76,14 @@ describe('AnichessOrbsBurnPool', function () {
       {
         walletAddress: user4.address,
         multiplierNumerator: 35000,
+      },
+      {
+        walletAddress: user4.address,
+        multiplierNumerator: 40000, // duplicate wallet address
+      },
+      {
+        walletAddress: user5.address,
+        multiplierNumerator: 0, // duplicate wallet address
       },
     ];
 
@@ -175,6 +183,101 @@ describe('AnichessOrbsBurnPool', function () {
         for (let i = 0; i < this.tokenIds.length; i++) {
           expect(await this.contract.tokenWeights(this.tokenIds[i])).to.equal(this.tokenWeights[i]);
         }
+      });
+    });
+  });
+
+  describe('getMultiplierInfo(address wallet)', function () {
+    it('should return the correct multiplier info', async function () {
+      const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+      const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+      await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+      await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data);
+
+      const multiplierInfo = await this.contract.getMultiplierInfo(recipient);
+
+      expect(multiplierInfo[0]).to.be.ok;
+      expect(multiplierInfo[1]).to.equal(multiplierNumerator);
+      expect(multiplierInfo[2]).to.equal(this.tokenMultiplier);
+    });
+  });
+
+  describe('currentCycle()', function () {
+    it('should return the correct cycle', async function () {
+      await helpers.time.increaseTo(this.initialTime + this.cycleDuration * 3);
+      expect(await this.contract.currentCycle()).to.equal(3);
+    });
+  });
+
+  // eslint-disable-next-line max-len
+  describe('setAnichessGameMultiplierNumerator(bytes32[] calldata proof, address recipient, uint256 newAnichessGameMultiplierNumerator)', function () {
+    it('reverts if the anichess game multiplier numerator is already set', async function () {
+      const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[3];
+      const duplicatedMerkleClaimData = this.merkleClaimDataArr[4];
+
+      await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+
+      await expect(
+        this.contract.setAnichessGameMultiplierNumerator(
+          duplicatedMerkleClaimData.proof,
+          duplicatedMerkleClaimData.recipient,
+          duplicatedMerkleClaimData.multiplierNumerator
+        )
+      ).to.be.revertedWithCustomError(this.contract, 'AlreadySetAnichessGameMultiplierNumerator');
+    });
+    it('reverts if the leaf has already been consumed', async function () {
+      const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[5];
+
+      await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+
+      await expect(this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator)).to.be.revertedWithCustomError(
+        this.contract,
+        'AlreadyConsumedLeaf'
+      );
+    });
+    it('reverts if the proof is invalid', async function () {
+      const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+      const {proof: incorrectProof} = this.merkleClaimDataArr[1];
+
+      await expect(this.contract.setAnichessGameMultiplierNumerator(incorrectProof, recipient, multiplierNumerator)).to.be.revertedWithCustomError(
+        this.contract,
+        'InvalidProof'
+      );
+    });
+    context('when successful', function () {
+      it('sets the anichess game multiplier numerator', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+
+        const multiplierInfoBefore = await this.contract.getMultiplierInfo(recipient);
+        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+        const multiplierInfoAfter = await this.contract.getMultiplierInfo(recipient);
+
+        expect(multiplierInfoBefore[1]).to.equal(0);
+        expect(multiplierInfoBefore[2]).to.equal(0);
+        expect(multiplierInfoAfter[1]).to.equal(multiplierNumerator);
+        expect(multiplierInfoAfter[2]).to.equal(0);
+      });
+      it('consumes the leaf', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+
+        const leaf = ethers.solidityPacked(['address', 'uint256'], [recipient, multiplierNumerator]);
+        const consumptionStatusBefore = await this.contract.leafConsumptionStatus(keccak256(leaf));
+        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+        const consumptionStatusAfter = await this.contract.leafConsumptionStatus(keccak256(leaf));
+
+        expect(consumptionStatusBefore).to.be.false;
+        expect(consumptionStatusAfter).to.be.true;
+      });
+      it('emits an UpdateMultiplierInfo event', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+
+        // construct multipliers info in uint256 format, putting the multiplierNumerator in the first 128 bits
+        const anichessGameMultiplierNumeratorBn = BigInt(multiplierNumerator) & BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
+        const expectedMultiplierInfo = anichessGameMultiplierNumeratorBn << BigInt(128);
+
+        await expect(this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator))
+          .to.emit(this.contract, 'UpdateMultiplierInfo')
+          .withArgs(recipient, 0, expectedMultiplierInfo);
       });
     });
   });
