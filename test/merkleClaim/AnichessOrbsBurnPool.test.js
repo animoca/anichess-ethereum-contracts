@@ -668,6 +668,79 @@ describe('AnichessOrbsBurnPool', function () {
           .withArgs(user1.address, await this.contract.currentCycle(), currentTime + 11, tokenIds, values, expectedAsh, multiplier);
       });
     });
+
+    context('when the data input field is not empty', function () {
+      it('reverts if the anichess game multiplier numerator fragment has already been set', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+        const tokenIds = [1, 2, 3, 4, 5, 6, 7];
+        const values = [1, 2, 3, 4, 3, 2, 1];
+        await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
+
+        await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data))
+          .to.be.revertedWithCustomError(this.contract, 'AlreadySetAnichessGameMultiplierNumerator')
+          .withArgs(user1.address);
+      });
+
+      it('reverts if the data input does not contain the correct proof', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        const {proof: incorrectProof} = this.merkleClaimDataArr[1];
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [incorrectProof, multiplierNumerator]);
+
+        const tokenIds = [1, 2, 3, 4, 5, 6, 7];
+        const values = [1, 2, 3, 4, 3, 2, 1];
+        await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
+
+        await expect(
+          this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data)
+        ).to.be.revertedWithCustomError(this.contract, 'InvalidProof');
+      });
+
+      it('unlock anichess game multiplier numerator & calculate the ash with updated multiplier', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+        const tokenIds = [1, 2, 3, 4, 5, 6, 7];
+        const values = [1, 2, 3, 4, 3, 2, 1];
+        await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
+
+        const multiplierInfoBefore = await this.contract.multiplierInfos(user1.address);
+        const [anichessGameMultiplierNumeratorBefore] = formatMultiplierInfos(multiplierInfoBefore);
+        const ashBefore = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data);
+
+        const multiplierInfoAfter = await this.contract.multiplierInfos(user1.address);
+        const [anichessGameMultiplierNumeratorAfter] = formatMultiplierInfos(multiplierInfoAfter);
+        const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+
+        const expectedAsh =
+          (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
+            multiplierNumerator) /
+          10000;
+        expect(ashBefore).to.equal(0);
+        expect(anichessGameMultiplierNumeratorBefore).to.equal(0);
+
+        expect(ashAfter).to.equal(expectedAsh);
+        expect(anichessGameMultiplierNumeratorAfter).to.equal(multiplierNumerator);
+      });
+      it('emits a UpdateMultiplierInfo event', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+        const tokenIds = [1, 2, 3, 4, 5, 6, 7];
+        const values = [1, 2, 3, 4, 3, 2, 1];
+        await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
+
+        const multiplierInfoAfterSetAnichessGameMultiplierNumerator = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(0);
+
+        await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data))
+          .to.emit(this.contract, 'UpdateMultiplierInfo')
+          .withArgs(user1.address, 0, multiplierInfoAfterSetAnichessGameMultiplierNumerator);
+      });
+    });
   });
 
   context('support meta-transactions', function () {

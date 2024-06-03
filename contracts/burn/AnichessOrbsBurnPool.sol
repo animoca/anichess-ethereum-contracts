@@ -234,13 +234,12 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
      * @param from The wallet address.
      * @param id The token ID.
      * @param value The token value.
-     * @param data The data for setting the token multiplier.
+     * @param data The merkle proof data and multiplier value for setting the token multiplier.
      * @return The ERC1155Received selector.
      * @dev Throws if the token is invalid.
      * @dev Throws if the token ID is invalid.
      * @dev Throws if the token amount is invalid.
      * @dev Throws if the token multiplier has already been set.
-     * @dev If the data is not empty, the proof and the anichessGameMultiplierNumerator are decoded from the data to set the AnichessGame multiplier numerator.
      */
     function onERC1155Received(address, address from, uint256 id, uint256 value, bytes calldata data) external override returns (bytes4) {
         if (msg.sender != address(MISSING_ORB)) {
@@ -264,14 +263,15 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         uint256 updatedMultiplierInfo = (currMultiplierInfo & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000000000000000) | TOKEN_MULTIPLIER;
         multiplierInfos[from] = updatedMultiplierInfo;
 
-        emit UpdateMultiplierInfo(from, currMultiplierInfo, updatedMultiplierInfo);
-
         // set the token multiplier if data is not empty
         if (data.length > 0) {
             // decode proof & newAnichessGameMultiplierNumerator from data
             (bytes32[] memory proof, uint256 anichessGameMultiplierNumerator) = abi.decode(data, (bytes32[], uint256));
             _setAnichessGameMultiplierNumerator(proof, from, updatedMultiplierInfo, anichessGameMultiplierNumerator);
         }
+
+        IERC1155Burnable(msg.sender).burnFrom(address(this), id, value);
+        emit UpdateMultiplierInfo(from, currMultiplierInfo, updatedMultiplierInfo);
 
         return this.onERC1155Received.selector;
     }
@@ -281,6 +281,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
      * @param from The wallet address.
      * @param ids The token IDs to burn.
      * @param values The amount of tokens to burn.
+     * @param data The merkle proof data and multiplier value for setting the token multiplier.
      * @return The ERC1155Received selector.
      * @dev Throws if the token is invalid.
      * @dev Throws if the cycle is invalid.
@@ -291,7 +292,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         address from,
         uint256[] calldata ids,
         uint256[] calldata values,
-        bytes calldata
+        bytes calldata data
     ) external override returns (bytes4) {
         if (msg.sender != address(ORB_OF_POWER)) {
             revert InvalidToken(msg.sender);
@@ -313,6 +314,14 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         }
         // boost the total ash based on the multipliers
         uint256 multiplierInfo = multiplierInfos[from];
+        if (data.length > 0) {
+            // decode proof & newAnichessGameMultiplierNumerator from data
+            (bytes32[] memory proof, uint256 newAnichessGameMultiplierNumerator) = abi.decode(data, (bytes32[], uint256));
+            (multiplierInfo) = _setAnichessGameMultiplierNumerator(proof, from, multiplierInfo, newAnichessGameMultiplierNumerator);
+            uint256 stored = multiplierInfos[from];
+            console.log("multiplierInfo storage: ", stored);
+            console.log('from: ', from);
+        }
         uint256 tokenMultiplier = uint128(multiplierInfo);
         uint128 anichessGameMultiplierNumerator = uint128(multiplierInfo >> 128);
 
