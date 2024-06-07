@@ -128,7 +128,6 @@ describe('AnichessOrbsBurnPool', function () {
       this.cycleDuration,
       this.maxCycle,
       await this.orb.getAddress(),
-      this.tokenConfigs,
       this.root,
       await this.missingOrb.getAddress(),
       this.forwarderRegistryAddress
@@ -151,7 +150,6 @@ describe('AnichessOrbsBurnPool', function () {
           0,
           this.maxCycle,
           await this.orb.getAddress(),
-          this.tokenConfigs,
           this.root,
           await this.missingOrb.getAddress(),
           this.forwarderRegistryAddress
@@ -166,60 +164,11 @@ describe('AnichessOrbsBurnPool', function () {
           this.cycleDuration,
           0,
           await this.orb.getAddress(),
-          this.tokenConfigs,
           this.root,
           await this.missingOrb.getAddress(),
           this.forwarderRegistryAddress
         )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroMaxCycle');
-    });
-    it('reverts if the token weight is zero', async function () {
-      await expect(
-        deployContract(
-          'AnichessOrbsBurnPool',
-          this.initialTime,
-          this.cycleDuration,
-          this.maxCycle,
-          await this.orb.getAddress(),
-          [
-            {
-              tokenId: 1,
-              weight: 0,
-            },
-          ],
-          this.root,
-          await this.missingOrb.getAddress(),
-          this.forwarderRegistryAddress
-        )
-      )
-        .to.be.revertedWithCustomError(this.contract, 'ZeroTokenWeight')
-        .withArgs(1);
-    });
-    it('reverts if the token weight has already been set', async function () {
-      await expect(
-        deployContract(
-          'AnichessOrbsBurnPool',
-          this.initialTime,
-          this.cycleDuration,
-          this.maxCycle,
-          await this.orb.getAddress(),
-          [
-            {
-              tokenId: 1,
-              weight: 1,
-            },
-            {
-              tokenId: 1,
-              weight: 2,
-            },
-          ],
-          this.root,
-          await this.missingOrb.getAddress(),
-          this.forwarderRegistryAddress
-        )
-      )
-        .to.be.revertedWithCustomError(this.contract, 'AlreadySetTokenWeight')
-        .withArgs(1);
     });
     context('when successful', function () {
       it('sets the initial time', async function () {
@@ -240,11 +189,6 @@ describe('AnichessOrbsBurnPool', function () {
       it('set the orb of power token contract', async function () {
         expect(await this.contract.ORB_OF_POWER()).to.equal(await this.orb.getAddress());
       });
-      it('set the token weights', async function () {
-        for (let i = 0; i < this.tokenConfigs.length; i++) {
-          expect(await this.contract.tokenWeights(this.tokenConfigs[i].tokenId)).to.equal(this.tokenConfigs[i].weight);
-        }
-      });
     });
   });
 
@@ -254,79 +198,6 @@ describe('AnichessOrbsBurnPool', function () {
       await helpers.time.increaseTo(this.initialTime + this.cycleDuration * 3);
       expect(await this.contract.currentCycle()).to.equal(3);
       await snapshot.restore();
-    });
-  });
-
-  // eslint-disable-next-line max-len
-  describe('setAnichessGameMultiplierNumerator(bytes32[] calldata proof, address recipient, uint256 newAnichessGameMultiplierNumerator)', function () {
-    it('reverts if the anichess game multiplier numerator is already set', async function () {
-      const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[3];
-      const duplicatedMerkleClaimData = this.merkleClaimDataArr[4];
-
-      await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
-
-      await expect(
-        this.contract.setAnichessGameMultiplierNumerator(
-          duplicatedMerkleClaimData.proof,
-          duplicatedMerkleClaimData.recipient,
-          duplicatedMerkleClaimData.multiplierNumerator
-        )
-      ).to.be.revertedWithCustomError(this.contract, 'AlreadySetAnichessGameMultiplierNumerator');
-    });
-    it('reverts if the leaf has already been consumed', async function () {
-      const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[5];
-
-      await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
-
-      await expect(this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator)).to.be.revertedWithCustomError(
-        this.contract,
-        'AlreadyConsumedLeaf'
-      );
-    });
-    it('reverts if the proof is invalid', async function () {
-      const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-      const {proof: incorrectProof} = this.merkleClaimDataArr[1];
-
-      await expect(this.contract.setAnichessGameMultiplierNumerator(incorrectProof, recipient, multiplierNumerator)).to.be.revertedWithCustomError(
-        this.contract,
-        'InvalidProof'
-      );
-    });
-    context('when successful', function () {
-      it('sets the anichess game multiplier numerator', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-
-        const [anichessGameMultiplierNumeratorBefore, tokenMultiplierBefore] = formatMultiplierInfos(await this.contract.multiplierInfos(recipient));
-        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
-        const [anichessGameMultiplierNumeratorAfter, tokenMultiplierAfter] = formatMultiplierInfos(await this.contract.multiplierInfos(recipient));
-
-        expect(anichessGameMultiplierNumeratorBefore).to.equal(0);
-        expect(tokenMultiplierBefore).to.equal(0);
-        expect(anichessGameMultiplierNumeratorAfter).to.equal(multiplierNumerator);
-        expect(tokenMultiplierAfter).to.equal(0);
-      });
-      it('consumes the leaf', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-
-        const leaf = ethers.solidityPacked(['address', 'uint256'], [recipient, multiplierNumerator]);
-        const consumptionStatusBefore = await this.contract.leafConsumptionStatus(keccak256(leaf));
-        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
-        const consumptionStatusAfter = await this.contract.leafConsumptionStatus(keccak256(leaf));
-
-        expect(consumptionStatusBefore).to.be.false;
-        expect(consumptionStatusAfter).to.be.true;
-      });
-      it('emits an UpdateMultiplierInfo event', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-
-        // construct multipliers info in uint256 format, putting the multiplierNumerator in the first 128 bits
-        const anichessGameMultiplierNumeratorBn = BigInt(multiplierNumerator) & BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
-        const expectedMultiplierInfo = anichessGameMultiplierNumeratorBn << BigInt(128);
-
-        await expect(this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator))
-          .to.emit(this.contract, 'UpdateMultiplierInfo')
-          .withArgs(recipient, 0, expectedMultiplierInfo);
-      });
     });
   });
 
@@ -351,6 +222,17 @@ describe('AnichessOrbsBurnPool', function () {
       await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 2, '0x'))
         .to.be.revertedWithCustomError(this.contract, 'InvalidTokenValue')
         .withArgs(2, 1);
+    });
+
+    it('reverts if the current cycle is greater than the max cycle', async function () {
+      const snapshot = await helpers.takeSnapshot();
+      await helpers.time.increaseTo(this.initialTime + this.cycleDuration * (this.maxCycle + 1));
+      await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+
+      await expect(
+        this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x')
+      ).to.be.revertedWithCustomError(this.contract, 'InvalidCycle');
+      await snapshot.restore();
     });
 
     it('reverts if the token multiplier has already been set', async function () {
@@ -387,7 +269,12 @@ describe('AnichessOrbsBurnPool', function () {
       });
       it('should update the token multiplier fragment info when the anichess game multiplier numerator fragment has been set', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+        const tokenIds = [1, 2, 3, 4, 5, 6, 7];
+        const values = [1, 2, 3, 4, 3, 2, 1];
+        await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
+        await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data);
 
         const multiplierInfoBefore = await this.contract.multiplierInfos(user1.address);
         const [gameMultiplierNumeratorBefore, tokenMultiplierBefore] = formatMultiplierInfos(multiplierInfoBefore);
@@ -419,26 +306,51 @@ describe('AnichessOrbsBurnPool', function () {
     });
 
     context('when the data input field is not empty', function () {
-      it('reverts if the anichess game multiplier numerator fragment has already been set', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+      it('reverts if the anichess game multiplier numerator is already set', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[3];
+        const duplicatedMerkleClaimData = this.merkleClaimDataArr[4];
+
+        await this.orb.connect(deployer).safeBatchMint(user4.address, [1], [1], '0x');
+        await this.orb
+          .connect(user4)
+          .safeBatchTransferFrom(
+            user4.address,
+            await this.contract.getAddress(),
+            [1],
+            [1],
+            ethers.AbiCoder.defaultAbiCoder().encode(
+              ['bytes32[]', 'uint256'],
+              [duplicatedMerkleClaimData.proof, duplicatedMerkleClaimData.multiplierNumerator]
+            )
+          );
+
+        await this.missingOrb.connect(deployer).safeMint(user4.address, 1, 1, '0x');
 
         const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
 
-        await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
-
-        await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data))
-          .to.be.revertedWithCustomError(this.contract, 'AlreadySetAnichessGameMultiplierNumerator')
-          .withArgs(user1.address);
+        await expect(
+          this.missingOrb.connect(user4).safeTransferFrom(user4.address, await this.contract.getAddress(), 1, 1, data)
+        ).to.be.to.be.revertedWithCustomError(this.contract, 'AlreadySetAnichessGameMultiplierNumerator');
       });
+      it('reverts if the leaf has already been consumed', async function () {
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[5];
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
 
-      it('reverts if the data input does not contain the correct proof', async function () {
+        await this.orb.connect(deployer).safeBatchMint(user5.address, [1], [1], '0x');
+        await this.orb.connect(user5).safeBatchTransferFrom(user5.address, await this.contract.getAddress(), [1], [1], data);
+
+        await this.missingOrb.connect(deployer).safeMint(user5.address, 1, 1, '0x');
+        await expect(
+          this.missingOrb.connect(user5).safeTransferFrom(user5.address, await this.contract.getAddress(), 1, 1, data)
+        ).to.be.revertedWithCustomError(this.contract, 'AlreadyConsumedLeaf');
+      });
+      it('reverts if the proof is invalid', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
         const {proof: incorrectProof} = this.merkleClaimDataArr[1];
+
         const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [incorrectProof, multiplierNumerator]);
 
         await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
-
         await expect(
           this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data)
         ).to.be.revertedWithCustomError(this.contract, 'InvalidProof');
@@ -502,22 +414,19 @@ describe('AnichessOrbsBurnPool', function () {
       ).to.be.revertedWithCustomError(this.contract, 'InvalidCycle');
       await snapshot.restore();
     });
-    it('reverts if the token weight has not been set', async function () {
-      const contract = await deployContract(
-        'AnichessOrbsBurnPool',
-        this.initialTime,
-        this.cycleDuration,
-        this.maxCycle,
-        await this.orb.getAddress(),
-        [],
-        this.root,
-        await this.missingOrb.getAddress(),
-        this.forwarderRegistryAddress
-      );
-      await this.orb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
-      await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await contract.getAddress(), [1], [1], '0x'))
-        .to.be.revertedWithCustomError(contract, 'InvalidTokenId')
-        .withArgs(await this.orb.getAddress(), 1);
+
+    it('reverts if the token id is invalid', async function () {
+      await this.orb.connect(deployer).safeBatchMint(user1.address, [8], [1], '0x');
+      await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), [8], [1], '0x'))
+        .to.be.revertedWithCustomError(this.contract, 'InvalidTokenId')
+        .withArgs(await this.orb.getAddress(), 8);
+    });
+
+    it('reverts if the token value is invalid', async function () {
+      await this.orb.connect(deployer).safeBatchMint(user1.address, [1], [1], '0x');
+      await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), [1], [0], '0x'))
+        .to.be.revertedWithCustomError(this.contract, 'InvalidTokenValue')
+        .withArgs(0, 0);
     });
 
     context('when successful', function () {
@@ -559,10 +468,14 @@ describe('AnichessOrbsBurnPool', function () {
       });
       it('should apply the anichess game multiplier numerator to the ash if only anichess game multiplier numerator has been set', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+        await this.orb.connect(deployer).safeBatchMint(user1.address, [1], [1], '0x');
+        await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), [1], [1], data);
 
         const tokenIds = [1, 2, 3, 4, 5, 6, 7];
         const values = [1, 2, 3, 4, 3, 2, 1];
+
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
 
         const multiplierInfo = await this.contract.multiplierInfos(user1.address);
@@ -577,15 +490,15 @@ describe('AnichessOrbsBurnPool', function () {
             10000
         );
 
-        expect(ashBefore).to.equal(0);
-        expect(ashAfter).to.equal(expectedAsh);
+        expect(ashBefore).to.equal(2);
+        expect(ashAfter).to.equal(expectedAsh + 2);
       });
       it('should apply both the token multiplier and anichess game multiplier numerator to the ash if both have been set', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
 
         await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
-        await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x');
+        await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data);
 
         const tokenIds = [1, 2, 3, 4, 5, 6, 7];
         const values = [1, 2, 3, 4, 3, 2, 1];
@@ -665,24 +578,37 @@ describe('AnichessOrbsBurnPool', function () {
         const multiplier = await this.contract.multiplierInfos(user1.address);
         await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x'))
           .to.emit(this.contract, 'GenerateAsh')
-          .withArgs(user1.address, await this.contract.currentCycle(), currentTime + 11, tokenIds, values, expectedAsh, multiplier);
+          .withArgs(user1.address, await this.contract.currentCycle(), tokenIds, values, expectedAsh, multiplier);
       });
     });
 
     context('when the data input field is not empty', function () {
       it('reverts if the anichess game multiplier numerator fragment has already been set', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-        await this.contract.setAnichessGameMultiplierNumerator(proof, recipient, multiplierNumerator);
+        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[3];
+
+        await this.missingOrb.connect(deployer).safeMint(user4.address, 1, 1, '0x');
+        await this.missingOrb
+          .connect(user4)
+          .safeTransferFrom(
+            user4.address,
+            await this.contract.getAddress(),
+            1,
+            1,
+            ethers.AbiCoder.defaultAbiCoder().encode(
+              ['bytes32[]', 'uint256'],
+              [this.merkleClaimDataArr[4].proof, this.merkleClaimDataArr[4].multiplierNumerator]
+            )
+          );
 
         const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
 
         const tokenIds = [1, 2, 3, 4, 5, 6, 7];
         const values = [1, 2, 3, 4, 3, 2, 1];
-        await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
+        await this.orb.connect(deployer).safeBatchMint(user4.address, tokenIds, values, '0x');
 
-        await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data))
+        await expect(this.orb.connect(user4).safeBatchTransferFrom(user4.address, await this.contract.getAddress(), tokenIds, values, data))
           .to.be.revertedWithCustomError(this.contract, 'AlreadySetAnichessGameMultiplierNumerator')
-          .withArgs(user1.address);
+          .withArgs(user4.address);
       });
 
       it('reverts if the data input does not contain the correct proof', async function () {
@@ -752,7 +678,6 @@ describe('AnichessOrbsBurnPool', function () {
         this.cycleDuration,
         this.maxCycle,
         await this.orb.getAddress(),
-        this.tokenConfigs,
         this.root,
         await this.missingOrb.getAddress(),
         this.forwarderRegistryAddress
@@ -767,7 +692,6 @@ describe('AnichessOrbsBurnPool', function () {
         this.cycleDuration,
         this.maxCycle,
         await this.orb.getAddress(),
-        this.tokenConfigs,
         this.root,
         await this.missingOrb.getAddress(),
         this.forwarderRegistryAddress

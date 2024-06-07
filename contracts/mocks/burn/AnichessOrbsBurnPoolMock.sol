@@ -11,11 +11,10 @@ contract AnichessOrbsBurnPoolMock is AnichessOrbsBurnPool {
         uint256 cycleDuration,
         uint256 maxCycle,
         IERC1155Burnable orbOfPower,
-        TokenConfig[] memory tokenConfigs,
         bytes32 merkleRoot,
         IERC1155Burnable missingOrb,
         IForwarderRegistry forwarderRegistry
-    ) AnichessOrbsBurnPool(initialTime, cycleDuration, maxCycle, orbOfPower, tokenConfigs, merkleRoot, missingOrb, forwarderRegistry) {}
+    ) AnichessOrbsBurnPool(initialTime, cycleDuration, maxCycle, orbOfPower, merkleRoot, missingOrb, forwarderRegistry) {}
 
     function __msgSender() external view returns (address) {
         return _msgSender();

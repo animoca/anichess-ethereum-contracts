@@ -16,17 +16,11 @@ import "hardhat/console.sol";
 contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver {
     using MerkleProof for bytes32[];
 
-    /// @notice The token configuration for setting the token weight.
-    struct TokenConfig {
-        uint256 tokenId;
-        uint256 weight;
-    }
-
     /// @notice The denominator for the multiplier.
-    uint256 immutable DENOMINATOR = 10_000;
+    uint256 constant DENOMINATOR = 10_000;
 
     /// @notice The token ID of RoC for setting the token multiplier.
-    uint256 immutable MISSING_ORB_TOKEN_ID = 1;
+    uint256 constant MISSING_ORB_TOKEN_ID = 1;
 
     /// @notice The IERC1155Burnable erc1155 contracts burn to generate ASH.
     IERC1155Burnable public immutable ORB_OF_POWER;
@@ -47,7 +41,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     bytes32 public immutable MERKLE_ROOT;
 
     /// @notice The token multiplier.
-    uint256 public immutable TOKEN_MULTIPLIER = 2;
+    uint256 public constant TOKEN_MULTIPLIER = 2;
 
     /// @notice The total amount of ASH generated in each cycle.
     mapping(uint256 => uint256) public totalAshByCycle;
@@ -62,18 +56,16 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     mapping(address => uint256) public multiplierInfos;
 
     /// @notice The token weights for calculating Ash.
-    mapping(uint256 => uint256) public tokenWeights;
+    uint256 constant ORB_TOKEN_WEIGHT_1 = 1;
+    uint256 constant ORB_TOKEN_WEIGHT_2 = 3;
+    uint256 constant ORB_TOKEN_WEIGHT_3 = 3;
+    uint256 constant ORB_TOKEN_WEIGHT_4 = 5;
+    uint256 constant ORB_TOKEN_WEIGHT_5 = 9;
+    uint256 constant ORB_TOKEN_WEIGHT_6 = 25;
+    uint256 constant ORB_TOKEN_WEIGHT_7 = 16;
 
     /// @notice Event emitted when ASH are generated.
-    event GenerateAsh(
-        address indexed burner,
-        uint256 indexed cycle,
-        uint256 timestamp,
-        uint256[] ids,
-        uint256[] values,
-        uint256 totalAsh,
-        uint256 multiplierInfo
-    );
+    event GenerateAsh(address indexed burner, uint256 indexed cycle, uint256[] ids, uint256[] values, uint256 ash, uint256 multiplierInfo);
 
     /// @notice Event emitted when the multiplier info is updated.
     event UpdateMultiplierInfo(address indexed recipient, uint256 curr, uint256 updated);
@@ -99,9 +91,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     /// @notice Error thrown when the proof is invalid.
     error InvalidProof();
 
-    /// @notice Error thrown when the token weight is already set.
-    error AlreadySetTokenWeight(uint256 tokenId);
-
     /// @notice Error thrown when the cycle duration is invalid.
     error ZeroCycleDuration();
 
@@ -110,9 +99,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
 
     /// @notice Error thrown when the leaf is already consumed.
     error AlreadyConsumedLeaf(bytes32 leaf);
-
-    /// @notice Error thrown when the token weight is invalid.
-    error ZeroTokenWeight(uint256 tokenId);
 
     /**
      * @notice Constructor for the AnichessOrbsBurnPool contract.
@@ -131,7 +117,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         uint256 cycleDuration,
         uint256 maxCycle,
         IERC1155Burnable orbOfPower,
-        TokenConfig[] memory tokenConfigs,
         bytes32 merkleRoot,
         IERC1155Burnable missingOrb,
         IForwarderRegistry forwarderRegistry
@@ -148,16 +133,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         MERKLE_ROOT = merkleRoot;
         MISSING_ORB = missingOrb;
         ORB_OF_POWER = orbOfPower;
-
-        for (uint256 i = 0; i < tokenConfigs.length; i++) {
-            if (tokenConfigs[i].weight == 0) {
-                revert ZeroTokenWeight(tokenConfigs[i].tokenId);
-            }
-            if (tokenWeights[tokenConfigs[i].tokenId] > 0) {
-                revert AlreadySetTokenWeight(tokenConfigs[i].tokenId);
-            }
-            tokenWeights[tokenConfigs[i].tokenId] = tokenConfigs[i].weight;
-        }
     }
 
     /// @inheritdoc ForwarderRegistryContextBase
@@ -216,19 +191,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     }
 
     /**
-     * @notice Set the AnichessGame multiplier through a Merkle proof.
-     * @param proof The Merkle proof for the claim.
-     * @param recipient The recipient of the payout.
-     * @param newAnichessGameMultiplierNumerator The AnichessGame multiplier numerator for the recipient.
-     * @dev Throws if the anichess game multiplier numerator is already set.
-     * @dev Throws if the leaf is already consumed.
-     * @dev Throws if the proof is invalid.
-     */
-    function setAnichessGameMultiplierNumerator(bytes32[] calldata proof, address recipient, uint256 newAnichessGameMultiplierNumerator) external {
-        _setAnichessGameMultiplierNumerator(proof, recipient, multiplierInfos[recipient], newAnichessGameMultiplierNumerator);
-    }
-
-    /**
      * @notice Set the token multiplier by burning the Riddle of Chaos.
      * @notice and set the AnichessGame multiplier through a Merkle proof in the data field.
      * @param from The wallet address.
@@ -237,6 +199,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
      * @param data The merkle proof data and multiplier value for setting the token multiplier.
      * @return The ERC1155Received selector.
      * @dev Throws if the token is invalid.
+     * @dev Throws if the cycle is invalid.
      * @dev Throws if the token ID is invalid.
      * @dev Throws if the token amount is invalid.
      * @dev Throws if the token multiplier has already been set.
@@ -251,6 +214,11 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
 
         if (value != 1) {
             revert InvalidTokenValue(value, 1);
+        }
+
+        uint256 cycle = currentCycle();
+        if (cycle > MAX_CYCLE) {
+            revert InvalidCycle(cycle);
         }
 
         uint256 currMultiplierInfo = multiplierInfos[from];
@@ -286,6 +254,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
      * @dev Throws if the token is invalid.
      * @dev Throws if the cycle is invalid.
      * @dev Throws if the token ID is invalid.
+     * @dev Throws if the token amount is invalid.
      */
     function onERC1155BatchReceived(
         address,
@@ -306,9 +275,26 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         uint256 totalAsh = 0;
         // calculate total burned
         for (uint256 i = 0; i < ids.length; i++) {
-            uint256 weight = tokenWeights[ids[i]];
-            if (weight == 0) {
+            uint256 weight = 0;
+            if (ids[i] == 1) {
+                weight = ORB_TOKEN_WEIGHT_1;
+            } else if (ids[i] == 2) {
+                weight = ORB_TOKEN_WEIGHT_2;
+            } else if (ids[i] == 3) {
+                weight = ORB_TOKEN_WEIGHT_3;
+            } else if (ids[i] == 4) {
+                weight = ORB_TOKEN_WEIGHT_4;
+            } else if (ids[i] == 5) {
+                weight = ORB_TOKEN_WEIGHT_5;
+            } else if (ids[i] == 6) {
+                weight = ORB_TOKEN_WEIGHT_6;
+            } else if (ids[i] == 7) {
+                weight = ORB_TOKEN_WEIGHT_7;
+            } else {
                 revert InvalidTokenId(msg.sender, ids[i]);
+            }
+            if (values[i] == 0) {
+                revert InvalidTokenValue(values[i], 0);
             }
             totalAsh += (values[i] * weight);
         }
@@ -320,7 +306,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
             (multiplierInfo) = _setAnichessGameMultiplierNumerator(proof, from, multiplierInfo, newAnichessGameMultiplierNumerator);
             uint256 stored = multiplierInfos[from];
             console.log("multiplierInfo storage: ", stored);
-            console.log('from: ', from);
+            console.log("from: ", from);
         }
         uint256 tokenMultiplier = uint128(multiplierInfo);
         uint128 anichessGameMultiplierNumerator = uint128(multiplierInfo >> 128);
@@ -338,7 +324,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         totalAshByCycle[cycle] += totalAsh;
 
         IERC1155Burnable(msg.sender).batchBurnFrom(address(this), ids, values);
-        emit GenerateAsh(from, cycle, block.timestamp, ids, values, totalAsh, multiplierInfo);
+        emit GenerateAsh(from, cycle, ids, values, totalAsh, multiplierInfo);
 
         return this.onERC1155BatchReceived.selector;
     }
