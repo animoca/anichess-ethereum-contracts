@@ -436,9 +436,9 @@ describe('AnichessOrbsBurnPool', function () {
 
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
 
-        const ashBefore = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashBefore = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
-        const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashAfter = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh = tokenIds.reduce(
           (acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight,
@@ -455,9 +455,9 @@ describe('AnichessOrbsBurnPool', function () {
         const values = [1, 2, 3, 4, 3, 2, 1];
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
 
-        const ashBefore = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashBefore = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
-        const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashAfter = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh =
           tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
@@ -480,9 +480,9 @@ describe('AnichessOrbsBurnPool', function () {
 
         const multiplierInfo = await this.contract.multiplierInfos(user1.address);
         const [anichessGameMultiplierNumerator, tokenMultiplier] = formatMultiplierInfos(multiplierInfo);
-        const ashBefore = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashBefore = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
-        const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashAfter = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh = Math.floor(
           (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
@@ -506,9 +506,9 @@ describe('AnichessOrbsBurnPool', function () {
 
         const multiplierInfo = await this.contract.multiplierInfos(user1.address);
         const [anichessGameMultiplierNumerator, tokenMultiplier] = formatMultiplierInfos(multiplierInfo);
-        const ashBefore = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashBefore = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
-        const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashAfter = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh = Math.floor(
           (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
@@ -526,9 +526,9 @@ describe('AnichessOrbsBurnPool', function () {
 
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
 
-        const ashBefore = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashBefore = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
-        const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashAfter = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh = tokenIds.reduce(
           (acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight,
@@ -543,9 +543,9 @@ describe('AnichessOrbsBurnPool', function () {
 
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
 
-        const ashBefore = await this.contract.totalAshByCycle(await this.contract.currentCycle());
+        const ashBefore = await this.contract.totalAshPerCycle(await this.contract.currentCycle());
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
-        const ashAfter = await this.contract.totalAshByCycle(await this.contract.currentCycle());
+        const ashAfter = await this.contract.totalAshPerCycle(await this.contract.currentCycle());
 
         const expectedAsh = tokenIds.reduce(
           (acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight,
@@ -635,12 +635,12 @@ describe('AnichessOrbsBurnPool', function () {
 
         const multiplierInfoBefore = await this.contract.multiplierInfos(user1.address);
         const [anichessGameMultiplierNumeratorBefore] = formatMultiplierInfos(multiplierInfoBefore);
-        const ashBefore = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashBefore = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data);
 
         const multiplierInfoAfter = await this.contract.multiplierInfos(user1.address);
         const [anichessGameMultiplierNumeratorAfter] = formatMultiplierInfos(multiplierInfoAfter);
-        const ashAfter = await this.contract.userAshByCycle(await this.contract.currentCycle(), user1.address);
+        const ashAfter = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh =
           (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
