@@ -7,7 +7,6 @@ import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/me
 import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "hardhat/console.sol";
 
 /**
  * @title AnichessOrbsBurnPool Contract
@@ -304,9 +303,6 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
             // decode proof & newAnichessGameMultiplierNumerator from data
             (bytes32[] memory proof, uint256 newAnichessGameMultiplierNumerator) = abi.decode(data, (bytes32[], uint256));
             (multiplierInfo) = _setAnichessGameMultiplierNumerator(proof, from, multiplierInfo, newAnichessGameMultiplierNumerator);
-            uint256 stored = multiplierInfos[from];
-            console.log("multiplierInfo storage: ", stored);
-            console.log("from: ", from);
         }
         uint256 tokenMultiplier = uint128(multiplierInfo);
         uint128 anichessGameMultiplierNumerator = uint128(multiplierInfo >> 128);
