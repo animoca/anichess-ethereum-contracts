@@ -22,13 +22,13 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
     uint256 constant MISSING_ORB_TOKEN_ID = 1;
 
     /// @notice The token weights for calculating Ash.
-    uint256 constant ORB_TOKEN_WEIGHT_1 = 1;
-    uint256 constant ORB_TOKEN_WEIGHT_2 = 3;
-    uint256 constant ORB_TOKEN_WEIGHT_3 = 3;
-    uint256 constant ORB_TOKEN_WEIGHT_4 = 5;
-    uint256 constant ORB_TOKEN_WEIGHT_5 = 9;
-    uint256 constant ORB_TOKEN_WEIGHT_6 = 25;
-    uint256 constant ORB_TOKEN_WEIGHT_7 = 16;
+    uint256 constant BURN_WEIGHT_TOKEN_1 = 1;
+    uint256 constant BURN_WEIGHT_TOKEN_2 = 3;
+    uint256 constant BURN_WEIGHT_TOKEN_3 = 3;
+    uint256 constant BURN_WEIGHT_TOKEN_4 = 5;
+    uint256 constant BURN_WEIGHT_TOKEN_5 = 9;
+    uint256 constant BURN_WEIGHT_TOKEN_6 = 25;
+    uint256 constant BURN_WEIGHT_TOKEN_7 = 16;
 
     /// @notice The token multiplier.
     uint256 public constant TOKEN_MULTIPLIER = 2;
@@ -243,6 +243,26 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         return this.onERC1155Received.selector;
     }
 
+    function _getTokenBurnWeight(uint256 tokenId) internal view returns (uint256) {
+        if (tokenId == 1) {
+            return BURN_WEIGHT_TOKEN_1;
+        } else if (tokenId == 2) {
+            return BURN_WEIGHT_TOKEN_2;
+        } else if (tokenId == 3) {
+            return BURN_WEIGHT_TOKEN_3;
+        } else if (tokenId == 4) {
+            return BURN_WEIGHT_TOKEN_4;
+        } else if (tokenId == 5) {
+            return BURN_WEIGHT_TOKEN_5;
+        } else if (tokenId == 6) {
+            return BURN_WEIGHT_TOKEN_6;
+        } else if (tokenId == 7) {
+            return BURN_WEIGHT_TOKEN_7;
+        } else {
+            revert InvalidTokenId(address(ORB_OF_POWER), tokenId);
+        }
+    }
+
     /**
      * @notice Burn the tokens and calculate the ash.
      * @param from The wallet address.
@@ -274,28 +294,10 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         uint256 totalAsh = 0;
         // calculate total burned
         for (uint256 i = 0; i < ids.length; i++) {
-            uint256 weight = 0;
-            if (ids[i] == 1) {
-                weight = ORB_TOKEN_WEIGHT_1;
-            } else if (ids[i] == 2) {
-                weight = ORB_TOKEN_WEIGHT_2;
-            } else if (ids[i] == 3) {
-                weight = ORB_TOKEN_WEIGHT_3;
-            } else if (ids[i] == 4) {
-                weight = ORB_TOKEN_WEIGHT_4;
-            } else if (ids[i] == 5) {
-                weight = ORB_TOKEN_WEIGHT_5;
-            } else if (ids[i] == 6) {
-                weight = ORB_TOKEN_WEIGHT_6;
-            } else if (ids[i] == 7) {
-                weight = ORB_TOKEN_WEIGHT_7;
-            } else {
-                revert InvalidTokenId(msg.sender, ids[i]);
-            }
             if (values[i] == 0) {
                 revert InvalidTokenValue(values[i], 0);
             }
-            totalAsh += (values[i] * weight);
+            totalAsh += (values[i] * _getTokenBurnWeight(ids[i]));
         }
         // boost the total ash based on the multipliers
         uint256 multiplierInfo = multiplierInfos[from];
