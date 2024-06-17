@@ -243,7 +243,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         return this.onERC1155Received.selector;
     }
 
-    function _getTokenBurnWeight(uint256 tokenId) internal view returns (uint256) {
+    function _getTokenBurnWeight(uint256 tokenId) internal pure returns (uint256) {
         if (tokenId == 1) {
             return BURN_WEIGHT_TOKEN_1;
         } else if (tokenId == 2) {
@@ -259,7 +259,7 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
         } else if (tokenId == 7) {
             return BURN_WEIGHT_TOKEN_7;
         } else {
-            revert InvalidTokenId(address(ORB_OF_POWER), tokenId);
+            return 0;
         }
     }
 
@@ -297,7 +297,11 @@ contract AnichessOrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver 
             if (values[i] == 0) {
                 revert InvalidTokenValue(values[i], 0);
             }
-            totalAsh += (values[i] * _getTokenBurnWeight(ids[i]));
+            uint256 weight = _getTokenBurnWeight(ids[i]);
+            if (weight == 0) {
+                revert InvalidTokenId(address(ORB_OF_POWER), ids[i]);
+            }
+            totalAsh += (values[i] * weight);
         }
         // boost the total ash based on the multipliers
         uint256 multiplierInfo = multiplierInfos[from];
