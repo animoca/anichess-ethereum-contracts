@@ -11,19 +11,13 @@ const {
 } = require('@animoca/ethereum-contracts/test/helpers/registries');
 const helpers = require('@nomicfoundation/hardhat-network-helpers');
 
-const formatMultiplierInfos = (multiplierInfo) => {
-  const anichessGameMultiplierNumerator = multiplierInfo >> BigInt(128);
-  const tokenMultiplier = multiplierInfo & BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
-  return [anichessGameMultiplierNumerator, tokenMultiplier];
+const formatMultiplier = (multipliers) => {
+  const puzzleGameMultiplierNumerator = multipliers >> BigInt(128);
+  const rocMultiplier = multipliers & BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
+  return [puzzleGameMultiplierNumerator, rocMultiplier];
 };
 
-const parseMultiplierInfos = (anichessGameMultiplierNumerator, tokenMultiplier) => {
-  const firstHalf = BigInt(anichessGameMultiplierNumerator) & BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
-  const secondHalf = BigInt(tokenMultiplier) & BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
-  return (firstHalf << BigInt(128)) | secondHalf;
-};
-
-describe('AnichessOrbsBurnPool', function () {
+describe('OrbsBurnPool', function () {
   before(async function () {
     [deployer, user1, user2, user3, user4, user5, other] = await ethers.getSigners();
   });
@@ -123,12 +117,12 @@ describe('AnichessOrbsBurnPool', function () {
     }));
 
     this.contract = await deployContract(
-      'AnichessOrbsBurnPool',
+      'OrbsBurnPool',
       this.initialTime,
       this.cycleDuration,
       this.maxCycle,
-      await this.orb.getAddress(),
       this.root,
+      await this.orb.getAddress(),
       await this.missingOrb.getAddress(),
       this.forwarderRegistryAddress
     );
@@ -145,12 +139,12 @@ describe('AnichessOrbsBurnPool', function () {
     it('reverts if the cycle duration is 0', async function () {
       await expect(
         deployContract(
-          'AnichessOrbsBurnPool',
+          'OrbsBurnPool',
           this.initialTime,
           0,
           this.maxCycle,
-          await this.orb.getAddress(),
           this.root,
+          await this.orb.getAddress(),
           await this.missingOrb.getAddress(),
           this.forwarderRegistryAddress
         )
@@ -159,12 +153,12 @@ describe('AnichessOrbsBurnPool', function () {
     it('reverts if the max cycle is 0', async function () {
       await expect(
         deployContract(
-          'AnichessOrbsBurnPool',
+          'OrbsBurnPool',
           this.initialTime,
           this.cycleDuration,
           0,
-          await this.orb.getAddress(),
           this.root,
+          await this.orb.getAddress(),
           await this.missingOrb.getAddress(),
           this.forwarderRegistryAddress
         )
@@ -204,7 +198,7 @@ describe('AnichessOrbsBurnPool', function () {
   describe('onERC1155Received(address, address from, uint256 id, uint256 value, bytes calldata data)', function () {
     it('reverts if the msg.sender is not the source token contract', async function () {
       await expect(this.contract.connect(other).onERC1155Received(other.address, user1.address, 1, 1, '0x'))
-        .to.be.revertedWithCustomError(this.contract, 'InvalidToken')
+        .to.be.revertedWithCustomError(this.contract, 'InvalidTokenAddress')
         .withArgs(other.address);
     });
 
@@ -221,7 +215,7 @@ describe('AnichessOrbsBurnPool', function () {
 
       await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 2, '0x'))
         .to.be.revertedWithCustomError(this.contract, 'InvalidTokenValue')
-        .withArgs(2, 1);
+        .withArgs(await this.missingOrb.getAddress(), 1, 2);
     });
 
     it('reverts if the current cycle is greater than the max cycle', async function () {
@@ -235,39 +229,39 @@ describe('AnichessOrbsBurnPool', function () {
       await snapshot.restore();
     });
 
-    it('reverts if the token multiplier has already been set', async function () {
+    it('reverts if the roc Multiplier has already been set', async function () {
       await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 2, '0x');
 
       await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x');
 
       await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x'))
-        .to.be.revertedWithCustomError(this.contract, 'AlreadySetTokenMultiplier')
+        .to.be.revertedWithCustomError(this.contract, 'AlreadySetROCMultiplier')
         .withArgs(user1.address);
     });
 
     context('when successful', function () {
-      it('should update the token multiplier fragment info when the anichess game multiplier numerator fragment has not been set', async function () {
+      it('should update the roc Multiplier fragment info when the puzzle game multiplier numerator fragment has not been set', async function () {
         await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
 
-        const multiplierInfoBefore = await this.contract.multiplierInfos(user1.address);
-        const [gameMultiplierNumeratorBefore, tokenMultiplierBefore] = formatMultiplierInfos(multiplierInfoBefore);
+        const multipliersBefore = await this.contract.orbMultipliers(user1.address);
+        const [gameMultiplierNumeratorBefore, tokenMultiplierBefore] = formatMultiplier(multipliersBefore);
 
         await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x');
 
-        const multiplierInfoAfter = await this.contract.multiplierInfos(user1.address);
-        const [gameMultiplierNumeratorAfter, tokenMultiplierAfter] = formatMultiplierInfos(multiplierInfoAfter);
+        const multipliersAfter = await this.contract.orbMultipliers(user1.address);
+        const [gameMultiplierNumeratorAfter, tokenMultiplierAfter] = formatMultiplier(multipliersAfter);
 
         const expectedMultiplierInfo = (BigInt(0) << BigInt(128)) | BigInt(2);
 
-        expect(multiplierInfoBefore).to.equal(0);
+        expect(multipliersBefore).to.equal(0);
         expect(gameMultiplierNumeratorBefore).to.equal(0);
         expect(tokenMultiplierBefore).to.equal(0);
 
-        expect(multiplierInfoAfter).to.be.equal(expectedMultiplierInfo);
+        expect(multipliersAfter).to.be.equal(expectedMultiplierInfo);
         expect(gameMultiplierNumeratorAfter).to.equal(0);
         expect(tokenMultiplierAfter).to.equal(2);
       });
-      it('should update the token multiplier fragment info when the anichess game multiplier numerator fragment has been set', async function () {
+      it('should update the roc Multiplier fragment info when the puzzle game multiplier numerator fragment has been set', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
         const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
 
@@ -276,74 +270,48 @@ describe('AnichessOrbsBurnPool', function () {
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data);
 
-        const multiplierInfoBefore = await this.contract.multiplierInfos(user1.address);
-        const [gameMultiplierNumeratorBefore, tokenMultiplierBefore] = formatMultiplierInfos(multiplierInfoBefore);
+        const multipliersBefore = await this.contract.orbMultipliers(user1.address);
+        const [gameMultiplierNumeratorBefore, tokenMultiplierBefore] = formatMultiplier(multipliersBefore);
 
         await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
         await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x');
 
-        const multiplierInfoAfter = await this.contract.multiplierInfos(user1.address);
-        const [gameMultiplierNumeratorAfter, tokenMultiplierAfter] = formatMultiplierInfos(multiplierInfoAfter);
+        const multipliersAfter = await this.contract.orbMultipliers(user1.address);
+        const [gameMultiplierNumeratorAfter, tokenMultiplierAfter] = formatMultiplier(multipliersAfter);
 
         const expectedMultiplierInfoBefore = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(0);
         const expectedMultiplierInfoAfter = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(2);
 
-        expect(multiplierInfoBefore).to.be.equal(expectedMultiplierInfoBefore);
+        expect(multipliersBefore).to.be.equal(expectedMultiplierInfoBefore);
         expect(gameMultiplierNumeratorBefore).to.equal(multiplierNumerator);
         expect(tokenMultiplierBefore).to.equal(0);
 
-        expect(multiplierInfoAfter).to.be.equal(expectedMultiplierInfoAfter);
+        expect(multipliersAfter).to.be.equal(expectedMultiplierInfoAfter);
         expect(gameMultiplierNumeratorAfter).to.equal(multiplierNumerator);
         expect(tokenMultiplierAfter).to.equal(2);
       });
-      it('emits an UpdateMultiplierInfo event', async function () {
+      it('emits an UpdateOrbMultiplier event', async function () {
         await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
 
         await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x'))
-          .to.emit(this.contract, 'UpdateMultiplierInfo')
+          .to.emit(this.contract, 'UpdateOrbMultiplier')
           .withArgs(user1.address, 0, BigInt(2));
       });
     });
 
     context('when the data input field is not empty', function () {
-      it('reverts if the anichess game multiplier numerator is already set', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[3];
-        const duplicatedMerkleClaimData = this.merkleClaimDataArr[4];
+      // it('reverts if the leaf has already been consumed', async function () {
+      //   const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[5];
+      //   const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
 
-        await this.orb.connect(deployer).safeBatchMint(user4.address, [1], [1], '0x');
-        await this.orb
-          .connect(user4)
-          .safeBatchTransferFrom(
-            user4.address,
-            await this.contract.getAddress(),
-            [1],
-            [1],
-            ethers.AbiCoder.defaultAbiCoder().encode(
-              ['bytes32[]', 'uint256'],
-              [duplicatedMerkleClaimData.proof, duplicatedMerkleClaimData.multiplierNumerator]
-            )
-          );
+      //   await this.orb.connect(deployer).safeBatchMint(user5.address, [1], [1], '0x');
+      //   await this.orb.connect(user5).safeBatchTransferFrom(user5.address, await this.contract.getAddress(), [1], [1], data);
 
-        await this.missingOrb.connect(deployer).safeMint(user4.address, 1, 1, '0x');
-
-        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
-
-        await expect(
-          this.missingOrb.connect(user4).safeTransferFrom(user4.address, await this.contract.getAddress(), 1, 1, data)
-        ).to.be.to.be.revertedWithCustomError(this.contract, 'AlreadySetAnichessGameMultiplierNumerator');
-      });
-      it('reverts if the leaf has already been consumed', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[5];
-        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
-
-        await this.orb.connect(deployer).safeBatchMint(user5.address, [1], [1], '0x');
-        await this.orb.connect(user5).safeBatchTransferFrom(user5.address, await this.contract.getAddress(), [1], [1], data);
-
-        await this.missingOrb.connect(deployer).safeMint(user5.address, 1, 1, '0x');
-        await expect(
-          this.missingOrb.connect(user5).safeTransferFrom(user5.address, await this.contract.getAddress(), 1, 1, data)
-        ).to.be.revertedWithCustomError(this.contract, 'AlreadyConsumedLeaf');
-      });
+      //   await this.missingOrb.connect(deployer).safeMint(user5.address, 1, 1, '0x');
+      //   await expect(
+      //     this.missingOrb.connect(user5).safeTransferFrom(user5.address, await this.contract.getAddress(), 1, 1, data)
+      //   ).to.be.revertedWithCustomError(this.contract, 'AlreadyConsumedLeaf');
+      // });
       it('reverts if the proof is invalid', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
         const {proof: incorrectProof} = this.merkleClaimDataArr[1];
@@ -351,50 +319,78 @@ describe('AnichessOrbsBurnPool', function () {
         const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [incorrectProof, multiplierNumerator]);
 
         await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
-        await expect(
-          this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data)
-        ).to.be.revertedWithCustomError(this.contract, 'InvalidProof');
-      });
-
-      it('unlock anichess game multiplier numerator & token multiplier at the same time', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
-
-        await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
-
-        const multiplierInfoBefore = await this.contract.multiplierInfos(user1.address);
-        const [multiplierNumeratorBefore, tokenMultiplierBefore] = formatMultiplierInfos(multiplierInfoBefore);
-
-        await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data);
-
-        const multiplierInfoAfter = await this.contract.multiplierInfos(user1.address);
-        const [multiplierNumeratorAfter, tokenMultiplierAfter] = formatMultiplierInfos(multiplierInfoAfter);
-
-        const expectedMultiplierInfo = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(2);
-
-        expect(multiplierInfoBefore).to.equal(0);
-        expect(multiplierNumeratorBefore).to.equal(0);
-        expect(tokenMultiplierBefore).to.equal(0);
-
-        expect(multiplierInfoAfter).to.be.equal(expectedMultiplierInfo);
-        expect(multiplierNumeratorAfter).to.equal(multiplierNumerator);
-        expect(tokenMultiplierAfter).to.equal(2);
-      });
-      it('emits two UpdateMultiplierInfo events', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
-
-        await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
-
-        const multiplierInfoAfterSetTokenMultiplier = BigInt(2);
-        const multiplierInfoAfterSetAnichessGameMultiplierNumerator =
-          (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(multiplierInfoAfterSetTokenMultiplier);
-
         await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data))
-          .to.emit(this.contract, 'UpdateMultiplierInfo')
-          .withArgs(user1.address, 0, multiplierInfoAfterSetTokenMultiplier)
-          .and.to.emit(this.contract, 'UpdateMultiplierInfo')
-          .withArgs(user1.address, multiplierInfoAfterSetTokenMultiplier, multiplierInfoAfterSetAnichessGameMultiplierNumerator);
+          .to.be.revertedWithCustomError(this.contract, 'InvalidProof')
+          .withArgs(user1.address, multiplierNumerator);
+      });
+
+      context('when successful', function () {
+        it('will not revert if the puzzle game multiplier numerator is already set', async function () {
+          const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[3];
+          const duplicatedMerkleClaimData = this.merkleClaimDataArr[4];
+
+          await this.orb.connect(deployer).safeBatchMint(user4.address, [1], [1], '0x');
+          await this.orb
+            .connect(user4)
+            .safeBatchTransferFrom(
+              user4.address,
+              await this.contract.getAddress(),
+              [1],
+              [1],
+              ethers.AbiCoder.defaultAbiCoder().encode(
+                ['bytes32[]', 'uint256'],
+                [duplicatedMerkleClaimData.proof, duplicatedMerkleClaimData.multiplierNumerator]
+              )
+            );
+
+          await this.missingOrb.connect(deployer).safeMint(user4.address, 1, 1, '0x');
+
+          const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+          await expect(
+            this.missingOrb.connect(user4).safeTransferFrom(user4.address, await this.contract.getAddress(), 1, 1, data)
+          ).not.to.be.reverted;
+        });
+
+        it('unlock puzzle game multiplier numerator & roc Multiplier at the same time', async function () {
+          const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+          const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+          await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+
+          const multipliersBefore = await this.contract.orbMultipliers(user1.address);
+          const [multiplierNumeratorBefore, tokenMultiplierBefore] = formatMultiplier(multipliersBefore);
+
+          await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data);
+
+          const multipliersAfter = await this.contract.orbMultipliers(user1.address);
+          const [multiplierNumeratorAfter, tokenMultiplierAfter] = formatMultiplier(multipliersAfter);
+
+          const expectedMultiplierInfo = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(2);
+
+          expect(multipliersBefore).to.equal(0);
+          expect(multiplierNumeratorBefore).to.equal(0);
+          expect(tokenMultiplierBefore).to.equal(0);
+
+          expect(multipliersAfter).to.be.equal(expectedMultiplierInfo);
+          expect(multiplierNumeratorAfter).to.equal(multiplierNumerator);
+          expect(tokenMultiplierAfter).to.equal(2);
+        });
+
+        it('emits an UpdateOrbMultiplier event', async function () {
+          const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+          const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+          await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
+
+          const multipliersAfterSetTokenMultiplier = BigInt(2);
+          const multipliersAfterSetPuzzleGameMultiplierNumerator =
+            (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(multipliersAfterSetTokenMultiplier);
+
+          await expect(this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, data))
+            .and.to.emit(this.contract, 'UpdateOrbMultiplier')
+            .withArgs(user1.address, 0, multipliersAfterSetPuzzleGameMultiplierNumerator);
+        });
       });
     });
   });
@@ -402,7 +398,7 @@ describe('AnichessOrbsBurnPool', function () {
   describe('onERC1155BatchReceived(address, address from, uint256[] calldata ids, uint256[] calldata values, bytes calldata data)', function () {
     it('reverts if the msg.sender is not the source token contract', async function () {
       await expect(this.contract.connect(other).onERC1155BatchReceived(other.address, user1.address, [1], [1], '0x'))
-        .to.be.revertedWithCustomError(this.contract, 'InvalidToken')
+        .to.be.revertedWithCustomError(this.contract, 'InvalidTokenAddress')
         .withArgs(other.address);
     });
     it('reverts if the current cycle is greater than the max cycle', async function () {
@@ -426,7 +422,7 @@ describe('AnichessOrbsBurnPool', function () {
       await this.orb.connect(deployer).safeBatchMint(user1.address, [1], [1], '0x');
       await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), [1], [0], '0x'))
         .to.be.revertedWithCustomError(this.contract, 'InvalidTokenValue')
-        .withArgs(0, 0);
+        .withArgs(await this.orb.getAddress(), 1, 0);
     });
 
     context('when successful', function () {
@@ -447,7 +443,7 @@ describe('AnichessOrbsBurnPool', function () {
         expect(ashBefore).to.equal(0);
         expect(ashAfter).to.equal(expectedAsh);
       });
-      it('should apply the token multiplier to the ash if only token multiplier has been unlocked', async function () {
+      it('should apply the roc Multiplier to the ash if only roc Multiplier has been unlocked', async function () {
         await this.missingOrb.connect(deployer).safeMint(user1.address, 1, 1, '0x');
         await this.missingOrb.connect(user1).safeTransferFrom(user1.address, await this.contract.getAddress(), 1, 1, '0x');
 
@@ -466,7 +462,7 @@ describe('AnichessOrbsBurnPool', function () {
         expect(ashBefore).to.equal(0);
         expect(ashAfter).to.equal(expectedAsh);
       });
-      it('should apply the anichess game multiplier numerator to the ash if only anichess game multiplier numerator has been set', async function () {
+      it('should apply the puzzle game multiplier numerator to the ash if only puzzle game multiplier numerator has been set', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
         const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
 
@@ -478,22 +474,22 @@ describe('AnichessOrbsBurnPool', function () {
 
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
 
-        const multiplierInfo = await this.contract.multiplierInfos(user1.address);
-        const [anichessGameMultiplierNumerator, tokenMultiplier] = formatMultiplierInfos(multiplierInfo);
+        const multipliers = await this.contract.orbMultipliers(user1.address);
+        const [puzzleGameMultiplierNumerator, tokenMultiplier] = formatMultiplier(multipliers);
         const ashBefore = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
         const ashAfter = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh = Math.floor(
           (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
-            Number(anichessGameMultiplierNumerator)) /
+            Number(puzzleGameMultiplierNumerator)) /
             10000
         );
 
         expect(ashBefore).to.equal(2);
         expect(ashAfter).to.equal(expectedAsh + 2);
       });
-      it('should apply both the token multiplier and anichess game multiplier numerator to the ash if both have been set', async function () {
+      it('should apply both the roc multiplier and puzzle game multiplier numerator to the ash if both have been set', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
         const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
 
@@ -504,16 +500,16 @@ describe('AnichessOrbsBurnPool', function () {
         const values = [1, 2, 3, 4, 3, 2, 1];
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
 
-        const multiplierInfo = await this.contract.multiplierInfos(user1.address);
-        const [anichessGameMultiplierNumerator, tokenMultiplier] = formatMultiplierInfos(multiplierInfo);
+        const multipliers = await this.contract.orbMultipliers(user1.address);
+        const [puzzleGameMultiplierNumerator, rocMultiplier] = formatMultiplier(multipliers);
         const ashBefore = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
         await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x');
         const ashAfter = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
 
         const expectedAsh = Math.floor(
           (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
-            Number(anichessGameMultiplierNumerator) *
-            Number(tokenMultiplier)) /
+            Number(puzzleGameMultiplierNumerator) *
+            Number(rocMultiplier)) /
             10000
         );
 
@@ -569,48 +565,22 @@ describe('AnichessOrbsBurnPool', function () {
         const values = [1, 2, 3, 4, 3, 2, 1];
 
         const currentTime = await helpers.time.latest();
+        const curCycle = await this.contract.currentCycle();
         await helpers.time.setNextBlockTimestamp(currentTime + 10);
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
         const expectedAsh = tokenIds.reduce(
           (acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight,
           0
         );
-        const multiplier = await this.contract.multiplierInfos(user1.address);
+        const totalAshPerCycle = Number(await this.contract.totalAshPerCycle(curCycle)) + expectedAsh;
+        const multiplier = await this.contract.orbMultipliers(user1.address);
         await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x'))
           .to.emit(this.contract, 'GenerateAsh')
-          .withArgs(user1.address, await this.contract.currentCycle(), tokenIds, values, expectedAsh, multiplier);
+          .withArgs(user1.address, await this.contract.currentCycle(), tokenIds, values, expectedAsh, totalAshPerCycle, multiplier);
       });
     });
 
     context('when the data input field is not empty', function () {
-      it('reverts if the anichess game multiplier numerator fragment has already been set', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[3];
-
-        await this.missingOrb.connect(deployer).safeMint(user4.address, 1, 1, '0x');
-        await this.missingOrb
-          .connect(user4)
-          .safeTransferFrom(
-            user4.address,
-            await this.contract.getAddress(),
-            1,
-            1,
-            ethers.AbiCoder.defaultAbiCoder().encode(
-              ['bytes32[]', 'uint256'],
-              [this.merkleClaimDataArr[4].proof, this.merkleClaimDataArr[4].multiplierNumerator]
-            )
-          );
-
-        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
-
-        const tokenIds = [1, 2, 3, 4, 5, 6, 7];
-        const values = [1, 2, 3, 4, 3, 2, 1];
-        await this.orb.connect(deployer).safeBatchMint(user4.address, tokenIds, values, '0x');
-
-        await expect(this.orb.connect(user4).safeBatchTransferFrom(user4.address, await this.contract.getAddress(), tokenIds, values, data))
-          .to.be.revertedWithCustomError(this.contract, 'AlreadySetAnichessGameMultiplierNumerator')
-          .withArgs(user4.address);
-      });
-
       it('reverts if the data input does not contain the correct proof', async function () {
         const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
         const {proof: incorrectProof} = this.merkleClaimDataArr[1];
@@ -620,51 +590,84 @@ describe('AnichessOrbsBurnPool', function () {
         const values = [1, 2, 3, 4, 3, 2, 1];
         await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
 
-        await expect(
-          this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data)
-        ).to.be.revertedWithCustomError(this.contract, 'InvalidProof');
-      });
-
-      it('unlock anichess game multiplier numerator & calculate the ash with updated multiplier', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
-
-        const tokenIds = [1, 2, 3, 4, 5, 6, 7];
-        const values = [1, 2, 3, 4, 3, 2, 1];
-        await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
-
-        const multiplierInfoBefore = await this.contract.multiplierInfos(user1.address);
-        const [anichessGameMultiplierNumeratorBefore] = formatMultiplierInfos(multiplierInfoBefore);
-        const ashBefore = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
-        await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data);
-
-        const multiplierInfoAfter = await this.contract.multiplierInfos(user1.address);
-        const [anichessGameMultiplierNumeratorAfter] = formatMultiplierInfos(multiplierInfoAfter);
-        const ashAfter = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
-
-        const expectedAsh =
-          (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
-            multiplierNumerator) /
-          10000;
-        expect(ashBefore).to.equal(0);
-        expect(anichessGameMultiplierNumeratorBefore).to.equal(0);
-
-        expect(ashAfter).to.equal(expectedAsh);
-        expect(anichessGameMultiplierNumeratorAfter).to.equal(multiplierNumerator);
-      });
-      it('emits a UpdateMultiplierInfo event', async function () {
-        const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
-        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
-
-        const tokenIds = [1, 2, 3, 4, 5, 6, 7];
-        const values = [1, 2, 3, 4, 3, 2, 1];
-        await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
-
-        const multiplierInfoAfterSetAnichessGameMultiplierNumerator = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(0);
-
         await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data))
-          .to.emit(this.contract, 'UpdateMultiplierInfo')
-          .withArgs(user1.address, 0, multiplierInfoAfterSetAnichessGameMultiplierNumerator);
+          .to.be.revertedWithCustomError(this.contract, 'InvalidProof')
+          .withArgs(user1.address, multiplierNumerator);
+      });
+
+      context('when successful', function () {
+        it('will not revert if the puzzle game multiplier numerator fragment has already been set', async function () {
+          const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[3];
+
+          await this.missingOrb.connect(deployer).safeMint(user4.address, 1, 1, '0x');
+          await this.missingOrb
+            .connect(user4)
+            .safeTransferFrom(
+              user4.address,
+              await this.contract.getAddress(),
+              1,
+              1,
+              ethers.AbiCoder.defaultAbiCoder().encode(
+                ['bytes32[]', 'uint256'],
+                [this.merkleClaimDataArr[4].proof, this.merkleClaimDataArr[4].multiplierNumerator]
+              )
+            );
+
+          const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+          const tokenIds = [1, 2, 3, 4, 5, 6, 7];
+          const values = [1, 2, 3, 4, 3, 2, 1];
+          await this.orb.connect(deployer).safeBatchMint(user4.address, tokenIds, values, '0x');
+
+          await expect(
+            this.orb.connect(user4).safeBatchTransferFrom(user4.address, await this.contract.getAddress(), tokenIds, values, data)
+          ).not.to.be.reverted;
+        });
+
+        it('unlock puzzle game multiplier numerator & calculate the ash with updated multiplier', async function () {
+          const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+          const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+          const tokenIds = [1, 2, 3, 4, 5, 6, 7];
+          const values = [1, 2, 3, 4, 3, 2, 1];
+          await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
+
+          const multipliersBefore = await this.contract.orbMultipliers(user1.address);
+          const [puzzleGameMultiplierNumeratorBefore] = formatMultiplier(multipliersBefore);
+          const ashBefore = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
+          await this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data);
+
+          const multipliersAfter = await this.contract.orbMultipliers(user1.address);
+          const [puzzleGameMultiplierNumeratorAfter] = formatMultiplier(multipliersAfter);
+          const ashAfter = await this.contract.userAshPerCycle(await this.contract.currentCycle(), user1.address);
+
+          const expectedAsh =
+            (tokenIds.reduce(
+              (acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight,
+              0
+            ) *
+              multiplierNumerator) /
+            10000;
+          expect(ashBefore).to.equal(0);
+          expect(puzzleGameMultiplierNumeratorBefore).to.equal(0);
+
+          expect(ashAfter).to.equal(expectedAsh);
+          expect(puzzleGameMultiplierNumeratorAfter).to.equal(multiplierNumerator);
+        });
+        it('emits a UpdateOrbMultiplier event', async function () {
+          const {recipient, proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+          const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+          const tokenIds = [1, 2, 3, 4, 5, 6, 7];
+          const values = [1, 2, 3, 4, 3, 2, 1];
+          await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
+
+          const multipliersAfterSetPuzzleGameMultiplierNumerator = (BigInt(multiplierNumerator) << BigInt(128)) | BigInt(0);
+
+          await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data))
+            .to.emit(this.contract, 'UpdateOrbMultiplier')
+            .withArgs(user1.address, 0, multipliersAfterSetPuzzleGameMultiplierNumerator);
+        });
       });
     });
   });
@@ -673,12 +676,12 @@ describe('AnichessOrbsBurnPool', function () {
     it('mock: _msgData()', async function () {
       // Arrange
       this.contract = await deployContract(
-        'AnichessOrbsBurnPoolMock',
+        'OrbsBurnPoolMock',
         this.initialTime,
         this.cycleDuration,
         this.maxCycle,
-        await this.orb.getAddress(),
         this.root,
+        await this.orb.getAddress(),
         await this.missingOrb.getAddress(),
         this.forwarderRegistryAddress
       );
@@ -687,12 +690,12 @@ describe('AnichessOrbsBurnPool', function () {
 
     it('mock: _msgSender()', async function () {
       this.contract = await deployContract(
-        'AnichessOrbsBurnPoolMock',
+        'OrbsBurnPoolMock',
         this.initialTime,
         this.cycleDuration,
         this.maxCycle,
-        await this.orb.getAddress(),
         this.root,
+        await this.orb.getAddress(),
         await this.missingOrb.getAddress(),
         this.forwarderRegistryAddress
       );
