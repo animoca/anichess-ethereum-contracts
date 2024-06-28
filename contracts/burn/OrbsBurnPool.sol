@@ -280,6 +280,7 @@ contract OrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver {
                 uint256 newOrbMultiplier = (puzzleGameMultiplierNumerator << 128) | curOrbMultiplier;
                 orbMultipliers[userAddr] = newOrbMultiplier;
                 emit UpdateOrbMultiplier(userAddr, curOrbMultiplier, newOrbMultiplier);
+                curOrbMultiplier = newOrbMultiplier;
             }
 
             ashGenerated = (ashGenerated * puzzleGameMultiplierNumerator) / _DENOMINATOR;

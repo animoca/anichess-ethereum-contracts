@@ -560,7 +560,7 @@ describe('OrbsBurnPool', function () {
           .emit(this.orb, 'TransferBatch')
           .withArgs(await this.contract.getAddress(), ethers.ZeroAddress, tokenIds, values, '0x');
       });
-      it('should emit an GenerateAsh event', async function () {
+      it('should emit an GenerateAsh event (without data field)', async function () {
         const tokenIds = [1, 2, 3, 4, 5, 6, 7];
         const values = [1, 2, 3, 4, 3, 2, 1];
 
@@ -577,6 +577,29 @@ describe('OrbsBurnPool', function () {
         await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x'))
           .to.emit(this.contract, 'GenerateAsh')
           .withArgs(user1.address, await this.contract.currentCycle(), tokenIds, values, expectedAsh, totalAshPerCycle, multiplier);
+      });
+
+      it('should emit an GenerateAsh event (with data field)', async function () {
+        const {proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+        const tokenIds = [1, 2, 3, 4, 5, 6, 7];
+        const values = [1, 2, 3, 4, 3, 2, 1];
+
+        const currentTime = await helpers.time.latest();
+        const curCycle = await this.contract.currentCycle();
+        await helpers.time.setNextBlockTimestamp(currentTime + 10);
+        await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
+        const expectedAsh =
+          (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
+            multiplierNumerator) /
+          10000;
+        const totalAshPerCycle = Number(await this.contract.totalAshPerCycle(curCycle)) + expectedAsh;
+        const curOrbMultiplier = await this.contract.orbMultipliers(user1.address);
+        const newOrbMultiplier = (BigInt(multiplierNumerator) << BigInt(128)) | curOrbMultiplier;
+        await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data))
+          .to.emit(this.contract, 'GenerateAsh')
+          .withArgs(user1.address, await this.contract.currentCycle(), tokenIds, values, expectedAsh, totalAshPerCycle, newOrbMultiplier);
       });
     });
 
