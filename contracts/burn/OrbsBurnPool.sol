@@ -19,7 +19,7 @@ contract OrbsBurnPool is ERC1155TokenReceiver {
     uint256 public constant MISSING_ORB_TOKEN_ID = 1;
 
     /// @notice The token weights for calculating Ash.
-    uint256 public immutable BURN_WEIGHT_TOKEN_1; 
+    uint256 public immutable BURN_WEIGHT_TOKEN_1;
     uint256 public immutable BURN_WEIGHT_TOKEN_2;
     uint256 public immutable BURN_WEIGHT_TOKEN_3;
     uint256 public immutable BURN_WEIGHT_TOKEN_4;
@@ -76,7 +76,7 @@ contract OrbsBurnPool is ERC1155TokenReceiver {
 
     /// @notice Error thrown when the token weight is invalid.
     error InvalidTokenBurnWeight(uint256 weight);
-    
+
     /// @notice Error thrown when the token is not approved.
     error InvalidTokenAddress(address token);
 
