@@ -27,6 +27,8 @@ describe('OrbsBurnPool', function () {
     this.forwarderRegistryAddress = await getForwarderRegistryAddress();
     const operatorFilterRegistryAddress = await getOperatorFilterRegistryAddress();
 
+    this.tokenBurnWeights = [1, 3, 3, 5, 9, 25, 16];
+
     this.orb = await deployContract(
       'ERC1155FullBurn',
       'ORBNFT',
@@ -122,6 +124,7 @@ describe('OrbsBurnPool', function () {
       this.cycleDuration,
       this.maxCycle,
       this.root,
+      this.tokenBurnWeights,
       await this.orb.getAddress(),
       await this.missingOrb.getAddress()
     );
@@ -137,7 +140,16 @@ describe('OrbsBurnPool', function () {
   describe('constructor', function () {
     it('reverts if the cycle duration is 0', async function () {
       await expect(
-        deployContract('OrbsBurnPool', this.initialTime, 0, this.maxCycle, this.root, await this.orb.getAddress(), await this.missingOrb.getAddress())
+        deployContract(
+          'OrbsBurnPool',
+          this.initialTime,
+          0,
+          this.maxCycle,
+          this.root,
+          this.tokenBurnWeights,
+          await this.orb.getAddress(),
+          await this.missingOrb.getAddress()
+        )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroCycleDuration');
     });
     it('reverts if the max cycle is 0', async function () {
@@ -148,10 +160,43 @@ describe('OrbsBurnPool', function () {
           this.cycleDuration,
           0,
           this.root,
+          this.tokenBurnWeights,
           await this.orb.getAddress(),
           await this.missingOrb.getAddress()
         )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroMaxCycle');
+    });
+    it('reverts if the token burn weights length is not equal to 7', async function () {
+      try {
+        await deployContract(
+          'OrbsBurnPool',
+          this.initialTime,
+          this.cycleDuration,
+          this.maxCycle,
+          this.root,
+          this.tokenBurnWeights.slice(1),
+          await this.orb.getAddress(),
+          await this.missingOrb.getAddress()
+        );
+      } catch (e) {
+        expect(e.message).to.equal('array is wrong length');
+      }
+    });
+    it('reverts if the token burn weights value is 0', async function () {
+      await expect(
+        deployContract(
+          'OrbsBurnPool',
+          this.initialTime,
+          this.cycleDuration,
+          this.maxCycle,
+          this.root,
+          [0, 0, 0, 0, 0, 0, 0],
+          await this.orb.getAddress(),
+          await this.missingOrb.getAddress()
+        )
+      )
+        .to.be.revertedWithCustomError(this.contract, 'InvalidTokenBurnWeight')
+        .withArgs(0);
     });
     context('when successful', function () {
       it('sets the initial time', async function () {
@@ -171,6 +216,15 @@ describe('OrbsBurnPool', function () {
       });
       it('set the orb of power token contract', async function () {
         expect(await this.contract.ORB_OF_POWER()).to.equal(await this.orb.getAddress());
+      });
+      it('the token weight are set correctly', async function () {
+        expect(await this.contract.BURN_WEIGHT_TOKEN_1()).to.equal(1);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_2()).to.equal(3);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_3()).to.equal(3);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_4()).to.equal(5);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_5()).to.equal(9);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_6()).to.equal(25);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_7()).to.equal(16);
       });
     });
   });

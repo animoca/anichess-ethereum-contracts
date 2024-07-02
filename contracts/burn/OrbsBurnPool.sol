@@ -19,13 +19,13 @@ contract OrbsBurnPool is ERC1155TokenReceiver {
     uint256 public constant MISSING_ORB_TOKEN_ID = 1;
 
     /// @notice The token weights for calculating Ash.
-    uint256 public constant BURN_WEIGHT_TOKEN_1 = 1;
-    uint256 public constant BURN_WEIGHT_TOKEN_2 = 3;
-    uint256 public constant BURN_WEIGHT_TOKEN_3 = 3;
-    uint256 public constant BURN_WEIGHT_TOKEN_4 = 5;
-    uint256 public constant BURN_WEIGHT_TOKEN_5 = 9;
-    uint256 public constant BURN_WEIGHT_TOKEN_6 = 25;
-    uint256 public constant BURN_WEIGHT_TOKEN_7 = 16;
+    uint256 public immutable BURN_WEIGHT_TOKEN_1; 
+    uint256 public immutable BURN_WEIGHT_TOKEN_2;
+    uint256 public immutable BURN_WEIGHT_TOKEN_3;
+    uint256 public immutable BURN_WEIGHT_TOKEN_4;
+    uint256 public immutable BURN_WEIGHT_TOKEN_5;
+    uint256 public immutable BURN_WEIGHT_TOKEN_6;
+    uint256 public immutable BURN_WEIGHT_TOKEN_7;
 
     /// @notice The Riddle Of Chaos multiplier.
     uint256 public constant ROC_MULTIPLIER = 2;
@@ -74,6 +74,9 @@ contract OrbsBurnPool is ERC1155TokenReceiver {
     /// @notice Error thrown when the token ID is invalid.
     error InvalidTokenId(address token, uint256 tokenId);
 
+    /// @notice Error thrown when the token weight is invalid.
+    error InvalidTokenBurnWeight(uint256 weight);
+    
     /// @notice Error thrown when the token is not approved.
     error InvalidTokenAddress(address token);
 
@@ -111,6 +114,7 @@ contract OrbsBurnPool is ERC1155TokenReceiver {
         uint256 cycleDuration,
         uint256 maxCycle,
         bytes32 merkleRoot,
+        uint256[7] memory tokenBurnWeights,
         IERC1155Burnable orbOfPower,
         IERC1155Burnable missingOrb
     ) {
@@ -124,6 +128,29 @@ contract OrbsBurnPool is ERC1155TokenReceiver {
         if (maxCycle == 0) {
             revert ZeroMaxCycle();
         }
+
+        for (uint256 i = 0; i < tokenBurnWeights.length; i++) {
+            if (tokenBurnWeights[i] == 0) {
+                revert InvalidTokenBurnWeight(tokenBurnWeights[i]);
+            }
+
+            if (i == 0) {
+                BURN_WEIGHT_TOKEN_1 = tokenBurnWeights[i];
+            } else if (i == 1) {
+                BURN_WEIGHT_TOKEN_2 = tokenBurnWeights[i];
+            } else if (i == 2) {
+                BURN_WEIGHT_TOKEN_3 = tokenBurnWeights[i];
+            } else if (i == 3) {
+                BURN_WEIGHT_TOKEN_4 = tokenBurnWeights[i];
+            } else if (i == 4) {
+                BURN_WEIGHT_TOKEN_5 = tokenBurnWeights[i];
+            } else if (i == 5) {
+                BURN_WEIGHT_TOKEN_6 = tokenBurnWeights[i];
+            } else {
+                BURN_WEIGHT_TOKEN_7 = tokenBurnWeights[i];
+            }
+        }
+
         MAX_CYCLE = maxCycle;
         MERKLE_ROOT = merkleRoot;
         ORB_OF_POWER = orbOfPower;
