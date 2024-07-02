@@ -3,16 +3,13 @@ pragma solidity 0.8.22;
 
 import {ERC1155TokenReceiver} from "@animoca/ethereum-contracts/contracts/token/ERC1155/ERC1155TokenReceiver.sol";
 import {IERC1155Burnable} from "@animoca/ethereum-contracts/contracts/token/ERC1155/interfaces/IERC1155Burnable.sol";
-import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
-import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
-import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @title OrbsBurnPool Contract
  * @dev This contract allows users to burn tokens and calculate rewards based on the amount of tokens burned.
  */
-contract OrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver {
+contract OrbsBurnPool is ERC1155TokenReceiver {
     using MerkleProof for bytes32[];
 
     /// @notice The denominator for the multiplier.
@@ -106,7 +103,6 @@ contract OrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver {
      * @param orbOfPower The IERC1155Burnable erc1155 contract burn to generate ASH.
      * @param merkleRoot The Merkle root of the Puzzle Game multiplier claim.
      * @param missingOrb The IERC1155Burnable erc1155 missing orb contract for setting the token multiplier.
-     * @param forwarderRegistry The forwarder registry contract.
      * @dev Throws if the cycle duration is zero.
      * @dev Throws if the max cycle is zero.
      */
@@ -116,9 +112,8 @@ contract OrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver {
         uint256 maxCycle,
         bytes32 merkleRoot,
         IERC1155Burnable orbOfPower,
-        IERC1155Burnable missingOrb,
-        IForwarderRegistry forwarderRegistry
-    ) ForwarderRegistryContext(forwarderRegistry) {
+        IERC1155Burnable missingOrb
+    ) {
         INITIAL_TIME = initialTime;
 
         if (cycleDuration == 0) {
@@ -133,16 +128,6 @@ contract OrbsBurnPool is ForwarderRegistryContext, ERC1155TokenReceiver {
         MERKLE_ROOT = merkleRoot;
         ORB_OF_POWER = orbOfPower;
         MISSING_ORB = missingOrb;
-    }
-
-    /// @inheritdoc ForwarderRegistryContextBase
-    function _msgSender() internal view virtual override(ForwarderRegistryContextBase) returns (address) {
-        return ForwarderRegistryContextBase._msgSender();
-    }
-
-    /// @inheritdoc ForwarderRegistryContextBase
-    function _msgData() internal view virtual override(ForwarderRegistryContextBase) returns (bytes calldata) {
-        return ForwarderRegistryContextBase._msgData();
     }
 
     /**

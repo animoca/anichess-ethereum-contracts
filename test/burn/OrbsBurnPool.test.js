@@ -123,8 +123,7 @@ describe('OrbsBurnPool', function () {
       this.maxCycle,
       this.root,
       await this.orb.getAddress(),
-      await this.missingOrb.getAddress(),
-      this.forwarderRegistryAddress
+      await this.missingOrb.getAddress()
     );
 
     await this.orb.grantRole(await this.orb.MINTER_ROLE(), deployer.address);
@@ -138,16 +137,7 @@ describe('OrbsBurnPool', function () {
   describe('constructor', function () {
     it('reverts if the cycle duration is 0', async function () {
       await expect(
-        deployContract(
-          'OrbsBurnPool',
-          this.initialTime,
-          0,
-          this.maxCycle,
-          this.root,
-          await this.orb.getAddress(),
-          await this.missingOrb.getAddress(),
-          this.forwarderRegistryAddress
-        )
+        deployContract('OrbsBurnPool', this.initialTime, 0, this.maxCycle, this.root, await this.orb.getAddress(), await this.missingOrb.getAddress())
       ).to.be.revertedWithCustomError(this.contract, 'ZeroCycleDuration');
     });
     it('reverts if the max cycle is 0', async function () {
@@ -159,8 +149,7 @@ describe('OrbsBurnPool', function () {
           0,
           this.root,
           await this.orb.getAddress(),
-          await this.missingOrb.getAddress(),
-          this.forwarderRegistryAddress
+          await this.missingOrb.getAddress()
         )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroMaxCycle');
     });
@@ -692,38 +681,6 @@ describe('OrbsBurnPool', function () {
             .withArgs(user1.address, 0, multipliersAfterSetPuzzleGameMultiplierNumerator);
         });
       });
-    });
-  });
-
-  context('support meta-transactions', function () {
-    it('mock: _msgData()', async function () {
-      // Arrange
-      this.contract = await deployContract(
-        'OrbsBurnPoolMock',
-        this.initialTime,
-        this.cycleDuration,
-        this.maxCycle,
-        this.root,
-        await this.orb.getAddress(),
-        await this.missingOrb.getAddress(),
-        this.forwarderRegistryAddress
-      );
-      expect(await this.contract.connect(user1).__msgData()).to.be.exist;
-    });
-
-    it('mock: _msgSender()', async function () {
-      this.contract = await deployContract(
-        'OrbsBurnPoolMock',
-        this.initialTime,
-        this.cycleDuration,
-        this.maxCycle,
-        this.root,
-        await this.orb.getAddress(),
-        await this.missingOrb.getAddress(),
-        this.forwarderRegistryAddress
-      );
-
-      expect(await this.contract.connect(user1).__msgSender()).to.be.exist;
     });
   });
 });
