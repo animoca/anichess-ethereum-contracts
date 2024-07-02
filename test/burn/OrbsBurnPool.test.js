@@ -27,6 +27,8 @@ describe('OrbsBurnPool', function () {
     this.forwarderRegistryAddress = await getForwarderRegistryAddress();
     const operatorFilterRegistryAddress = await getOperatorFilterRegistryAddress();
 
+    this.tokenBurnWeights = [1, 3, 3, 5, 9, 25, 16];
+
     this.orb = await deployContract(
       'ERC1155FullBurn',
       'ORBNFT',
@@ -122,9 +124,9 @@ describe('OrbsBurnPool', function () {
       this.cycleDuration,
       this.maxCycle,
       this.root,
+      this.tokenBurnWeights,
       await this.orb.getAddress(),
-      await this.missingOrb.getAddress(),
-      this.forwarderRegistryAddress
+      await this.missingOrb.getAddress()
     );
 
     await this.orb.grantRole(await this.orb.MINTER_ROLE(), deployer.address);
@@ -144,9 +146,9 @@ describe('OrbsBurnPool', function () {
           0,
           this.maxCycle,
           this.root,
+          this.tokenBurnWeights,
           await this.orb.getAddress(),
-          await this.missingOrb.getAddress(),
-          this.forwarderRegistryAddress
+          await this.missingOrb.getAddress()
         )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroCycleDuration');
     });
@@ -158,11 +160,43 @@ describe('OrbsBurnPool', function () {
           this.cycleDuration,
           0,
           this.root,
+          this.tokenBurnWeights,
           await this.orb.getAddress(),
-          await this.missingOrb.getAddress(),
-          this.forwarderRegistryAddress
+          await this.missingOrb.getAddress()
         )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroMaxCycle');
+    });
+    it('reverts if the token burn weights length is not equal to 7', async function () {
+      try {
+        await deployContract(
+          'OrbsBurnPool',
+          this.initialTime,
+          this.cycleDuration,
+          this.maxCycle,
+          this.root,
+          this.tokenBurnWeights.slice(1),
+          await this.orb.getAddress(),
+          await this.missingOrb.getAddress()
+        );
+      } catch (e) {
+        expect(e.message).to.equal('array is wrong length');
+      }
+    });
+    it('reverts if the token burn weights value is 0', async function () {
+      await expect(
+        deployContract(
+          'OrbsBurnPool',
+          this.initialTime,
+          this.cycleDuration,
+          this.maxCycle,
+          this.root,
+          [0, 0, 0, 0, 0, 0, 0],
+          await this.orb.getAddress(),
+          await this.missingOrb.getAddress()
+        )
+      )
+        .to.be.revertedWithCustomError(this.contract, 'InvalidTokenBurnWeight')
+        .withArgs(0);
     });
     context('when successful', function () {
       it('sets the initial time', async function () {
@@ -182,6 +216,15 @@ describe('OrbsBurnPool', function () {
       });
       it('set the orb of power token contract', async function () {
         expect(await this.contract.ORB_OF_POWER()).to.equal(await this.orb.getAddress());
+      });
+      it('the token weight are set correctly', async function () {
+        expect(await this.contract.BURN_WEIGHT_TOKEN_1()).to.equal(1);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_2()).to.equal(3);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_3()).to.equal(3);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_4()).to.equal(5);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_5()).to.equal(9);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_6()).to.equal(25);
+        expect(await this.contract.BURN_WEIGHT_TOKEN_7()).to.equal(16);
       });
     });
   });
@@ -560,7 +603,7 @@ describe('OrbsBurnPool', function () {
           .emit(this.orb, 'TransferBatch')
           .withArgs(await this.contract.getAddress(), ethers.ZeroAddress, tokenIds, values, '0x');
       });
-      it('should emit an GenerateAsh event', async function () {
+      it('should emit an GenerateAsh event (without data field)', async function () {
         const tokenIds = [1, 2, 3, 4, 5, 6, 7];
         const values = [1, 2, 3, 4, 3, 2, 1];
 
@@ -577,6 +620,29 @@ describe('OrbsBurnPool', function () {
         await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, '0x'))
           .to.emit(this.contract, 'GenerateAsh')
           .withArgs(user1.address, await this.contract.currentCycle(), tokenIds, values, expectedAsh, totalAshPerCycle, multiplier);
+      });
+
+      it('should emit an GenerateAsh event (with data field)', async function () {
+        const {proof, multiplierNumerator} = this.merkleClaimDataArr[0];
+        const data = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'uint256'], [proof, multiplierNumerator]);
+
+        const tokenIds = [1, 2, 3, 4, 5, 6, 7];
+        const values = [1, 2, 3, 4, 3, 2, 1];
+
+        const currentTime = await helpers.time.latest();
+        const curCycle = await this.contract.currentCycle();
+        await helpers.time.setNextBlockTimestamp(currentTime + 10);
+        await this.orb.connect(deployer).safeBatchMint(user1.address, tokenIds, values, '0x');
+        const expectedAsh =
+          (tokenIds.reduce((acc, tokenId, index) => acc + values[index] * this.tokenConfigs.find((config) => config.tokenId === tokenId).weight, 0) *
+            multiplierNumerator) /
+          10000;
+        const totalAshPerCycle = Number(await this.contract.totalAshPerCycle(curCycle)) + expectedAsh;
+        const curOrbMultiplier = await this.contract.orbMultipliers(user1.address);
+        const newOrbMultiplier = (BigInt(multiplierNumerator) << BigInt(128)) | curOrbMultiplier;
+        await expect(this.orb.connect(user1).safeBatchTransferFrom(user1.address, await this.contract.getAddress(), tokenIds, values, data))
+          .to.emit(this.contract, 'GenerateAsh')
+          .withArgs(user1.address, await this.contract.currentCycle(), tokenIds, values, expectedAsh, totalAshPerCycle, newOrbMultiplier);
       });
     });
 
@@ -669,38 +735,6 @@ describe('OrbsBurnPool', function () {
             .withArgs(user1.address, 0, multipliersAfterSetPuzzleGameMultiplierNumerator);
         });
       });
-    });
-  });
-
-  context('support meta-transactions', function () {
-    it('mock: _msgData()', async function () {
-      // Arrange
-      this.contract = await deployContract(
-        'OrbsBurnPoolMock',
-        this.initialTime,
-        this.cycleDuration,
-        this.maxCycle,
-        this.root,
-        await this.orb.getAddress(),
-        await this.missingOrb.getAddress(),
-        this.forwarderRegistryAddress
-      );
-      expect(await this.contract.connect(user1).__msgData()).to.be.exist;
-    });
-
-    it('mock: _msgSender()', async function () {
-      this.contract = await deployContract(
-        'OrbsBurnPoolMock',
-        this.initialTime,
-        this.cycleDuration,
-        this.maxCycle,
-        this.root,
-        await this.orb.getAddress(),
-        await this.missingOrb.getAddress(),
-        this.forwarderRegistryAddress
-      );
-
-      expect(await this.contract.connect(user1).__msgSender()).to.be.exist;
     });
   });
 });
