@@ -4,11 +4,7 @@ const {MerkleTree} = require('merkletreejs');
 const keccak256 = require('keccak256');
 const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
-const {
-  getOperatorFilterRegistryAddress,
-  getForwarderRegistryAddress,
-  getTokenMetadataResolverWithBaseURIAddress,
-} = require('@animoca/ethereum-contracts/test/helpers/registries');
+const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
 const helpers = require('@nomicfoundation/hardhat-network-helpers');
 
 describe('PointsMerkleClaim', function () {
@@ -104,7 +100,11 @@ describe('PointsMerkleClaim', function () {
         expect(await this.contract.root()).to.equal(this.root);
       });
       it('does not set paused', async function () {
+        await this.contract.connect(deployer).setMerkleRoot(this.root);
         expect(await this.contract.paused()).to.equal(false);
+      });
+      it('emits a MerkleRootSet event', async function () {
+        await expect(this.contract.connect(deployer).setMerkleRoot(this.root)).to.emit(this.contract, 'MerkleRootSet').withArgs(this.root);
       });
     });
   });
@@ -128,6 +128,10 @@ describe('PointsMerkleClaim', function () {
         await this.contract.connect(deployer).pause();
         await this.contract.connect(deployer).setMerkleRootAndUnpause(this.root);
         expect(await this.contract.paused()).to.equal(false);
+      });
+      it('emits a MerkleRootSet event', async function () {
+        await this.contract.connect(deployer).pause();
+        await expect(this.contract.connect(deployer).setMerkleRootAndUnpause(this.root)).to.emit(this.contract, 'MerkleRootSet').withArgs(this.root);
       });
     });
   });

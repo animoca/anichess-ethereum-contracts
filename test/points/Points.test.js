@@ -1,15 +1,8 @@
-const {ethers, userConfig} = require('hardhat');
+const {ethers} = require('hardhat');
 const {expect} = require('chai');
-const {MerkleTree} = require('merkletreejs');
-const keccak256 = require('keccak256');
 const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
-const {
-  getOperatorFilterRegistryAddress,
-  getForwarderRegistryAddress,
-  getTokenMetadataResolverWithBaseURIAddress,
-} = require('@animoca/ethereum-contracts/test/helpers/registries');
-const helpers = require('@nomicfoundation/hardhat-network-helpers');
+const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
 
 describe('Points', function () {
   before(async function () {
