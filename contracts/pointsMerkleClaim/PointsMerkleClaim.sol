@@ -28,14 +28,14 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
 
     /// @notice Emitted when a new merkle root is set.
     /// @param root The new merkle root.
-    event MerkleRootSet(bytes32 root);
+    event MerkleRootSet(bytes32 indexed root);
 
     /// @notice Emitted when a payout is claimed.]
     /// @param root The merkle root on which the claim was made.
     /// @param holder The holder of the points.
     /// @param amount The amount of points are claimed.
     /// @param depositReasonCode The deposit reason of the claim.
-    event PayoutClaimed(bytes32 indexed root, address indexed holder, uint256 amount, bytes32 depositReasonCode);
+    event PayoutClaimed(bytes32 indexed root, address indexed holder, uint256 amount, bytes32 indexed depositReasonCode);
 
     /// @notice Thrown when the given forwarder registry address is zero address.
     error InvalidForwarderRegistry();
@@ -115,6 +115,7 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
     /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
     /// @dev Reverts with {NotPaused} if it is not paused.
     /// @dev Emits a {MerkleRootSet} event.
+    /// @dev Emits a {Unpause} event.
     /// @param merkleRoot The merkle root to set.
 
     function setMerkleRootAndUnpause(bytes32 merkleRoot) external {

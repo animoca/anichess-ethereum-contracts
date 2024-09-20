@@ -29,11 +29,11 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
 
     /// @notice Emitted when one or more reason code(s) are added to the comsume reason code mapping.
     /// @param reasonCodes The reason codes added to the mapping.
-    event ConsumeReasonCodesAdded(bytes32[] reasonCodes);
+    event ConsumeReasonCodesAdded(bytes32[] indexed reasonCodes);
 
     /// @notice Emitted when one or more reason code(s) are removed from the comsume reason code mapping.
     /// @param reasonCodes The reason codes removed from the mapping.
-    event ConsumeReasonCodesRemoved(bytes32[] reasonCodes);
+    event ConsumeReasonCodesRemoved(bytes32[] indexed reasonCodes);
 
     /// @notice Emitted when an amount is deposited to a balance.
     /// @param sender The sender of the deposit.
@@ -101,7 +101,7 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
     /// @dev Reverts if sender does not have Admin role.
     /// @dev Reverts if the given reason codes array is empty.
     /// @dev Reverts if any of the given reason codes already exists in the mapping.
-    /// @dev Emits a {ConsumeReasonCodeAdded} event if all the given reason codes are successfully added.
+    /// @dev Emits a {ConsumeReasonCodesAdded} event if all the given reason codes are successfully added.
     /// @param reasonCodes Array of reason codes to add.
     function addConsumeReasonCodes(bytes32[] calldata reasonCodes) external {
         AccessControlStorage.layout().enforceHasRole(ADMIN_ROLE, _msgSender());
@@ -122,7 +122,7 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
     /// @dev Reverts if sender does not have Admin role.
     /// @dev Reverts if the given reason codes array is empty.
     /// @dev Reverts if any of the given reason codes do not exist.
-    /// @dev Emits a {ConsumeReasonCodeRemoved} event if all the given reason codes are successfully removed.
+    /// @dev Emits a {ConsumeReasonCodesRemoved} event if all the given reason codes are successfully removed.
     /// @param reasonCodes Array of reason codes to remove.
     function removeConsumeReasonCodes(bytes32[] calldata reasonCodes) external {
         AccessControlStorage.layout().enforceHasRole(ADMIN_ROLE, _msgSender());
