@@ -249,8 +249,8 @@ describe('Points', function () {
         const signature = await user1.signMessage(ethers.getBytes(messageHash));
         const {v, r, s} = ethers.Signature.from(signature);
 
-        await this.contract.connect(spender).consume(user1.address, amount, this.allowedConsumeReasonCodes[0], deadline, spender.address, v, r, s);
-        const balance = await this.contract.balances(user1.address);
+        await this.contract.connect(spender).consume(holderAddress, amount, this.allowedConsumeReasonCodes[0], deadline, spenderAddress, v, r, s);
+        const balance = await this.contract.balances(holderAddress);
         expect(balance).equal(0);
       });
 
@@ -269,10 +269,10 @@ describe('Points', function () {
         const {v, r, s} = ethers.Signature.from(signature);
 
         await expect(
-          this.contract.connect(spender).consume(user1.address, amount, this.allowedConsumeReasonCodes[0], deadline, spender.address, v, r, s)
+          this.contract.connect(spender).consume(holderAddress, amount, this.allowedConsumeReasonCodes[0], deadline, spenderAddress, v, r, s)
         )
           .to.emit(this.contract, 'Consumed')
-          .withArgs(holderAddress, reasonCode, spenderAddress, amount);
+          .withArgs(spenderAddress, reasonCode, holderAddress, amount);
       });
     });
   });
@@ -382,7 +382,7 @@ describe('Points', function () {
 
         await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, ethers.Typed.overrides({})))
           .to.emit(this.contract, 'Consumed')
-          .withArgs(user1.address, reasonCode, spender.address, amount);
+          .withArgs(spender.address, reasonCode, user1.address, amount);
       });
     });
   });

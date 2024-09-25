@@ -11,6 +11,7 @@ import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/me
 import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {Paused, NotPaused} from "@animoca/ethereum-contracts/contracts/lifecycle/errors/PauseErrors.sol";
 
 contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryContext {
     using MerkleProof for bytes32[];
@@ -35,7 +36,7 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
     /// @param holder The holder of the points.
     /// @param amount The amount of points are claimed.
     /// @param depositReasonCode The deposit reason of the claim.
-    event PayoutClaimed(bytes32 indexed root, address indexed holder, uint256 amount, bytes32 indexed depositReasonCode);
+    event PayoutClaimed(bytes32 indexed root, address indexed holder, bytes32 indexed depositReasonCode, uint256 amount);
 
     /// @notice Thrown when the given forwarder registry address is zero address.
     error InvalidForwarderRegistry();
@@ -69,12 +70,6 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
     /// @param amount The amount of the claim.
     error InvalidClaimAmount(uint256 amount);
 
-    /// @notice Throws when the contract is paused but trying to pause or claim payout.
-    error Paused();
-
-    /// @notice Throws when the contract is not paused but trying to unpause.
-    error NotPaused();
-
     constructor(
         address pointsContractAddress,
         IForwarderRegistry forwarderRegistry_
@@ -103,8 +98,8 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
     /// @dev Emits a {MerkleRootSet} event.
     /// @param merkleRoot The merkle root to set.
 
-    function setMerkleRoot(bytes32 merkleRoot) external {
-        ContractOwnershipStorage.layout().enforceIsContractOwner(msg.sender);
+    function setMerkleRoot(bytes32 merkleRoot) public {
+        ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
 
         root = merkleRoot;
 
@@ -119,15 +114,12 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
     /// @param merkleRoot The merkle root to set.
 
     function setMerkleRootAndUnpause(bytes32 merkleRoot) external {
-        ContractOwnershipStorage.layout().enforceIsContractOwner(msg.sender);
         if (!PauseStorage.layout().paused()) {
             revert NotPaused();
         }
 
-        root = merkleRoot;
+        setMerkleRoot(merkleRoot);
         PauseStorage.layout().unpause();
-
-        emit MerkleRootSet(merkleRoot);
     }
 
     /// @notice Executes the payout for a given holder address (anyone can call this function).
@@ -169,6 +161,6 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
 
         POINTS_CONTRACT.deposit(holder, amount, depositReasonCode);
 
-        emit PayoutClaimed(root, holder, amount, depositReasonCode);
+        emit PayoutClaimed(root, holder, depositReasonCode, amount);
     }
 }

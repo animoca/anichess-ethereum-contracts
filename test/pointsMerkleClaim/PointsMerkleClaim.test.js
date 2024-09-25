@@ -111,6 +111,7 @@ describe('PointsMerkleClaim', function () {
 
   describe('setMerkleRootAndUnpause(bytes32 merkleRoot)', function () {
     it('reverts with {NotContractOwner} if the caller is not the owner', async function () {
+      await expect(this.contract.connect(deployer).pause());
       await expect(this.contract.connect(other).setMerkleRootAndUnpause(this.root)).to.revertedWithCustomError(this.contract, 'NotContractOwner');
     });
 
@@ -246,7 +247,7 @@ describe('PointsMerkleClaim', function () {
 
         await expect(this.contract.connect(other).claimPayout(holder, amount, depositReasonCode, deadline, proof))
           .to.emit(this.contract, 'PayoutClaimed')
-          .withArgs(this.root, holder, amount, depositReasonCode);
+          .withArgs(this.root, holder, depositReasonCode, amount);
       });
     });
   });

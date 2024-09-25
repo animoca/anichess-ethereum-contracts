@@ -47,7 +47,7 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
     /// @param reasonCode The reason code of the consumption.
     /// @param operator The sender of the consumption.
     /// @param amount The amount consumed.
-    event Consumed(address indexed holder, bytes32 indexed reasonCode, address indexed operator, uint256 amount);
+    event Consumed(address indexed operator, bytes32 indexed reasonCode, address indexed holder, uint256 amount);
 
     /// @notice Thrown when the given forwarder registry address is zero address.
     error InvalidForwarderRegistry();
@@ -109,7 +109,7 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
             revert ConsumeReasonCodesArrayEmpty();
         }
 
-        for (uint256 i; i < reasonCodes.length; ++i) {
+        for (uint256 i = 0; i < reasonCodes.length; ++i) {
             if (allowedConsumeReasonCodes[reasonCodes[i]]) {
                 revert ConsumeReasonCodeAlreadyExists(reasonCodes[i]);
             }
@@ -130,7 +130,7 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
             revert ConsumeReasonCodesArrayEmpty();
         }
 
-        for (uint256 i; i < reasonCodes.length; ++i) {
+        for (uint256 i = 0; i < reasonCodes.length; ++i) {
             if (!allowedConsumeReasonCodes[reasonCodes[i]]) {
                 revert ConsumeReasonCodeDoesNotExist(reasonCodes[i]);
             }
@@ -176,7 +176,7 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
 
         balances[holder] = balance - amount;
 
-        emit Consumed(holder, consumeReasonCode, _msgSender(), amount);
+        emit Consumed(_msgSender(), consumeReasonCode, holder, amount);
     }
 
     /// @notice Called with a signature by an appointed spender to consume a given amount from the balance of a given holder address.
