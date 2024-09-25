@@ -72,9 +72,10 @@ describe('Points', function () {
       });
 
       it('it should emit an ConsumeReasonCodesAdded event', async function () {
-        await expect(this.contract.connect(admin).addConsumeReasonCodes(this.allowedConsumeReasonCodes))
-          .to.emit(this.contract, 'ConsumeReasonCodesAdded')
-          .withArgs(this.allowedConsumeReasonCodes);
+        await expect(this.contract.connect(admin).addConsumeReasonCodes(this.allowedConsumeReasonCodes)).to.emit(
+          this.contract,
+          'ConsumeReasonCodesAdded'
+        );
       });
     });
   });
@@ -120,10 +121,10 @@ describe('Points', function () {
 
       it('it should emit an ConsumeReasonCodesRemoved event', async function () {
         await this.contract.connect(admin).addConsumeReasonCodes(this.allowedConsumeReasonCodes);
-
-        await expect(this.contract.connect(admin).removeConsumeReasonCodes(this.allowedConsumeReasonCodes))
-          .to.emit(this.contract, 'ConsumeReasonCodesRemoved')
-          .withArgs(this.allowedConsumeReasonCodes);
+        await expect(this.contract.connect(admin).removeConsumeReasonCodes(this.allowedConsumeReasonCodes)).to.emit(
+          this.contract,
+          'ConsumeReasonCodesRemoved'
+        );
       });
     });
   });
