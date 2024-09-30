@@ -1,6 +1,6 @@
 {
   "name": "@animoca/anichess-ethereum-contracts",
-  "version": "2.2.0",
+  "version": "2.2.0.pre-1",
   "description": "Solidity contracts for the Anichess project.",
   "author": "Animoca Brands",
   "license": "MIT",
