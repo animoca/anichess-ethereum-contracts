@@ -111,7 +111,7 @@ describe('PointsMerkleClaim', function () {
 
   describe('setMerkleRootAndUnpause(bytes32 merkleRoot)', function () {
     it('reverts with {NotContractOwner} if the caller is not the owner', async function () {
-      await expect(this.contract.connect(deployer).pause());
+      await this.contract.connect(deployer).pause();
       await expect(this.contract.connect(other).setMerkleRootAndUnpause(this.root)).to.revertedWithCustomError(this.contract, 'NotContractOwner');
     });
 
