@@ -77,9 +77,6 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
     /// @notice Thrown when the signature is expired.
     error ExpiredSignature();
 
-    /// @notice Thrown when the msg sender address is not appointed by signer.
-    error SenderIsNotAppointedSpender();
-
     /// @dev Reverts if the given address is invalid (equal to ZeroAddress).
     constructor(IForwarderRegistry forwarderRegistry_) ForwarderRegistryContext(forwarderRegistry_) ContractOwnership(_msgSender()) {
         if (address(forwarderRegistry_) == address(0)) {
@@ -192,30 +189,17 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
     /// @param deadline The deadline of the signature.
-    /// @param spender The sender address approved and expected to be included in the signature.
     /// @param v v value of the signature.
     /// @param r r value of the signature.
     /// @param s s value of the signature.
-    function consume(
-        address holder,
-        uint256 amount,
-        bytes32 consumeReasonCode,
-        uint256 deadline,
-        address spender,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external {
+    function consume(address holder, uint256 amount, bytes32 consumeReasonCode, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
         if (block.timestamp > deadline) {
             revert ExpiredSignature();
         }
         address sender = _msgSender();
-        if (spender != sender) {
-            revert SenderIsNotAppointedSpender();
-        }
-        bytes32 nonceKey = keccak256(abi.encodePacked(holder, spender));
+        bytes32 nonceKey = keccak256(abi.encodePacked(holder, sender));
         uint256 nonce = nonces[nonceKey];
-        bytes32 messageHash = _preparePayload(holder, spender, amount, consumeReasonCode, deadline, nonce);
+        bytes32 messageHash = _preparePayload(holder, sender, amount, consumeReasonCode, deadline, nonce);
         bytes32 messageDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
 
         bytes memory signature = abi.encodePacked(r, s, v);

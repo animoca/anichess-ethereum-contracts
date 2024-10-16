@@ -170,22 +170,10 @@ describe('Points', function () {
       const r = '0x0000000000000000000000000000000000000000000000000000000000000000';
       const s = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-      await expect(
-        this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, spender.address, v, r, s)
-      ).to.revertedWithCustomError(this.contract, 'ExpiredSignature');
-    });
-
-    it('Reverts if sender is not appointed spender', async function () {
-      const amount = 100;
-      const reasonCode = this.allowedConsumeReasonCodes[0];
-      const deadline = 999999999999999;
-      const v = 0;
-      const r = '0x0000000000000000000000000000000000000000000000000000000000000000';
-      const s = '0x0000000000000000000000000000000000000000000000000000000000000000';
-
-      await expect(
-        this.contract.connect(other).consume(user1.address, amount, reasonCode, deadline, spender.address, v, r, s)
-      ).to.revertedWithCustomError(this.contract, 'SenderIsNotAppointedSpender');
+      await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, v, r, s)).to.revertedWithCustomError(
+        this.contract,
+        'ExpiredSignature'
+      );
     });
 
     it('Reverts if the signature is not correct (holder, spender, amount, reaconCode, current nonce)', async function () {
@@ -195,9 +183,10 @@ describe('Points', function () {
       const signature =
         '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
       const {v, r, s} = ethers.Signature.from(signature);
-      await expect(
-        this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, spender.address, v, r, s)
-      ).to.revertedWithCustomError(this.contract, 'InvalidSignature');
+      await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, v, r, s)).to.revertedWithCustomError(
+        this.contract,
+        'InvalidSignature'
+      );
     });
 
     it('Reverts if the signer does not have enough balance', async function () {
@@ -210,7 +199,7 @@ describe('Points', function () {
       const signature = await user1.signMessage(ethers.getBytes(messageHash));
       const {v, r, s} = ethers.Signature.from(signature);
 
-      await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, spender.address, v, r, s))
+      await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, v, r, s))
         .to.revertedWithCustomError(this.contract, 'InsufficientBalance')
         .withArgs(holderAddress, amount);
       const balance = await this.contract.balances(user1.address);
@@ -229,7 +218,7 @@ describe('Points', function () {
       const signature = await user1.signMessage(ethers.getBytes(messageHash));
       const {v, r, s} = ethers.Signature.from(signature);
 
-      await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, spender.address, v, r, s))
+      await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, v, r, s))
         .to.revertedWithCustomError(this.contract, 'ConsumeReasonCodeDoesNotExist')
         .withArgs(reasonCode);
     });
@@ -249,7 +238,7 @@ describe('Points', function () {
         const signature = await user1.signMessage(ethers.getBytes(messageHash));
         const {v, r, s} = ethers.Signature.from(signature);
 
-        await this.contract.connect(spender).consume(holderAddress, amount, this.allowedConsumeReasonCodes[0], deadline, spenderAddress, v, r, s);
+        await this.contract.connect(spender).consume(holderAddress, amount, this.allowedConsumeReasonCodes[0], deadline, v, r, s);
         const balance = await this.contract.balances(holderAddress);
         expect(balance).equal(0);
       });
@@ -268,9 +257,7 @@ describe('Points', function () {
         const signature = await user1.signMessage(ethers.getBytes(messageHash));
         const {v, r, s} = ethers.Signature.from(signature);
 
-        await expect(
-          this.contract.connect(spender).consume(holderAddress, amount, this.allowedConsumeReasonCodes[0], deadline, spenderAddress, v, r, s)
-        )
+        await expect(this.contract.connect(spender).consume(holderAddress, amount, this.allowedConsumeReasonCodes[0], deadline, v, r, s))
           .to.emit(this.contract, 'Consumed')
           .withArgs(spenderAddress, reasonCode, holderAddress, amount);
       });
