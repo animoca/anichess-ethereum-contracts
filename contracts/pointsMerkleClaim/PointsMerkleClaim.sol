@@ -128,11 +128,13 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
 
         PauseStorage.layout().enforceIsNotPaused();
 
-        if (root == 0) {
+        bytes32 _root = root;
+        if (_root == 0) {
             revert MerkleRootNotExists();
         }
+
         bytes32 leaf = keccak256(abi.encodePacked(holder, amount, depositReasonCode, deadline));
-        if (!proof.verifyCalldata(root, leaf)) {
+        if (!proof.verifyCalldata(_root, leaf)) {
             revert InvalidProof(holder, amount, depositReasonCode, deadline);
         }
 
@@ -144,6 +146,6 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
 
         POINTS_CONTRACT.deposit(holder, amount, depositReasonCode);
 
-        emit PayoutClaimed(root, holder, depositReasonCode, amount);
+        emit PayoutClaimed(_root, holder, depositReasonCode, amount);
     }
 }
