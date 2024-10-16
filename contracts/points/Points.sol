@@ -10,10 +10,11 @@ import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/me
 import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {IPoints} from "./interface/IPoints.sol";
 
 /// @title Points
 /// @notice This contract is designed for managing the point balances of Anichess Game.
-contract Points is AccessControl, ForwarderRegistryContext {
+contract Points is AccessControl, ForwarderRegistryContext, IPoints {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using AccessControlStorage for AccessControlStorage.Layout;
 
