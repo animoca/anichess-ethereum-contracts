@@ -11,7 +11,7 @@ import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/me
 import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {Paused, NotPaused} from "@animoca/ethereum-contracts/contracts/lifecycle/errors/PauseErrors.sol";
+import {Paused} from "@animoca/ethereum-contracts/contracts/lifecycle/errors/PauseErrors.sol";
 
 contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryContext {
     using MerkleProof for bytes32[];
@@ -104,22 +104,6 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
         root = merkleRoot;
 
         emit MerkleRootSet(merkleRoot);
-    }
-
-    /// @notice Sets the new merkle root for claiming and unpause if already paused.
-    /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
-    /// @dev Reverts with {NotPaused} if it is not paused.
-    /// @dev Emits a {MerkleRootSet} event.
-    /// @dev Emits a {Unpause} event.
-    /// @param merkleRoot The merkle root to set.
-
-    function setMerkleRootAndUnpause(bytes32 merkleRoot) external {
-        if (!PauseStorage.layout().paused()) {
-            revert NotPaused();
-        }
-
-        setMerkleRoot(merkleRoot);
-        PauseStorage.layout().unpause();
     }
 
     /// @notice Executes the payout for a given holder address (anyone can call this function).
