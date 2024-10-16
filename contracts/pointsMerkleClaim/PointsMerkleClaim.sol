@@ -35,7 +35,8 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
     /// @param holder The holder of the points.
     /// @param amount The amount of points are claimed.
     /// @param depositReasonCode The deposit reason of the claim.
-    event PayoutClaimed(bytes32 indexed root, address indexed holder, bytes32 indexed depositReasonCode, uint256 amount);
+    /// @param deadline The deadline of the claim.
+    event PayoutClaimed(bytes32 indexed root, address indexed holder, bytes32 indexed depositReasonCode, uint256 amount, uint256 deadline);
 
     /// @notice Thrown when the given forwarder registry address is zero address.
     error InvalidForwarderRegistry();
@@ -146,6 +147,6 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
 
         POINTS_CONTRACT.deposit(holder, amount, depositReasonCode);
 
-        emit PayoutClaimed(_root, holder, depositReasonCode, amount);
+        emit PayoutClaimed(_root, holder, depositReasonCode, amount, deadline);
     }
 }

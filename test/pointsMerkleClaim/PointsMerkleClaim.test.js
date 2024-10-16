@@ -219,7 +219,7 @@ describe('PointsMerkleClaim', function () {
 
         await expect(this.contract.connect(other).claimPayout(holder, amount, depositReasonCode, deadline, proof))
           .to.emit(this.contract, 'PayoutClaimed')
-          .withArgs(this.root, holder, depositReasonCode, amount);
+          .withArgs(this.root, holder, depositReasonCode, amount, deadline);
       });
     });
   });
