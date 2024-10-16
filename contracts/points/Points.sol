@@ -90,11 +90,6 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
         if (address(forwarderRegistry_) == address(0)) {
             revert InvalidForwarderRegistry();
         }
-
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
     }
 
     /// @notice retrieve original msg sender of the meta transaction
@@ -244,12 +239,5 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
         address sender = _msgSender();
         AccessControlStorage.layout().enforceHasRole(SPENDER_ROLE, sender);
         _consume(sender, holder, amount, consumeReasonCode);
-    }
-
-    /// @notice Returns the EIP-712 DOMAIN_SEPARATOR.
-    /// @return domainSeparator The EIP-712 domain separator.
-    // solhint-disable-next-line func-name-mixedcase
-    function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator) {
-        return _domainSeparatorV4();
     }
 }

@@ -57,12 +57,6 @@ describe('Points', function () {
     });
   });
 
-  describe('DOMAIN_SEPARATOR()', function () {
-    it('returns the correct domain separator', async function () {
-      expect(await this.contract.DOMAIN_SEPARATOR()).to.equal(ethers.TypedDataEncoder.hashDomain(this.domain));
-    });
-  });
-
   describe('addConsumeReasonCodes(bytes32[] calldata reasonCodes)', function () {
     it('Reverts if the sender does not have Admin role', async function () {
       await expect(this.contract.connect(other).addConsumeReasonCodes(this.allowedConsumeReasonCodes))
