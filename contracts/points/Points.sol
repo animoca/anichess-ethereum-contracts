@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.22;
 
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {AccessControlStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/AccessControlStorage.sol";
 import {AccessControl} from "@animoca/ethereum-contracts/contracts/access/AccessControl.sol";
@@ -14,15 +15,13 @@ import {IPoints} from "./interface/IPoints.sol";
 
 /// @title Points
 /// @notice This contract is designed for managing the point balances of Anichess Game.
-contract Points is AccessControl, ForwarderRegistryContext, IPoints {
+contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using AccessControlStorage for AccessControlStorage.Layout;
     using ECDSA for bytes32;
 
-    bytes32 private constant EIP712_DOMAIN_NAME = keccak256("Points");
     bytes32 private constant CONSUME_TYPEHASH =
         keccak256("Consume(address holder,address spender,uint256 amount,bytes32 reasonCode,uint256 deadline,uint256 nonce)");
-    bytes32 private immutable _DEPLOYMENT_DOMAIN_SEPARATOR;
 
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
@@ -85,7 +84,9 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
     error ExpiredSignature();
 
     /// @dev Reverts if the given address is invalid (equal to ZeroAddress).
-    constructor(IForwarderRegistry forwarderRegistry_) ForwarderRegistryContext(forwarderRegistry_) ContractOwnership(_msgSender()) {
+    constructor(
+        IForwarderRegistry forwarderRegistry_
+    ) ForwarderRegistryContext(forwarderRegistry_) ContractOwnership(_msgSender()) EIP712("Points", "1.0") {
         if (address(forwarderRegistry_) == address(0)) {
             revert InvalidForwarderRegistry();
         }
@@ -94,7 +95,6 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
         assembly {
             chainId := chainid()
         }
-        _DEPLOYMENT_DOMAIN_SEPARATOR = DOMAIN_SEPARATOR();
     }
 
     /// @notice retrieve original msg sender of the meta transaction
@@ -173,11 +173,11 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
     /// @dev Reverts if balance is insufficient.
     /// @dev Reverts if the consume reason code is not allowed.
     /// @dev Emits a {Consumed} event if the consumption is successful.
+    /// @param operator The opeartor address.
     /// @param holder The balance holder address to deposit to.
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
-    /// @param sender The message sender.
-    function _consume(address holder, uint256 amount, bytes32 consumeReasonCode, address sender) internal {
+    function _consume(address operator, address holder, uint256 amount, bytes32 consumeReasonCode) internal {
         uint256 balance = balances[holder];
         if (balance < amount) {
             revert InsufficientBalance(holder, amount);
@@ -188,7 +188,7 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
 
         balances[holder] = balance - amount;
 
-        emit Consumed(sender, consumeReasonCode, holder, amount);
+        emit Consumed(operator, consumeReasonCode, holder, amount);
     }
 
     /// @notice Called with a signature by an appointed spender to consume a given amount from the balance of a given holder address.
@@ -202,8 +202,10 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
     /// @param deadline The deadline of the signature.
-    /// @param signature Signature by balance holder.
-    function consume(address holder, uint256 amount, bytes32 consumeReasonCode, uint256 deadline, bytes calldata signature) external {
+    /// @param v v value of the signature.
+    /// @param r r value of the signature.
+    /// @param s s value of the signature.
+    function consume(address holder, uint256 amount, bytes32 consumeReasonCode, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
         if (block.timestamp > deadline) {
             revert ExpiredSignature();
         }
@@ -211,9 +213,11 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
         bytes32 nonceKey = keccak256(abi.encodePacked(holder, sender));
         uint256 nonce = nonces[nonceKey];
 
-        _requireValidSignature(holder, sender, amount, consumeReasonCode, deadline, nonce, signature);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CONSUME_TYPEHASH, holder, sender, amount, consumeReasonCode, deadline, nonce)));
+        if (digest.recover(signature) != holder) revert InvalidSignature();
 
-        _consume(holder, amount, consumeReasonCode, sender);
+        _consume(sender, holder, amount, consumeReasonCode);
         nonces[nonceKey] = nonce + 1;
     }
 
@@ -225,7 +229,7 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
     /// @param consumeReasonCode The reason code of the consumption.
     function consume(uint256 amount, bytes32 consumeReasonCode) external {
         address sender = _msgSender();
-        _consume(sender, amount, consumeReasonCode, sender);
+        _consume(sender, sender, amount, consumeReasonCode);
     }
 
     /// @notice Called by the spender to consume a given amount from a holder's balance.
@@ -239,44 +243,13 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
     function consume(address holder, uint256 amount, bytes32 consumeReasonCode) external {
         address sender = _msgSender();
         AccessControlStorage.layout().enforceHasRole(SPENDER_ROLE, sender);
-        _consume(holder, amount, consumeReasonCode, sender);
-    }
-
-    function _requireValidSignature(
-        address holder,
-        address spender,
-        uint256 amount,
-        bytes32 reasonCode,
-        uint256 deadline,
-        uint256 nonce,
-        bytes calldata signature
-    ) private view {
-        bytes memory data = abi.encodePacked(
-            "\x19\x01",
-            DOMAIN_SEPARATOR(),
-            keccak256(abi.encode(CONSUME_TYPEHASH, holder, spender, amount, reasonCode, deadline, nonce))
-        );
-
-        if (keccak256(data).recover(signature) != holder) revert InvalidSignature();
+        _consume(sender, holder, amount, consumeReasonCode);
     }
 
     /// @notice Returns the EIP-712 DOMAIN_SEPARATOR.
     /// @return domainSeparator The EIP-712 domain separator.
     // solhint-disable-next-line func-name-mixedcase
-    function DOMAIN_SEPARATOR() public view returns (bytes32 domainSeparator) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-
-        return
-            keccak256(
-                abi.encode(
-                    keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)"),
-                    EIP712_DOMAIN_NAME,
-                    chainId,
-                    address(this)
-                )
-            );
+    function DOMAIN_SEPARATOR() external view returns (bytes32 domainSeparator) {
+        return _domainSeparatorV4();
     }
 }

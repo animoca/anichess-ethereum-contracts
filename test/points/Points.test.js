@@ -27,6 +27,7 @@ describe('Points', function () {
 
     this.domain = {
       name: 'Points',
+      version: '1.0',
       chainId: await getChainId(),
       verifyingContract: await this.contract.getAddress(),
     };
@@ -185,7 +186,7 @@ describe('Points', function () {
   });
 
   // eslint-disable-next-line max-len
-  describe('consume(address holder, uint256 amount, bytes32 consumeReasonCode, uint256 deadline, bytes calldata signature)', function () {
+  describe('consume(address holder, uint256 amount, bytes32 consumeReasonCode, uint256 deadline, uint8 v, bytes32 r, bytes32 s)', function () {
     it('Reverts if the deadline of the signature has passed', async function () {
       const holder = user1.address;
       const amount = 100;
@@ -202,7 +203,9 @@ describe('Points', function () {
         nonce: nonce,
       });
 
-      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, signature)).to.revertedWithCustomError(
+      const {v, r, s} = ethers.Signature.from(signature);
+
+      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, v, r, s)).to.revertedWithCustomError(
         this.contract,
         'ExpiredSignature'
       );
@@ -215,9 +218,8 @@ describe('Points', function () {
       const deadline = 999999999999999;
       const signature =
         '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
-      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, signature)).to.revertedWith(
-        'ECDSA: invalid signature'
-      );
+      const {v, r, s} = ethers.Signature.from(signature);
+      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, v, r, s)).to.revertedWith('ECDSA: invalid signature');
     });
 
     it('Reverts if the signature does not match with holder', async function () {
@@ -237,7 +239,9 @@ describe('Points', function () {
         nonce: nonce,
       });
 
-      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, signature)).to.revertedWithCustomError(
+      const {v, r, s} = ethers.Signature.from(signature);
+
+      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, v, r, s)).to.revertedWithCustomError(
         this.contract,
         'InvalidSignature'
       );
@@ -259,7 +263,9 @@ describe('Points', function () {
         nonce: nonce,
       });
 
-      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, signature))
+      const {v, r, s} = ethers.Signature.from(signature);
+
+      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, v, r, s))
         .to.revertedWithCustomError(this.contract, 'InsufficientBalance')
         .withArgs(holder, amount);
       const balance = await this.contract.balances(user1.address);
@@ -284,7 +290,9 @@ describe('Points', function () {
         nonce: nonce,
       });
 
-      await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, signature))
+      const {v, r, s} = ethers.Signature.from(signature);
+
+      await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, v, r, s))
         .to.revertedWithCustomError(this.contract, 'ConsumeReasonCodeDoesNotExist')
         .withArgs(reasonCode);
     });
@@ -310,7 +318,9 @@ describe('Points', function () {
           nonce: nonce,
         });
 
-        await this.contract.connect(spender).consume(holder, amount, this.allowedConsumeReasonCodes[0], deadline, signature);
+        const {v, r, s} = ethers.Signature.from(signature);
+
+        await this.contract.connect(spender).consume(holder, amount, this.allowedConsumeReasonCodes[0], deadline, v, r, s);
         const balance = await this.contract.balances(holder);
         expect(balance).equal(0);
       });
@@ -336,7 +346,9 @@ describe('Points', function () {
           nonce: nonce,
         });
 
-        await expect(this.contract.connect(spender).consume(holder, amount, this.allowedConsumeReasonCodes[0], deadline, signature))
+        const {v, r, s} = ethers.Signature.from(signature);
+
+        await expect(this.contract.connect(spender).consume(holder, amount, this.allowedConsumeReasonCodes[0], deadline, v, r, s))
           .to.emit(this.contract, 'Consumed')
           .withArgs(spenderAddress, reasonCode, holder, amount);
       });
