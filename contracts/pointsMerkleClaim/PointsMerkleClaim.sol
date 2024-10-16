@@ -11,7 +11,6 @@ import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/me
 import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {Paused} from "@animoca/ethereum-contracts/contracts/lifecycle/errors/PauseErrors.sol";
 
 contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryContext {
     using MerkleProof for bytes32[];
@@ -126,9 +125,9 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
         if (block.timestamp > deadline) {
             revert ClaimExpired(deadline);
         }
-        if (PauseStorage.layout().paused()) {
-            revert Paused();
-        }
+
+        PauseStorage.layout().enforceIsNotPaused();
+
         if (root == 0) {
             revert MerkleRootNotExists();
         }
