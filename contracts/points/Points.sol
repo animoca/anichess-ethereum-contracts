@@ -147,8 +147,8 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
     /// @param amount The amount to deposit.
     /// @param depositReasonCode The reason code of the deposit.
     function deposit(address holder, uint256 amount, bytes32 depositReasonCode) external {
-        address _sender = _msgSender();
-        AccessControlStorage.layout().enforceHasRole(DEPOSITOR_ROLE, _sender);
+        address sender = _msgSender();
+        AccessControlStorage.layout().enforceHasRole(DEPOSITOR_ROLE, sender);
 
         if (amount == 0) {
             revert DepositZeroAmount();
@@ -156,7 +156,7 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
 
         balances[holder] += amount;
 
-        emit Deposited(_sender, depositReasonCode, holder, amount);
+        emit Deposited(sender, depositReasonCode, holder, amount);
     }
 
     /// @notice Called by other public functions to consume a given amount from the balance of the specified holder.
@@ -166,7 +166,8 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
     /// @param holder The balance holder address to deposit to.
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
-    function _consume(address holder, uint256 amount, bytes32 consumeReasonCode) internal {
+    /// @param sender The message sender.
+    function _consume(address holder, uint256 amount, bytes32 consumeReasonCode, address sender) internal {
         uint256 balance = balances[holder];
         if (balance < amount) {
             revert InsufficientBalance(holder, amount);
@@ -177,7 +178,7 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
 
         balances[holder] = balance - amount;
 
-        emit Consumed(_msgSender(), consumeReasonCode, holder, amount);
+        emit Consumed(sender, consumeReasonCode, holder, amount);
     }
 
     /// @notice Called with a signature by an appointed spender to consume a given amount from the balance of a given holder address.
@@ -208,7 +209,8 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
         if (block.timestamp > deadline) {
             revert ExpiredSignature();
         }
-        if (spender != _msgSender()) {
+        address sender = _msgSender();
+        if (spender != sender) {
             revert SenderIsNotAppointedSpender();
         }
         bytes32 nonceKey = keccak256(abi.encodePacked(holder, spender));
@@ -222,7 +224,7 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
             revert InvalidSignature();
         }
 
-        _consume(holder, amount, consumeReasonCode);
+        _consume(holder, amount, consumeReasonCode, sender);
         nonces[nonceKey] = nonce + 1;
     }
 
@@ -233,7 +235,8 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
     function consume(uint256 amount, bytes32 consumeReasonCode) external {
-        _consume(_msgSender(), amount, consumeReasonCode);
+        address sender = _msgSender();
+        _consume(sender, amount, consumeReasonCode, sender);
     }
 
     /// @notice Called by the spender to consume a given amount from a holder's balance.
@@ -245,8 +248,9 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
     function consume(address holder, uint256 amount, bytes32 consumeReasonCode) external {
-        AccessControlStorage.layout().enforceHasRole(SPENDER_ROLE, _msgSender());
-        _consume(holder, amount, consumeReasonCode);
+        address sender = _msgSender();
+        AccessControlStorage.layout().enforceHasRole(SPENDER_ROLE, sender);
+        _consume(holder, amount, consumeReasonCode, sender);
     }
 
     /// @notice Returns a payload generated from the arguments.
