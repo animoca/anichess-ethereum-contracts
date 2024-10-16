@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.22;
 
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {AccessControlStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/AccessControlStorage.sol";
 import {AccessControl} from "@animoca/ethereum-contracts/contracts/access/AccessControl.sol";
 import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
@@ -17,6 +17,12 @@ import {IPoints} from "./interface/IPoints.sol";
 contract Points is AccessControl, ForwarderRegistryContext, IPoints {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using AccessControlStorage for AccessControlStorage.Layout;
+    using ECDSA for bytes32;
+
+    bytes32 private constant EIP712_DOMAIN_NAME = keccak256("Points");
+    bytes32 private constant CONSUME_TYPEHASH =
+        keccak256("Consume(address holder,address spender,uint256 amount,bytes32 reasonCode,uint256 deadline,uint256 nonce)");
+    bytes32 private immutable _DEPLOYMENT_DOMAIN_SEPARATOR;
 
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
@@ -83,6 +89,12 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
         if (address(forwarderRegistry_) == address(0)) {
             revert InvalidForwarderRegistry();
         }
+
+        uint256 chainId;
+        assembly {
+            chainId := chainid()
+        }
+        _DEPLOYMENT_DOMAIN_SEPARATOR = DOMAIN_SEPARATOR();
     }
 
     /// @notice retrieve original msg sender of the meta transaction
@@ -190,24 +202,16 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
     /// @param deadline The deadline of the signature.
-    /// @param v v value of the signature.
-    /// @param r r value of the signature.
-    /// @param s s value of the signature.
-    function consume(address holder, uint256 amount, bytes32 consumeReasonCode, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
+    /// @param signature Signature by balance holder.
+    function consume(address holder, uint256 amount, bytes32 consumeReasonCode, uint256 deadline, bytes calldata signature) external {
         if (block.timestamp > deadline) {
             revert ExpiredSignature();
         }
         address sender = _msgSender();
         bytes32 nonceKey = keccak256(abi.encodePacked(holder, sender));
         uint256 nonce = nonces[nonceKey];
-        bytes32 messageHash = _preparePayload(holder, sender, amount, consumeReasonCode, deadline, nonce);
-        bytes32 messageDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
 
-        bytes memory signature = abi.encodePacked(r, s, v);
-        bool isValid = SignatureChecker.isValidSignatureNow(holder, messageDigest, signature);
-        if (!isValid) {
-            revert InvalidSignature();
-        }
+        _requireValidSignature(holder, sender, amount, consumeReasonCode, deadline, nonce, signature);
 
         _consume(holder, amount, consumeReasonCode, sender);
         nonces[nonceKey] = nonce + 1;
@@ -238,33 +242,41 @@ contract Points is AccessControl, ForwarderRegistryContext, IPoints {
         _consume(holder, amount, consumeReasonCode, sender);
     }
 
-    /// @notice Returns a payload generated from the arguments.
-    /// @param holder The holder address.
-    /// @param spender The spender address.
-    /// @param amount The amount.
-    /// @param reasonCode The reason code.
-    /// @param deadline The deadline of the payload.
-    /// @param nonce The nonce.
-    /// @return The payload.
-    function _preparePayload(
+    function _requireValidSignature(
         address holder,
         address spender,
         uint256 amount,
         bytes32 reasonCode,
         uint256 deadline,
-        uint256 nonce
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(holder, spender, amount, reasonCode, deadline, nonce));
+        uint256 nonce,
+        bytes calldata signature
+    ) private view {
+        bytes memory data = abi.encodePacked(
+            "\x19\x01",
+            DOMAIN_SEPARATOR(),
+            keccak256(abi.encode(CONSUME_TYPEHASH, holder, spender, amount, reasonCode, deadline, nonce))
+        );
+
+        if (keccak256(data).recover(signature) != holder) revert InvalidSignature();
     }
 
-    /// @notice Returns a payload generated from the arguments, current nonce and the given holder address.
-    /// @param holder The holder address.
-    /// @param spender The spender address.
-    /// @param amount The amount.
-    /// @param reasonCode The reason code.
-    /// @param deadline The deadline of the payload
-    /// @return The payload.
-    function preparePayload(address holder, address spender, uint256 amount, bytes32 reasonCode, uint256 deadline) external view returns (bytes32) {
-        return _preparePayload(holder, spender, amount, reasonCode, deadline, nonces[keccak256(abi.encodePacked(holder, spender))]);
+    /// @notice Returns the EIP-712 DOMAIN_SEPARATOR.
+    /// @return domainSeparator The EIP-712 domain separator.
+    // solhint-disable-next-line func-name-mixedcase
+    function DOMAIN_SEPARATOR() public view returns (bytes32 domainSeparator) {
+        uint256 chainId;
+        assembly {
+            chainId := chainid()
+        }
+
+        return
+            keccak256(
+                abi.encode(
+                    keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)"),
+                    EIP712_DOMAIN_NAME,
+                    chainId,
+                    address(this)
+                )
+            );
     }
 }
