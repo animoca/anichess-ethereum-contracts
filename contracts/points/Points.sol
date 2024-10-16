@@ -147,7 +147,8 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
     /// @param amount The amount to deposit.
     /// @param depositReasonCode The reason code of the deposit.
     function deposit(address holder, uint256 amount, bytes32 depositReasonCode) external {
-        AccessControlStorage.layout().enforceHasRole(DEPOSITOR_ROLE, _msgSender());
+        address _sender = _msgSender();
+        AccessControlStorage.layout().enforceHasRole(DEPOSITOR_ROLE, _sender);
 
         if (amount == 0) {
             revert DepositZeroAmount();
@@ -155,7 +156,7 @@ contract Points is AccessControlBase, ContractOwnership, ForwarderRegistryContex
 
         balances[holder] += amount;
 
-        emit Deposited(_msgSender(), depositReasonCode, holder, amount);
+        emit Deposited(_sender, depositReasonCode, holder, amount);
     }
 
     /// @notice Called by other public functions to consume a given amount from the balance of the specified holder.
