@@ -2,7 +2,7 @@
 pragma solidity 0.8.22;
 
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {AccessControlStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/AccessControlStorage.sol";
 import {AccessControl} from "@animoca/ethereum-contracts/contracts/access/AccessControl.sol";
 import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
@@ -18,7 +18,6 @@ import {IPoints} from "./interface/IPoints.sol";
 contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using AccessControlStorage for AccessControlStorage.Layout;
-    using ECDSA for bytes32;
 
     bytes32 private constant CONSUME_TYPEHASH =
         keccak256("Consume(address holder,address spender,uint256 amount,bytes32 reasonCode,uint256 deadline,uint256 nonce)");
@@ -210,7 +209,10 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
 
         bytes memory signature = abi.encodePacked(r, s, v);
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CONSUME_TYPEHASH, holder, sender, amount, consumeReasonCode, deadline, nonce)));
-        if (digest.recover(signature) != holder) revert InvalidSignature();
+        bool isValid = SignatureChecker.isValidSignatureNow(holder, digest, signature);
+        if (!isValid) {
+            revert InvalidSignature();
+        }
 
         _consume(sender, holder, amount, consumeReasonCode);
         nonces[nonceKey] = nonce + 1;

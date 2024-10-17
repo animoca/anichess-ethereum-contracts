@@ -213,7 +213,10 @@ describe('Points', function () {
       const signature =
         '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
       const {v, r, s} = ethers.Signature.from(signature);
-      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, v, r, s)).to.revertedWith('ECDSA: invalid signature');
+      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, v, r, s)).to.revertedWithCustomError(
+        this.contract,
+        'InvalidSignature'
+      );
     });
 
     it('Reverts if the signature does not match with holder', async function () {
