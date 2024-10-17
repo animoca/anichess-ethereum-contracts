@@ -143,7 +143,7 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
         emit ConsumeReasonCodesRemoved(reasonCodes);
     }
 
-    /// @notice Called by a depoistor to increase the balance of a holder.
+    /// @notice Called by a depositor to increase the balance of a holder.
     /// @dev Reverts if sender does not have Depositor role.
     /// @dev Reverts if deposit amount is zero.
     /// @dev Emits a {Deposited} event if amount has been successfully added to the holder's balance
@@ -167,7 +167,7 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
     /// @dev Reverts if balance is insufficient.
     /// @dev Reverts if the consume reason code is not allowed.
     /// @dev Emits a {Consumed} event if the consumption is successful.
-    /// @param operator The opeartor address.
+    /// @param operator The operator address.
     /// @param holder The balance holder address to deposit to.
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
