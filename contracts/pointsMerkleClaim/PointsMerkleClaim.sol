@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.22;
 
-import {IPoints} from "./interface/IPoints.sol";
+import {IPoints} from "../points/interface/IPoints.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
 import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
@@ -11,7 +11,6 @@ import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/me
 import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {Paused, NotPaused} from "@animoca/ethereum-contracts/contracts/lifecycle/errors/PauseErrors.sol";
 
 contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryContext {
     using MerkleProof for bytes32[];
@@ -36,7 +35,8 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
     /// @param holder The holder of the points.
     /// @param amount The amount of points are claimed.
     /// @param depositReasonCode The deposit reason of the claim.
-    event PayoutClaimed(bytes32 indexed root, address indexed holder, bytes32 indexed depositReasonCode, uint256 amount);
+    /// @param deadline The deadline of the claim.
+    event PayoutClaimed(bytes32 indexed root, address indexed holder, bytes32 indexed depositReasonCode, uint256 amount, uint256 deadline);
 
     /// @notice Thrown when the given forwarder registry address is zero address.
     error InvalidForwarderRegistry();
@@ -106,22 +106,6 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
         emit MerkleRootSet(merkleRoot);
     }
 
-    /// @notice Sets the new merkle root for claiming and unpause if already paused.
-    /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
-    /// @dev Reverts with {NotPaused} if it is not paused.
-    /// @dev Emits a {MerkleRootSet} event.
-    /// @dev Emits a {Unpause} event.
-    /// @param merkleRoot The merkle root to set.
-
-    function setMerkleRootAndUnpause(bytes32 merkleRoot) external {
-        if (!PauseStorage.layout().paused()) {
-            revert NotPaused();
-        }
-
-        setMerkleRoot(merkleRoot);
-        PauseStorage.layout().unpause();
-    }
-
     /// @notice Executes the payout for a given holder address (anyone can call this function).
     /// @dev Reverts with {InvalidClaimAmount} if it is claiming a zero amount.
     /// @dev Reverts with {ClaimExpired} if the block timestamp is larger than deadline.
@@ -142,14 +126,16 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
         if (block.timestamp > deadline) {
             revert ClaimExpired(deadline);
         }
-        if (PauseStorage.layout().paused()) {
-            revert Paused();
-        }
-        if (root == 0) {
+
+        PauseStorage.layout().enforceIsNotPaused();
+
+        bytes32 _root = root;
+        if (_root == 0) {
             revert MerkleRootNotExists();
         }
+
         bytes32 leaf = keccak256(abi.encodePacked(holder, amount, depositReasonCode, deadline));
-        if (!proof.verifyCalldata(root, leaf)) {
+        if (!proof.verifyCalldata(_root, leaf)) {
             revert InvalidProof(holder, amount, depositReasonCode, deadline);
         }
 
@@ -161,6 +147,6 @@ contract PointsMerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCon
 
         POINTS_CONTRACT.deposit(holder, amount, depositReasonCode);
 
-        emit PayoutClaimed(root, holder, depositReasonCode, amount);
+        emit PayoutClaimed(_root, holder, depositReasonCode, amount, deadline);
     }
 }

@@ -109,34 +109,6 @@ describe('PointsMerkleClaim', function () {
     });
   });
 
-  describe('setMerkleRootAndUnpause(bytes32 merkleRoot)', function () {
-    it('reverts with {NotContractOwner} if the caller is not the owner', async function () {
-      await this.contract.connect(deployer).pause();
-      await expect(this.contract.connect(other).setMerkleRootAndUnpause(this.root)).to.revertedWithCustomError(this.contract, 'NotContractOwner');
-    });
-
-    it('reverts with {NotPaused} if the contract is not paused', async function () {
-      await expect(this.contract.connect(deployer).setMerkleRootAndUnpause(this.root)).to.revertedWithCustomError(this.contract, 'NotPaused');
-    });
-
-    context('when successful', function () {
-      it('sets the root', async function () {
-        await this.contract.connect(deployer).pause();
-        await this.contract.connect(deployer).setMerkleRootAndUnpause(this.root);
-        expect(await this.contract.root()).to.equal(this.root);
-      });
-      it('sets paused to false', async function () {
-        await this.contract.connect(deployer).pause();
-        await this.contract.connect(deployer).setMerkleRootAndUnpause(this.root);
-        expect(await this.contract.paused()).to.equal(false);
-      });
-      it('emits a MerkleRootSet event', async function () {
-        await this.contract.connect(deployer).pause();
-        await expect(this.contract.connect(deployer).setMerkleRootAndUnpause(this.root)).to.emit(this.contract, 'MerkleRootSet').withArgs(this.root);
-      });
-    });
-  });
-
   describe('claimPayout(address holder, uint256 amount, bytes32 depositReasonCode, uint256 deadline, bytes32[] calldata proof)', function () {
     it('Reverts with {InvalidClaimAmount} if it is claiming a zero amount', async function () {
       const holder = this.merkleClaimDataArr[3].holder;
@@ -247,7 +219,7 @@ describe('PointsMerkleClaim', function () {
 
         await expect(this.contract.connect(other).claimPayout(holder, amount, depositReasonCode, deadline, proof))
           .to.emit(this.contract, 'PayoutClaimed')
-          .withArgs(this.root, holder, depositReasonCode, amount);
+          .withArgs(this.root, holder, depositReasonCode, amount, deadline);
       });
     });
   });
