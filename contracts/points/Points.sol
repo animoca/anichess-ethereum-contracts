@@ -26,10 +26,8 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
     bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
 
-    mapping(address => uint256) public balances; // holder address => balance
-
-    mapping(bytes32 => uint256) public nonces; // hash(holder, spender) => nonce
-
+    mapping(address holder => uint256 balance) public balances;
+    mapping(bytes32 hashHolderSpender => uint256 nonce) public nonces;
     mapping(bytes32 => bool) public allowedConsumeReasonCodes;
 
     /// @notice Emitted when one or more reason code(s) are added to the comsume reason code mapping.
