@@ -143,7 +143,7 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
         emit ConsumeReasonCodesRemoved(reasonCodes);
     }
 
-    /// @notice Called by a depoistor to increase the balance of a holder.
+    /// @notice Called by a depositor to increase the balance of a holder.
     /// @dev Reverts if sender does not have Depositor role.
     /// @dev Reverts if deposit amount is zero.
     /// @dev Emits a {Deposited} event if amount has been successfully added to the holder's balance
@@ -167,7 +167,7 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
     /// @dev Reverts if balance is insufficient.
     /// @dev Reverts if the consume reason code is not allowed.
     /// @dev Emits a {Consumed} event if the consumption is successful.
-    /// @param operator The opeartor address.
+    /// @param operator The operator address.
     /// @param holder The balance holder address to deposit to.
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
@@ -196,10 +196,8 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
     /// @param deadline The deadline of the signature.
-    /// @param v v value of the signature.
-    /// @param r r value of the signature.
-    /// @param s s value of the signature.
-    function consume(address holder, uint256 amount, bytes32 consumeReasonCode, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
+    /// @param signature The signature from the holder
+    function consume(address holder, uint256 amount, bytes32 consumeReasonCode, uint256 deadline, bytes calldata signature) external {
         if (block.timestamp > deadline) {
             revert ExpiredSignature();
         }
@@ -207,7 +205,6 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
         bytes32 nonceKey = keccak256(abi.encodePacked(holder, spender));
         uint256 nonce = nonces[nonceKey];
 
-        bytes memory signature = abi.encodePacked(r, s, v);
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CONSUME_TYPEHASH, holder, spender, amount, consumeReasonCode, deadline, nonce)));
         bool isValid = SignatureChecker.isValidSignatureNow(holder, digest, signature);
         if (!isValid) {

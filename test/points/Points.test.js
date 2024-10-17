@@ -197,9 +197,7 @@ describe('Points', function () {
         nonce: nonce,
       });
 
-      const {v, r, s} = ethers.Signature.from(signature);
-
-      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, v, r, s)).to.revertedWithCustomError(
+      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, signature)).to.revertedWithCustomError(
         this.contract,
         'ExpiredSignature'
       );
@@ -212,8 +210,7 @@ describe('Points', function () {
       const deadline = 999999999999999;
       const signature =
         '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
-      const {v, r, s} = ethers.Signature.from(signature);
-      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, v, r, s)).to.revertedWithCustomError(
+      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, signature)).to.revertedWithCustomError(
         this.contract,
         'InvalidSignature'
       );
@@ -236,9 +233,7 @@ describe('Points', function () {
         nonce: nonce,
       });
 
-      const {v, r, s} = ethers.Signature.from(signature);
-
-      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, v, r, s)).to.revertedWithCustomError(
+      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, signature)).to.revertedWithCustomError(
         this.contract,
         'InvalidSignature'
       );
@@ -260,9 +255,7 @@ describe('Points', function () {
         nonce: nonce,
       });
 
-      const {v, r, s} = ethers.Signature.from(signature);
-
-      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, v, r, s))
+      await expect(this.contract.connect(spender).consume(holder, amount, reasonCode, deadline, signature))
         .to.revertedWithCustomError(this.contract, 'InsufficientBalance')
         .withArgs(holder, amount);
       const balance = await this.contract.balances(user1.address);
@@ -289,7 +282,7 @@ describe('Points', function () {
 
       const {v, r, s} = ethers.Signature.from(signature);
 
-      await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, v, r, s))
+      await expect(this.contract.connect(spender).consume(user1.address, amount, reasonCode, deadline, signature))
         .to.revertedWithCustomError(this.contract, 'ConsumeReasonCodeDoesNotExist')
         .withArgs(reasonCode);
     });
@@ -315,9 +308,7 @@ describe('Points', function () {
           nonce: nonce,
         });
 
-        const {v, r, s} = ethers.Signature.from(signature);
-
-        await this.contract.connect(spender).consume(holder, amount, this.allowedConsumeReasonCodes[0], deadline, v, r, s);
+        await this.contract.connect(spender).consume(holder, amount, this.allowedConsumeReasonCodes[0], deadline, signature);
         const balance = await this.contract.balances(holder);
         expect(balance).equal(0);
       });
@@ -343,9 +334,7 @@ describe('Points', function () {
           nonce: nonce,
         });
 
-        const {v, r, s} = ethers.Signature.from(signature);
-
-        await expect(this.contract.connect(spender).consume(holder, amount, this.allowedConsumeReasonCodes[0], deadline, v, r, s))
+        await expect(this.contract.connect(spender).consume(holder, amount, this.allowedConsumeReasonCodes[0], deadline, signature))
           .to.emit(this.contract, 'Consumed')
           .withArgs(spenderAddress, reasonCode, holder, amount);
       });
