@@ -151,8 +151,8 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
     /// @param amount The amount to deposit.
     /// @param depositReasonCode The reason code of the deposit.
     function deposit(address holder, uint256 amount, bytes32 depositReasonCode) external {
-        address sender = _msgSender();
-        AccessControlStorage.layout().enforceHasRole(DEPOSITOR_ROLE, sender);
+        address depositor = _msgSender();
+        AccessControlStorage.layout().enforceHasRole(DEPOSITOR_ROLE, depositor);
 
         if (amount == 0) {
             revert DepositZeroAmount();
@@ -160,7 +160,7 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
 
         balances[holder] += amount;
 
-        emit Deposited(sender, depositReasonCode, holder, amount);
+        emit Deposited(depositor, depositReasonCode, holder, amount);
     }
 
     /// @notice Called by other public functions to consume a given amount from the balance of the specified holder.
@@ -203,18 +203,18 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
         if (block.timestamp > deadline) {
             revert ExpiredSignature();
         }
-        address sender = _msgSender();
-        bytes32 nonceKey = keccak256(abi.encodePacked(holder, sender));
+        address spender = _msgSender();
+        bytes32 nonceKey = keccak256(abi.encodePacked(holder, spender));
         uint256 nonce = nonces[nonceKey];
 
         bytes memory signature = abi.encodePacked(r, s, v);
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CONSUME_TYPEHASH, holder, sender, amount, consumeReasonCode, deadline, nonce)));
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CONSUME_TYPEHASH, holder, spender, amount, consumeReasonCode, deadline, nonce)));
         bool isValid = SignatureChecker.isValidSignatureNow(holder, digest, signature);
         if (!isValid) {
             revert InvalidSignature();
         }
 
-        _consume(sender, holder, amount, consumeReasonCode);
+        _consume(spender, holder, amount, consumeReasonCode);
         nonces[nonceKey] = nonce + 1;
     }
 
@@ -238,8 +238,8 @@ contract Points is AccessControl, ForwarderRegistryContext, EIP712, IPoints {
     /// @param amount The amount to consume.
     /// @param consumeReasonCode The reason code of the consumption.
     function consume(address holder, uint256 amount, bytes32 consumeReasonCode) external {
-        address sender = _msgSender();
-        AccessControlStorage.layout().enforceHasRole(SPENDER_ROLE, sender);
-        _consume(sender, holder, amount, consumeReasonCode);
+        address spender = _msgSender();
+        AccessControlStorage.layout().enforceHasRole(SPENDER_ROLE, spender);
+        _consume(spender, holder, amount, consumeReasonCode);
     }
 }
