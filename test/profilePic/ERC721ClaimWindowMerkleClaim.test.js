@@ -315,41 +315,22 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
     });
   });
 
-  describe('canClaim(address claimer)', function () {
-    it('returns true if not yet claimed and number of claimed tokens is less than total supply', async function () {
-      const canClaim = await this.contract.canClaim(claimer1);
-      expect(canClaim).is.true;
-    });
-    it('returns false if not yet claimed but number of claimed tokens is equal to total supply', async function () {
-      const startTime = await helpers.time.latest(); // unit: seconds
-      const endTime = (await helpers.time.latest()) + 100; // unit: seconds
-      await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-
-      let recipient, epochId, proof;
-      ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
-      await this.contract.connect(claimer1).claim(epochId, proof, recipient);
-
-      ({recipient, epochId, proof} = this.merkleClaimDataArr[1]);
-      await this.contract.connect(claimer2).claim(epochId, proof, recipient);
-
-      ({recipient, epochId, proof} = this.merkleClaimDataArr[2]);
-      await this.contract.connect(claimer3).claim(epochId, proof, recipient);
-
-      const canClaim = await this.contract.canClaim(claimer4);
+  describe('canClaim(bytes32 epochId, address recipient)', function () {
+    it('returns false if merkle root of the claim window has not been set', async function () {
+      const canClaim = await this.contract.canClaim(this.epochId, claimer1);
       expect(canClaim).is.false;
     });
-    it('returns false if already claimed and number of claimed tokens is less than total supply', async function () {
+    it('returns false if already claimed', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
       const {recipient, epochId, proof} = this.merkleClaimDataArr[0];
       await this.contract.connect(claimer1).claim(epochId, proof, recipient);
 
-      const canClaim = await this.contract.canClaim(claimer1);
+      const canClaim = await this.contract.canClaim(epochId, claimer1);
       expect(canClaim).is.false;
     });
-
-    it('returns false if already claimed and number of claimed tokens is equal to total supply', async function () {
+    it('returns false if number of claimed tokens is equal to total supply', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
@@ -364,8 +345,43 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       ({recipient, epochId, proof} = this.merkleClaimDataArr[2]);
       await this.contract.connect(claimer3).claim(epochId, proof, recipient);
 
-      const canClaim = await this.contract.canClaim(claimer1);
+      const canClaim = await this.contract.canClaim(epochId, claimer4);
       expect(canClaim).is.false;
+    });
+    it('returns false if block time is earlier than start time of claim window', async function () {
+      const startTime = (await helpers.time.latest()) + 100; // unit: seconds
+      const endTime = (await helpers.time.latest()) + 200; // unit: seconds
+      await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
+      const {recipient, epochId, proof} = this.merkleClaimDataArr[0];
+
+      const canClaim = await this.contract.canClaim(epochId, claimer1);
+      expect(canClaim).is.false;
+    });
+    it('returns false if block time is after end time of claim window', async function () {
+      const startTime = await helpers.time.latest(); // unit: seconds
+      const endTime = (await helpers.time.latest()) + 100; // unit: seconds
+      await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
+      const {recipient, epochId, proof} = this.merkleClaimDataArr[0];
+
+      await helpers.time.increase(1000);
+
+      const canClaim = await this.contract.canClaim(epochId, claimer1);
+      expect(canClaim).is.false;
+    });
+    it(`returns true 
+        if not yet claimed,
+        and number of claimed tokens is less than total supply, 
+        and merkle root of the claim window has been set, 
+        and block time is within claim window`, async function () {
+      const startTime = await helpers.time.latest(); // unit: seconds
+      const endTime = (await helpers.time.latest()) + 100; // unit: seconds
+      await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
+
+      let recipient, epochId, proof;
+      ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
+
+      const canClaim = await this.contract.canClaim(epochId, claimer1);
+      expect(canClaim).is.true;
     });
   });
 

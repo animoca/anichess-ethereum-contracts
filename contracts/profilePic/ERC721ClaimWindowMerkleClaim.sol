@@ -168,10 +168,20 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     }
 
     /**
-     * @notice Returns true if number of token claimed is less than
-     * total supply and claimer has not yet claimed.
+     * @notice Returns true if
+     * 1) merkle root of the claim window has been set,
+     * 2) current time is larger than or equal to start time of the claim window,
+     * 3) current time is less than or equal to end time of the claim window,
+     * 4) number of token claimed is less than total supply, and
+     * 5) recipient has not yet claimed.
      */
-    function canClaim(address claimer) external view returns (bool) {
-        return noOfTokensClaimed < MINT_SUPPLY && !claimed[claimer];
+    function canClaim(bytes32 epochId, address recipient) external view returns (bool) {
+        ClaimWindow storage claimWindow = claimWindows[epochId];
+        return
+            claimWindow.merkleRoot != bytes32(0) &&
+            block.timestamp >= claimWindow.startTime &&
+            block.timestamp <= claimWindow.endTime &&
+            noOfTokensClaimed < MINT_SUPPLY &&
+            !claimed[recipient];
     }
 }
