@@ -22,7 +22,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
     const operatorFilterRegistryAddress = await getOperatorFilterRegistryAddress();
 
     this.rewardContract = await deployContract(
-      'ERC721FullBurn',
+      'ERC721Full',
       'Anichess Profile Pic',
       'PFP',
       metadataResolverAddress,

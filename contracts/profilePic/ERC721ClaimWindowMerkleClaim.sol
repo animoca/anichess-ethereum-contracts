@@ -2,7 +2,7 @@
 pragma solidity 0.8.22;
 
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {ERC721FullBurn} from "@animoca/ethereum-contracts/contracts/token/ERC721/preset/ERC721FullBurn.sol";
+import {ERC721Full} from "@animoca/ethereum-contracts/contracts/token/ERC721/preset/ERC721Full.sol";
 import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
 import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
 import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
@@ -26,8 +26,8 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
         uint256 endTime;
     }
 
-    /// @notice The ERC721FullBurn reward contract.
-    ERC721FullBurn public immutable REWARD_CONTRACT;
+    /// @notice The ERC721Full reward contract.
+    ERC721Full public immutable REWARD_CONTRACT;
 
     /// @notice The max number of tokens to be minted.
     uint256 public immutable MINT_SUPPLY;
@@ -82,7 +82,7 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
      */
     constructor(
         uint256 mintSupply,
-        ERC721FullBurn rewardContract,
+        ERC721Full rewardContract,
         IForwarderRegistry _forwarderRegistry
     ) ForwarderRegistryContext(_forwarderRegistry) ContractOwnership(msg.sender) {
         MINT_SUPPLY = mintSupply;

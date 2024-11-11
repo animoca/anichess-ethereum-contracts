@@ -2,14 +2,14 @@
 pragma solidity 0.8.22;
 
 import {ERC721ClaimWindowMerkleClaim} from "../../profilePic/ERC721ClaimWindowMerkleClaim.sol";
-import {ERC721FullBurn} from "@animoca/ethereum-contracts/contracts/token/ERC721/preset/ERC721FullBurn.sol";
+import {ERC721Full} from "@animoca/ethereum-contracts/contracts/token/ERC721/preset/ERC721Full.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 
 contract ERC721ClaimWindowMerkleClaimMock is ERC721ClaimWindowMerkleClaim {
     constructor(
         uint256 tokenId,
         uint256 mintSupply,
-        ERC721FullBurn rewardContract,
+        ERC721Full rewardContract,
         IForwarderRegistry _forwarderRegistry
     ) ERC721ClaimWindowMerkleClaim(mintSupply, rewardContract, _forwarderRegistry) {}
 
