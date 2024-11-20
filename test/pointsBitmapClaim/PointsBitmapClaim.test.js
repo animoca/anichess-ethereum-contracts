@@ -1,0 +1,127 @@
+const {ethers} = require('hardhat');
+const {expect} = require('chai');
+const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
+const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
+const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
+
+describe('PointsBitmapClaim', function () {
+  before(async function () {
+    [deployer, recipient1, recipient2, other] = await ethers.getSigners();
+  });
+
+  const fixture = async function () {
+    this.depositReasonCode = '0x0000000000000000000000000000000000000000000000000000000000000001';
+    this.forwarderRegistryAddress = await getForwarderRegistryAddress();
+    this.points = await deployContract('Points', this.forwarderRegistryAddress);
+    this.contract = await deployContract('PointsBitmapClaim', this.points, this.forwarderRegistryAddress, this.depositReasonCode);
+
+    this.domain = {
+      name: 'PointsBitmapClaim',
+      version: '1.0',
+      chainId: await getChainId(),
+      verifyingContract: await this.contract.getAddress(),
+    };
+
+    this.pointsBitmapClaimType = {
+      PointsBitmapClaim: [
+        {name: 'recipient', type: 'address'},
+        {name: 'amount', type: 'uint256'},
+        {name: 'claimBits', type: 'uint256'},
+      ],
+    };
+
+    this.signClaimMessage = async (signer, recipientAddress, amount, claimBits) => {
+      return await signer.signTypedData(this.domain, this.pointsBitmapClaimType, {
+        recipient: recipientAddress,
+        amount,
+        claimBits,
+      });
+    };
+
+    await this.points.connect(deployer).grantRole(await this.points.DEPOSITOR_ROLE(), await this.contract.getAddress());
+  };
+
+  beforeEach(async function () {
+    await loadFixture(fixture, this);
+  });
+
+  describe('constructor', function () {
+    it('reverts if the point contract address is 0', async function () {
+      await expect(
+        deployContract('PointsBitmapClaim', '0x0000000000000000000000000000000000000000', this.forwarderRegistryAddress, this.depositReasonCode)
+      ).to.be.revertedWithCustomError(this.contract, 'InvalidPointsContractAddress');
+    });
+    it('reverts if the forwarder registry address is 0', async function () {
+      await expect(
+        deployContract('PointsBitmapClaim', this.points, '0x0000000000000000000000000000000000000000', this.depositReasonCode)
+      ).to.be.revertedWithCustomError(this.contract, 'InvalidForwarderRegistry');
+    });
+    context('when successful', function () {
+      it('sets the points contract', async function () {
+        expect(await this.contract.POINTS()).to.equal(await this.points.getAddress());
+      });
+      it('sets the deposit reason code', async function () {
+        expect(await this.contract.DEPOSIT_REASON_CODE()).to.equal(await this.depositReasonCode);
+      });
+    });
+  });
+
+  describe('claim(address recipient, uint256 amount, uint256 claimBits, bytes32 depositReasonCode, bytes calldata signature)', function () {
+    it('Reverts with {InvalidSignature} if signature is not valid', async function () {
+      const recipient = recipient1.address;
+      const amount = 100;
+      const claimBits = 1;
+      const depositReasonCode = this.depositReasonCode;
+
+      const signature =
+        '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
+
+      await expect(this.contract.connect(other).claim(recipient, amount, claimBits, signature)).to.revertedWithCustomError(
+        this.contract,
+        'InvalidSignature'
+      );
+    });
+
+    context('when successful', function () {
+      it('updates points balance', async function () {
+        const recipient = recipient1.address;
+        const amount = 100;
+        const claimBits = 1;
+        const depositReasonCode = this.depositReasonCode;
+
+        const signature = this.signClaimMessage(deployer, recipient, amount, claimBits);
+        await this.contract.connect(other).claim(recipient, amount, claimBits, signature);
+
+        expect(await this.points.balances(recipient)).to.equal(amount);
+      });
+    });
+  });
+
+  context('meta-transactions', function () {
+    it('mock: _msgData()', async function () {
+      // Arrange
+      this.contract = await deployContract(
+        'PointsBitmapClaimMock',
+        await this.points.getAddress(),
+        this.forwarderRegistryAddress,
+        this.depositReasonCode
+      );
+      expect(await this.contract.connect(deployer).__msgData()).to.be.exist;
+    });
+
+    it('mock: _msgSender()', async function () {
+      // Arrange
+      this.contract = await deployContract(
+        'PointsBitmapClaimMock',
+        await this.points.getAddress(),
+        this.forwarderRegistryAddress,
+        this.depositReasonCode
+      );
+
+      // Act
+
+      // Assert
+      expect(await this.contract.connect(deployer).__msgSender()).to.be.exist;
+    });
+  });
+});
