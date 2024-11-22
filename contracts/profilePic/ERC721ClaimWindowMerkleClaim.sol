@@ -20,8 +20,8 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     using MerkleProof for bytes32[];
 
     /// @notice The return values of _canClaim() function.
-    enum CanClaimReturnValue {
-        OK,
+    enum ClaimError {
+        NoError,
         EpochIdNotExists,
         OutOfClaimWindow,
         AlreadyClaimed,
@@ -147,14 +147,14 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
      * @param recipient The recipient of the reward.
      */
     function claim(bytes32 epochId, bytes32[] calldata proof, address recipient) external {
-        CanClaimReturnValue canClaimResult = _canClaim(epochId, recipient);
-        if (canClaimResult == CanClaimReturnValue.EpochIdNotExists) {
+        ClaimError canClaimResult = _canClaim(epochId, recipient);
+        if (canClaimResult == ClaimError.EpochIdNotExists) {
             revert EpochIdNotExists(epochId);
-        } else if (canClaimResult == CanClaimReturnValue.OutOfClaimWindow) {
+        } else if (canClaimResult == ClaimError.OutOfClaimWindow) {
             revert OutOfClaimWindow(epochId, block.timestamp);
-        } else if (canClaimResult == CanClaimReturnValue.AlreadyClaimed) {
+        } else if (canClaimResult == ClaimError.AlreadyClaimed) {
             revert AlreadyClaimed(epochId, recipient);
-        } else if (canClaimResult == CanClaimReturnValue.ExceededMintSupply) {
+        } else if (canClaimResult == ClaimError.ExceededMintSupply) {
             revert ExceededMintSupply();
         }
 
@@ -172,35 +172,35 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     }
 
     /**
-     * @notice Returns true if _canClaim() returns CanClaimReturnValue.OK, otherwise false.
+     * @notice Returns true if _canClaim() returns ClaimError.OK, otherwise false.
      */
     function canClaim(bytes32 epochId, address recipient) external view returns (bool) {
-        return _canClaim(epochId, recipient) == CanClaimReturnValue.OK;
+        return _canClaim(epochId, recipient) == ClaimError.NoError;
     }
 
     /**
      * @notice
-     * 1) Returns CanClaimReturnValue.EpochIdNotExists if merkle root of the claim window has not been set,
-     * 2) Returns CanClaimReturnValue.OutOfClaimWindow if current time is beyond start time and end time of the claim window,
-     * 3) Returns CanClaimReturnValue.AlreadyClaimed if recipent has already claimed,
-     * 4) Returns CanClaimReturnValue.ExceededMintSupply if number of token claimed equals to total supply, and
-     * 5) Returns CanClaimReturnValue.OK otherwise.
+     * 1) Returns ClaimError.EpochIdNotExists if merkle root of the claim window has not been set,
+     * 2) Returns ClaimError.OutOfClaimWindow if current time is beyond start time and end time of the claim window,
+     * 3) Returns ClaimError.AlreadyClaimed if recipent has already claimed,
+     * 4) Returns ClaimError.ExceededMintSupply if number of token claimed equals to total supply, and
+     * 5) Returns ClaimError.OK otherwise.
      */
-    function _canClaim(bytes32 epochId, address recipient) internal view returns (CanClaimReturnValue) {
+    function _canClaim(bytes32 epochId, address recipient) internal view returns (ClaimError) {
         ClaimWindow storage claimWindow = claimWindows[epochId];
         if (claimWindow.merkleRoot == bytes32(0)) {
-            return CanClaimReturnValue.EpochIdNotExists;
+            return ClaimError.EpochIdNotExists;
         }
         if (block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime) {
-            return CanClaimReturnValue.OutOfClaimWindow;
+            return ClaimError.OutOfClaimWindow;
         }
         if (claimed[recipient]) {
-            return CanClaimReturnValue.AlreadyClaimed;
+            return ClaimError.AlreadyClaimed;
         }
         if (noOfTokensClaimed == MINT_SUPPLY) {
-            return CanClaimReturnValue.ExceededMintSupply;
+            return ClaimError.ExceededMintSupply;
         }
 
-        return CanClaimReturnValue.OK;
+        return ClaimError.NoError;
     }
 }
