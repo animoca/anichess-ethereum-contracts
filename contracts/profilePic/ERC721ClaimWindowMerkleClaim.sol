@@ -20,7 +20,7 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     using MerkleProof for bytes32[];
 
     /// @notice The return values of _canClaim() function.
-    enum CanClaimReturnValues {
+    enum CanClaimReturnValue {
         OK,
         EpochIdNotExists,
         OutOfClaimWindow,
@@ -147,14 +147,14 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
      * @param recipient The recipient of the reward.
      */
     function claim(bytes32 epochId, bytes32[] calldata proof, address recipient) external {
-        CanClaimReturnValues canClaimResult = _canClaim(epochId, recipient);
-        if (canClaimResult == CanClaimReturnValues.EpochIdNotExists) {
+        CanClaimReturnValue canClaimResult = _canClaim(epochId, recipient);
+        if (canClaimResult == CanClaimReturnValue.EpochIdNotExists) {
             revert EpochIdNotExists(epochId);
-        } else if (canClaimResult == CanClaimReturnValues.OutOfClaimWindow) {
+        } else if (canClaimResult == CanClaimReturnValue.OutOfClaimWindow) {
             revert OutOfClaimWindow(epochId, block.timestamp);
-        } else if (canClaimResult == CanClaimReturnValues.AlreadyClaimed) {
+        } else if (canClaimResult == CanClaimReturnValue.AlreadyClaimed) {
             revert AlreadyClaimed(epochId, recipient);
-        } else if (canClaimResult == CanClaimReturnValues.ExceededMintSupply) {
+        } else if (canClaimResult == CanClaimReturnValue.ExceededMintSupply) {
             revert ExceededMintSupply();
         }
 
@@ -172,35 +172,35 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     }
 
     /**
-     * @notice Returns true if _canClaim() returns CanClaimReturnValues.OK, otherwise false.
+     * @notice Returns true if _canClaim() returns CanClaimReturnValue.OK, otherwise false.
      */
     function canClaim(bytes32 epochId, address recipient) external view returns (bool) {
-        return _canClaim(epochId, recipient) == CanClaimReturnValues.OK;
+        return _canClaim(epochId, recipient) == CanClaimReturnValue.OK;
     }
 
     /**
      * @notice
-     * 1) Returns CanClaimReturnValues.EpochIdNotExists if merkle root of the claim window has not been set,
-     * 2) Returns CanClaimReturnValues.OutOfClaimWindow if current time is beyond start time and end time of the claim window,
-     * 3) Returns CanClaimReturnValues.AlreadyClaimed if recipent has already claimed,
-     * 4) Returns CanClaimReturnValues.ExceededMintSupply if number of token claimed equals to total supply, and
-     * 5) Returns CanClaimReturnValues.OK otherwise.
+     * 1) Returns CanClaimReturnValue.EpochIdNotExists if merkle root of the claim window has not been set,
+     * 2) Returns CanClaimReturnValue.OutOfClaimWindow if current time is beyond start time and end time of the claim window,
+     * 3) Returns CanClaimReturnValue.AlreadyClaimed if recipent has already claimed,
+     * 4) Returns CanClaimReturnValue.ExceededMintSupply if number of token claimed equals to total supply, and
+     * 5) Returns CanClaimReturnValue.OK otherwise.
      */
-    function _canClaim(bytes32 epochId, address recipient) internal view returns (CanClaimReturnValues) {
+    function _canClaim(bytes32 epochId, address recipient) internal view returns (CanClaimReturnValue) {
         ClaimWindow storage claimWindow = claimWindows[epochId];
         if (claimWindow.merkleRoot == bytes32(0)) {
-            return CanClaimReturnValues.EpochIdNotExists;
+            return CanClaimReturnValue.EpochIdNotExists;
         }
         if (block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime) {
-            return CanClaimReturnValues.OutOfClaimWindow;
+            return CanClaimReturnValue.OutOfClaimWindow;
         }
         if (claimed[recipient]) {
-            return CanClaimReturnValues.AlreadyClaimed;
+            return CanClaimReturnValue.AlreadyClaimed;
         }
         if (noOfTokensClaimed == MINT_SUPPLY) {
-            return CanClaimReturnValues.ExceededMintSupply;
+            return CanClaimReturnValue.ExceededMintSupply;
         }
 
-        return CanClaimReturnValues.OK;
+        return CanClaimReturnValue.OK;
     }
 }
