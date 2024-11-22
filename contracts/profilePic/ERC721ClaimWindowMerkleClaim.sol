@@ -184,7 +184,7 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
      * 2) Returns ClaimError.OutOfClaimWindow if current time is beyond start time and end time of the claim window,
      * 3) Returns ClaimError.AlreadyClaimed if recipent has already claimed,
      * 4) Returns ClaimError.ExceededMintSupply if number of token claimed equals to total supply, and
-     * 5) Returns ClaimError.OK otherwise.
+     * 5) Returns ClaimError.NoError otherwise.
      */
     function _canClaim(bytes32 epochId, address recipient) internal view returns (ClaimError) {
         ClaimWindow storage claimWindow = claimWindows[epochId];
