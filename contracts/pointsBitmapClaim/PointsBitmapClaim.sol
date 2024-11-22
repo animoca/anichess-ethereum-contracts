@@ -3,7 +3,6 @@ pragma solidity 0.8.22;
 
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {BitmapClaim} from "@animoca/ethereum-contracts/contracts/payment/BitmapClaim.sol";
 import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
 import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
 import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
@@ -11,8 +10,9 @@ import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contract
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IPoints} from "../points/interface/IPoints.sol";
+import {BitmapClaim} from "./BitmapClaim.sol";
 
-contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext, ContractOwnership {
+contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
 
     /// @notice Thrown when the given points address is zero address.
@@ -24,7 +24,7 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext, Con
     /// @notice Thrown when the signature is invalid.
     error InvalidSignature();
 
-    bytes32 private constant CLAIM_TYPEHASH = keccak256("PointsBitmapClaim(address recipient,uint256 amount,uint256 claimBits)");
+    bytes32 private constant CLAIM_TYPEHASH = keccak256("PointsBitmapClaim(address recipient,uint256 claimBits)");
     IPoints public immutable POINTS;
     bytes32 public immutable DEPOSIT_REASON_CODE;
 
@@ -32,7 +32,7 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext, Con
         address pointsContractAddress,
         IForwarderRegistry _forwarderRegistry,
         bytes32 depositReasonCode
-    ) EIP712("PointsBitmapClaim", "1.0") ForwarderRegistryContext(_forwarderRegistry) ContractOwnership(msg.sender) {
+    ) EIP712("PointsBitmapClaim", "1.0") ForwarderRegistryContext(_forwarderRegistry) {
         if (pointsContractAddress == address(0)) {
             revert InvalidPointsContractAddress();
         }
@@ -45,9 +45,9 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext, Con
         DEPOSIT_REASON_CODE = depositReasonCode;
     }
 
-    function _validateSignature(address recipient, uint256 amount, uint256 claimBits, bytes calldata signature) internal view override {
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CLAIM_TYPEHASH, recipient, amount, claimBits)));
-        bool isValid = SignatureChecker.isValidSignatureNow(ContractOwnershipStorage.layout().owner(), digest, signature);
+    function _validateClaim(address recipient, uint256 claimBits, bytes calldata validationData) internal view override {
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CLAIM_TYPEHASH, recipient, claimBits)));
+        bool isValid = SignatureChecker.isValidSignatureNow(ContractOwnershipStorage.layout().owner(), digest, validationData);
         if (!isValid) {
             revert InvalidSignature();
         }

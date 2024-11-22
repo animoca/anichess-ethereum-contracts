@@ -11,6 +11,14 @@ contract PointsBitmapClaimMock is PointsBitmapClaim {
         bytes32 depositReasonCode
     ) PointsBitmapClaim(pointsContractAddress, forwarderRegistry_, depositReasonCode) {}
 
+    function __validateClaim(address recipient, uint256 claimBits, bytes calldata validationData) external view {
+        _validateClaim(recipient, claimBits, validationData);
+    }
+
+    function __deliver(address recipient, uint256 amount) external {
+        _deliver(recipient, amount);
+    }
+
     /// @notice Internal function to access the current msg.sender.
     /// @return The current msg.sender value.
     function __msgSender() external view returns (address) {

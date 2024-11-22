@@ -15,28 +15,28 @@ describe('PointsBitmapClaim', function () {
     this.points = await deployContract('Points', this.forwarderRegistryAddress);
     this.contract = await deployContract('PointsBitmapClaim', this.points, this.forwarderRegistryAddress, this.depositReasonCode);
 
-    this.domain = {
-      name: 'PointsBitmapClaim',
-      version: '1.0',
-      chainId: await getChainId(),
-      verifyingContract: await this.contract.getAddress(),
-    };
+    // this.domain = {
+    //   name: 'PointsBitmapClaim',
+    //   version: '1.0',
+    //   chainId: await getChainId(),
+    //   verifyingContract: await this.contract.getAddress(),
+    // };
 
-    this.pointsBitmapClaimType = {
-      PointsBitmapClaim: [
-        {name: 'recipient', type: 'address'},
-        {name: 'amount', type: 'uint256'},
-        {name: 'claimBits', type: 'uint256'},
-      ],
-    };
+    // this.pointsBitmapClaimType = {
+    //   PointsBitmapClaim: [
+    //     {name: 'recipient', type: 'address'},
+    //     {name: 'amount', type: 'uint256'},
+    //     {name: 'claimBits', type: 'uint256'},
+    //   ],
+    // };
 
-    this.signClaimMessage = async (signer, recipientAddress, amount, claimBits) => {
-      return await signer.signTypedData(this.domain, this.pointsBitmapClaimType, {
-        recipient: recipientAddress,
-        amount,
-        claimBits,
-      });
-    };
+    // this.signClaimMessage = async (signer, recipientAddress, amount, claimBits) => {
+    //   return await signer.signTypedData(this.domain, this.pointsBitmapClaimType, {
+    //     recipient: recipientAddress,
+    //     amount,
+    //     claimBits,
+    //   });
+    // };
 
     await this.points.connect(deployer).grantRole(await this.points.DEPOSITOR_ROLE(), await this.contract.getAddress());
   };
@@ -46,7 +46,7 @@ describe('PointsBitmapClaim', function () {
   });
 
   describe('constructor', function () {
-    it('reverts if the point contract address is 0', async function () {
+    it('reverts if the points contract address is 0', async function () {
       await expect(
         deployContract('PointsBitmapClaim', '0x0000000000000000000000000000000000000000', this.forwarderRegistryAddress, this.depositReasonCode)
       ).to.be.revertedWithCustomError(this.contract, 'InvalidPointsContractAddress');
@@ -66,31 +66,126 @@ describe('PointsBitmapClaim', function () {
     });
   });
 
-  describe('claim(address recipient, uint256 amount, uint256 claimBits, bytes32 depositReasonCode, bytes calldata signature)', function () {
-    it('Reverts with {InvalidSignature} if signature is not valid', async function () {
+  // describe('claim(address recipient, uint256 amount, uint256 claimBits, bytes32 depositReasonCode, bytes calldata signature)', function () {
+  //   it('Reverts with {InvalidSignature} if signature is not valid', async function () {
+  //     const recipient = recipient1.address;
+  //     const amount = 100;
+  //     const claimBits = 1;
+  //     const depositReasonCode = this.depositReasonCode;
+
+  //     const signature =
+  //       '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
+
+  //     await expect(this.contract.connect(other).claim(recipient, amount, claimBits, signature)).to.revertedWithCustomError(
+  //       this.contract,
+  //       'InvalidSignature'
+  //     );
+  //   });
+
+  //   context('when successful', function () {
+  //     it('updates points balance', async function () {
+  //       const recipient = recipient1.address;
+  //       const amount = 100;
+  //       const claimBits = 1;
+  //       const depositReasonCode = this.depositReasonCode;
+
+  //       const signature = this.signClaimMessage(deployer, recipient, amount, claimBits);
+  //       await this.contract.connect(other).claim(recipient, amount, claimBits, signature);
+
+  //       expect(await this.points.balances(recipient)).to.equal(amount);
+  //     });
+  //   });
+  // });
+
+  describe('mock: __validateClaim(address recipient, uint256 claimBits, bytes calldata validationData)', function () {
+    it('Reverts if the validationData is not a valid signature', async function () {
+      this.contract = await deployContract(
+        'PointsBitmapClaimMock',
+        await this.points.getAddress(),
+        this.forwarderRegistryAddress,
+        this.depositReasonCode
+      );
+
       const recipient = recipient1.address;
-      const amount = 100;
       const claimBits = 1;
-      const depositReasonCode = this.depositReasonCode;
+      const validationData = '0x1234';
 
-      const signature =
-        '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
-
-      await expect(this.contract.connect(other).claim(recipient, amount, claimBits, signature)).to.revertedWithCustomError(
+      await expect(this.contract.connect(deployer).__validateClaim(recipient, claimBits, validationData)).to.be.revertedWithCustomError(
         this.contract,
         'InvalidSignature'
       );
     });
 
     context('when successful', function () {
-      it('updates points balance', async function () {
+      it('Does not revert', async function () {
+        const recipient = recipient1.address;
+        const claimBits = 1;
+
+        this.contract = await deployContract(
+          'PointsBitmapClaimMock',
+          await this.points.getAddress(),
+          this.forwarderRegistryAddress,
+          this.depositReasonCode
+        );
+
+        const domain = {
+          name: 'PointsBitmapClaim',
+          version: '1.0',
+          chainId: await getChainId(),
+          verifyingContract: await this.contract.getAddress(),
+        };
+
+        const pointsBitmapClaimType = {
+          PointsBitmapClaim: [
+            {name: 'recipient', type: 'address'},
+            {name: 'claimBits', type: 'uint256'},
+          ],
+        };
+
+        const validationData = await deployer.signTypedData(domain, pointsBitmapClaimType, {
+          recipient,
+          claimBits,
+        });
+
+        await expect(this.contract.connect(deployer).__validateClaim(recipient, claimBits, validationData)).to.not.be.reverted;
+      });
+    });
+  });
+
+  describe('mock: __deliver(address recipient, uint256 amount)', function () {
+    it('Reverts if the validationData is not a valid signature', async function () {
+      this.contract = await deployContract(
+        'PointsBitmapClaimMock',
+        await this.points.getAddress(),
+        this.forwarderRegistryAddress,
+        this.depositReasonCode
+      );
+
+      const recipient = recipient1.address;
+      const claimBits = 1;
+      const validationData = '0x1234';
+
+      await expect(this.contract.connect(deployer).__validateClaim(recipient, claimBits, validationData)).to.be.revertedWithCustomError(
+        this.contract,
+        'InvalidSignature'
+      );
+    });
+
+    context('when successful', function () {
+      it('Updates points balance', async function () {
         const recipient = recipient1.address;
         const amount = 100;
-        const claimBits = 1;
-        const depositReasonCode = this.depositReasonCode;
 
-        const signature = this.signClaimMessage(deployer, recipient, amount, claimBits);
-        await this.contract.connect(other).claim(recipient, amount, claimBits, signature);
+        this.contract = await deployContract(
+          'PointsBitmapClaimMock',
+          await this.points.getAddress(),
+          this.forwarderRegistryAddress,
+          this.depositReasonCode
+        );
+
+        await this.points.connect(deployer).grantRole(await this.points.DEPOSITOR_ROLE(), await this.contract.getAddress());
+
+        await this.contract.connect(deployer).__deliver(recipient, amount);
 
         expect(await this.points.balances(recipient)).to.equal(amount);
       });
