@@ -19,6 +19,15 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using MerkleProof for bytes32[];
 
+    /// @notice The return values of _canClaim() function.
+    enum CanClaimReturnValues {
+        OK,
+        EpochIdNotExists,
+        OutOfClaimWindow,
+        AlreadyClaimed,
+        ExceededMintSupply
+    }
+
     /// @notice The claim window struct.
     struct ClaimWindow {
         bytes32 merkleRoot;
@@ -138,50 +147,60 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
      * @param recipient The recipient of the reward.
      */
     function claim(bytes32 epochId, bytes32[] calldata proof, address recipient) external {
-        ClaimWindow storage claimWindow = claimWindows[epochId];
-        bytes32 merkleRoot = claimWindow.merkleRoot;
-        if (merkleRoot == bytes32(0)) {
+        CanClaimReturnValues canClaimResult = _canClaim(epochId, recipient);
+        if (canClaimResult == CanClaimReturnValues.EpochIdNotExists) {
             revert EpochIdNotExists(epochId);
-        }
-        if (block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime) {
+        } else if (canClaimResult == CanClaimReturnValues.OutOfClaimWindow) {
             revert OutOfClaimWindow(epochId, block.timestamp);
-        }
-        if (claimed[recipient]) {
+        } else if (canClaimResult == CanClaimReturnValues.AlreadyClaimed) {
             revert AlreadyClaimed(epochId, recipient);
-        }
-
-        bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
-        if (!proof.verify(merkleRoot, leaf)) revert InvalidProof(epochId, recipient);
-
-        uint256 updatedNoOfTokensClaimed = noOfTokensClaimed + 1;
-        if (updatedNoOfTokensClaimed > MINT_SUPPLY) {
+        } else if (canClaimResult == CanClaimReturnValues.ExceededMintSupply) {
             revert ExceededMintSupply();
         }
 
+        bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
+        if (!proof.verify(claimWindows[epochId].merkleRoot, leaf)) {
+            revert InvalidProof(epochId, recipient);
+        }
+
+        uint256 updatedNoOfTokensClaimed = noOfTokensClaimed + 1;
         noOfTokensClaimed = updatedNoOfTokensClaimed;
-
         claimed[recipient] = true;
-
         REWARD_CONTRACT.safeMint(recipient, updatedNoOfTokensClaimed, "");
 
         emit RewardClaimed(epochId, recipient, updatedNoOfTokensClaimed);
     }
 
     /**
-     * @notice Returns true if
-     * 1) merkle root of the claim window has been set,
-     * 2) current time is larger than or equal to start time of the claim window,
-     * 3) current time is less than or equal to end time of the claim window,
-     * 4) number of token claimed is less than total supply, and
-     * 5) recipient has not yet claimed.
+     * @notice Returns true if _canClaim() returns CanClaimReturnValues.OK, otherwise false.
      */
     function canClaim(bytes32 epochId, address recipient) external view returns (bool) {
+        return _canClaim(epochId, recipient) == CanClaimReturnValues.OK;
+    }
+
+    /**
+     * @notice
+     * 1) Returns CanClaimReturnValues.EpochIdNotExists if merkle root of the claim window has not been set,
+     * 2) Returns CanClaimReturnValues.OutOfClaimWindow if current time is beyond start time and end time of the claim window,
+     * 3) Returns CanClaimReturnValues.AlreadyClaimed if recipent has already claimed,
+     * 4) Returns CanClaimReturnValues.ExceededMintSupply if number of token claimed equals to total supply, and
+     * 5) Returns CanClaimReturnValues.OK otherwise.
+     */
+    function _canClaim(bytes32 epochId, address recipient) internal view returns (CanClaimReturnValues) {
         ClaimWindow storage claimWindow = claimWindows[epochId];
-        return
-            claimWindow.merkleRoot != bytes32(0) &&
-            block.timestamp >= claimWindow.startTime &&
-            block.timestamp <= claimWindow.endTime &&
-            noOfTokensClaimed < MINT_SUPPLY &&
-            !claimed[recipient];
+        if (claimWindow.merkleRoot == bytes32(0)) {
+            return CanClaimReturnValues.EpochIdNotExists;
+        }
+        if (block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime) {
+            return CanClaimReturnValues.OutOfClaimWindow;
+        }
+        if (claimed[recipient]) {
+            return CanClaimReturnValues.AlreadyClaimed;
+        }
+        if (noOfTokensClaimed == MINT_SUPPLY) {
+            return CanClaimReturnValues.ExceededMintSupply;
+        }
+
+        return CanClaimReturnValues.OK;
     }
 }
