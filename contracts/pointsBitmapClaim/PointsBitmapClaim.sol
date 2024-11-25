@@ -23,8 +23,13 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
     /// @notice Thrown when the signature is invalid.
     error InvalidSignature();
 
+    /// @notice The type hash for ERC712 signature.
     bytes32 private constant CLAIM_TYPEHASH = keccak256("PointsBitmapClaim(address recipient,uint256 claimBits)");
+
+    /// @notice The Points contract for despoit.
     IPoints public immutable POINTS;
+
+    /// @notice The deposit reason code for points despoit.
     bytes32 public immutable DEPOSIT_REASON_CODE;
 
     constructor(
@@ -44,6 +49,11 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
         DEPOSIT_REASON_CODE = depositReasonCode;
     }
 
+    /// @inheritdoc BitmapClaim
+    /// @dev Reverts with {InvalidSignature} if validationData is not a valid ERC712 signature by contract owner.
+    /// @param recipient Recipient of the claim.
+    /// @param claimBits Bits for the claim.
+    /// @param validationData Data for validation. Expects a valid ERC712 signature by contract owner.
     function _validateClaim(address recipient, uint256 claimBits, bytes calldata validationData) internal view override {
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CLAIM_TYPEHASH, recipient, claimBits)));
         bool isValid = SignatureChecker.isValidSignatureNow(ContractOwnershipStorage.layout().owner(), digest, validationData);
@@ -52,16 +62,19 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
         }
     }
 
+    /// @inheritdoc BitmapClaim
     function _deliver(address recipient, uint256 amount) internal override {
         POINTS.deposit(recipient, amount, DEPOSIT_REASON_CODE);
     }
 
     /// @inheritdoc ForwarderRegistryContextBase
+    /// @notice retrieve original msg sender of the meta transaction
     function _msgSender() internal view virtual override(Context, ForwarderRegistryContextBase) returns (address) {
         return ForwarderRegistryContextBase._msgSender();
     }
 
     /// @inheritdoc ForwarderRegistryContextBase
+    /// @notice retrieve original msg calldata of the meta transaction
     function _msgData() internal view virtual override(Context, ForwarderRegistryContextBase) returns (bytes calldata) {
         return ForwarderRegistryContextBase._msgData();
     }

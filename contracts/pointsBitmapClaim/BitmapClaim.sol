@@ -13,22 +13,40 @@ abstract contract BitmapClaim is ContractOwnership {
     /// @notice Thrown when the claim bits is invalid.
     error InvalidClaimBits(uint256 claimBits);
 
-    /// @notice Thrown when the bits are conflicting stored bitmap.
+    /// @notice Thrown when the claim has been done before.
     error AlreadyClaimed(address recipient, uint256 claimBits, uint256 claimedBitmap);
 
-    event BitmapUpdated(address recipient, uint256 oldBitMap, uint256 newBitmap);
+    /// @notice Event emitted when bitmap of the recipient is updated successfully.
+    /// @param recipient The recipient of the points.
+    /// @param oldBitmap The original bitmap before setting to new value.
+    /// @param newBitmap The new bitmap value.
+    event BitmapUpdated(address recipient, uint256 oldBitmap, uint256 newBitmap);
 
-    event BitPositionValueSet(uint256 bitPosition, uint256 value);
+    /// @notice Event emitted when value of the bitPosition is set successfully.
+    /// @param bitPosition The bit position to be set.
+    /// @param value The value of the bit position.
+    event BitValueSet(uint256 bitPosition, uint256 value);
 
+    /// @notice Event emitted when claim is done successfully.
+    /// @param recipient The recipient of the points.
+    /// @param claimBits The bits for the claim.
     event Claimed(address recipient, uint256 claimBits);
 
+    /// @notice Max number of bits in claimBits for validating claims.
     uint256 public maxBitCount;
+
+    /// @notice Mapping for each recipient to claimed bitmap.
     mapping(address recipient => uint256 bitmap) public claimed;
+
+    /// @notice Mapping for each bit position to value for claiming.
     mapping(uint256 bitPosition => uint256 value) public bitPositionValueMap;
 
     constructor() ContractOwnership(msg.sender) {}
 
     /// @dev Reverts with {BitPositionTooBig} if bitPosition is larger than maxBitCount.
+    /// @dev Emits a {BitValueSet} event.
+    /// @param bitPosition The bit position to be set to.
+    /// @param value The value to be set.
     function setBitValue(uint256 bitPosition, uint256 value) external {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
 
@@ -38,7 +56,7 @@ abstract contract BitmapClaim is ContractOwnership {
         }
 
         bitPositionValueMap[bitPosition] = value;
-        emit BitPositionValueSet(bitPosition, value);
+        emit BitValueSet(bitPosition, value);
 
         maxBitCount = _maxBitCount + 1;
     }
@@ -50,7 +68,7 @@ abstract contract BitmapClaim is ContractOwnership {
     /// @param recipient The recipient for this claim.
     /// @param claimBits Indicate which flags it is claiming for.
     /// @param validationData validationData for validating the claim.
-    function claim(address recipient, uint256 claimBits, bytes calldata validationData) external virtual {
+    function claim(address recipient, uint256 claimBits, bytes calldata validationData) external {
         if (claimBits == 0 || claimBits >> maxBitCount > 0) {
             revert InvalidClaimBits(claimBits);
         }

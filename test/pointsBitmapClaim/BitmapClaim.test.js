@@ -55,6 +55,14 @@ describe('BitmapClaim', function () {
 
         expect(await this.contract.maxBitCount()).to.equal(1);
       });
+      it('emits a BitValueSet event', async function () {
+        const bitPosition = 0;
+        const value = 100;
+
+        await expect(this.contract.connect(deployer).setBitValue(bitPosition, bitPosition))
+          .to.emit(this.contract, 'BitValueSet')
+          .withArgs(bitPosition, bitPosition);
+      });
     });
   });
 
