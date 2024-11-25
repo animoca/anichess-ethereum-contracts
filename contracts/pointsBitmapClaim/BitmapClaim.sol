@@ -79,15 +79,14 @@ abstract contract BitmapClaim is ContractOwnership {
         _deliver(recipient, deliverAmount);
     }
 
-    /// @notice Called by claim(). Inheriting contract must implement this function to validate the claim with given validationData. 
+    /// @notice Called by claim(). Inheriting contract must implement this function to validate the claim with given validationData.
     /// @param recipient Recipient of the claim.
     /// @param claimBits Bits for the claim.
     /// @param validationData Data for validation. Implementation specific.
     function _validateClaim(address recipient, uint256 claimBits, bytes calldata validationData) internal virtual;
 
-    /// @notice Called by claim(). Inheriting contract must implement this function to complete the actual claim. 
+    /// @notice Called by claim(). Inheriting contract must implement this function to complete the actual claim.
     /// @param recipient Recipient of the claim.
     /// @param amount Amount of the claim.
     function _deliver(address recipient, uint256 amount) internal virtual;
-
 }
