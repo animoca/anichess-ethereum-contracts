@@ -51,13 +51,6 @@ abstract contract BitmapClaim is ContractOwnership {
     /// @param claimBits Indicate which flags it is claiming for.
     /// @param validationData validationData for validating the claim.
     function claim(address recipient, uint256 claimBits, bytes calldata validationData) external virtual {
-        _validateAndDeliver(recipient, claimBits, validationData);
-    }
-
-    function _validateClaim(address recipient, uint256 claimBits, bytes calldata validationData) internal virtual;
-    function _deliver(address recipient, uint256 amount) internal virtual;
-
-    function _validateAndDeliver(address recipient, uint256 claimBits, bytes calldata validationData) internal {
         if (claimBits == 0 || claimBits >> maxBitCount > 0) {
             revert InvalidClaimBits(claimBits);
         }
@@ -86,65 +79,15 @@ abstract contract BitmapClaim is ContractOwnership {
         _deliver(recipient, deliverAmount);
     }
 
-    // //Anichess
-    // //validateSiganture
-    // //deliver()
-    // function claim(signature)
+    /// @notice Called by claim(). Inheriting contract must implement this function to validate the claim with given validationData. 
+    /// @param recipient Recipient of the claim.
+    /// @param claimBits Bits for the claim.
+    /// @param validationData Data for validation. Implementation specific.
+    function _validateClaim(address recipient, uint256 claimBits, bytes calldata validationData) internal virtual;
 
-    // function _validateSignatue()
+    /// @notice Called by claim(). Inheriting contract must implement this function to complete the actual claim. 
+    /// @param recipient Recipient of the claim.
+    /// @param amount Amount of the claim.
+    function _deliver(address recipient, uint256 amount) internal virtual;
 
-    // function _deliver();
-
-    // //Recho
-    // function claim(merkleproof)
-
-    // function _validateMerkleProof();
-
-    // function _deliver()
-
-    // //Base
-    // function _deliverImmedate() virtual
-
-    // //check _validate();
-    // function deliver();
-    // function _validate();
-
-    // function _validateClaimBits(address recipient, uint256 claimBits) internal virtual {
-    //     if (claimBits == 0 || claimBits >> maxBitCount > 0) {
-    //         revert InvalidClaimBits(claimBits);
-    //     }
-
-    //     uint256 storedBitmap = claimed[recipient];
-    //     if (storedBitmap & claimBits > 0) {
-    //         revert BitsAlreadyClaimed(recipient, claimBits, storedBitmap);
-    //     }
-    // }
-
-    // function _validateSignature(address recipient, uint256 claimBits, bytes calldata signature) internal virtual {
-    //     bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CLAIM_TYPEHASH, recipient, claimBits)));
-    //     bool isValid = SignatureChecker.isValidSignatureNow(ContractOwnershipStorage.layout().owner(), digest, signature);
-    //     if (!isValid) {
-    //         revert InvalidSignature();
-    //     }
-    // }
-
-    // function _updateBitmapAndDeliver(address recipient, uint256 claimBits) internal {
-    //     uint256 bitPos;
-    //     uint256 deliverAmount;
-
-    //     uint256 count = maxBitCount;
-    //     for (uint256 i; i<count; ++i) {
-    //         if (claimBits & 1 > 0) {
-    //             deliverAmount += bitPositionValueMap[bitPos++];
-    //         }
-    //         claimBits >>= 1;
-    //     }
-
-    //     uint256 newBitmap = storedBitmap | claimBits;
-    //     claimed[recipient] = newBitmap;
-
-    //     emit BitmapUpdated(recipient, storedBitmap, newBitmap);
-
-    //     _deliver(recipient, deliverAmount);
-    // }
 }
