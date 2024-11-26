@@ -58,10 +58,21 @@ describe('PointsBitmapClaim', function () {
       it('sets the deposit reason code', async function () {
         expect(await this.contract.DEPOSIT_REASON_CODE()).to.equal(await this.depositReasonCode);
       });
+      it('sets the signer', async function () {
+        expect(await this.contract.signer()).to.equal(await signer.getAddress());
+      });
     });
   });
 
   describe('setSigner(address newSigner)', function () {
+    it('Reverts with {SignerAlreadySet} if signer address has already been set', async function () {
+      const signerAddress = await signer.getAddress();
+
+      await expect(this.contract.connect(deployer).setSigner(signerAddress))
+        .to.revertedWithCustomError(this.contract, 'SignerAlreadySet')
+        .withArgs(signerAddress);
+    });
+
     it('Reverts with {NotContractOwner} if not called by owner', async function () {
       const newSignerAddress = await newSigner.getAddress();
 

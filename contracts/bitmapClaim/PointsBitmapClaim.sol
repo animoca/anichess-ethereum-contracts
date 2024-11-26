@@ -21,6 +21,9 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
     error InvalidForwarderRegistry();
 
     /// @notice Thrown when the signature is invalid.
+    error SignerAlreadySet(address signer);
+
+    /// @notice Thrown when the signer address has already been set.
     error InvalidSignature();
 
     /// @notice Event emitted when signer is updated successfully.
@@ -59,10 +62,14 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
     }
 
     /// @notice Sets the signer of the ERC712 signature for claim validation.
+    /// @dev Reverts with {SignerAlreadySet} if signer address has already been set.
     /// @dev Reverts with {NotContractOwner} if sender is not owner.
     /// @dev Emits a {SignerSet} event.
     /// @param newSigner New signer.
     function setSigner(address newSigner) external {
+        if (newSigner == signer) {
+            revert SignerAlreadySet(newSigner);
+        }
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
 
         signer = newSigner;
