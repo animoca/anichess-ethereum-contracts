@@ -38,16 +38,14 @@ abstract contract BitmapClaim is ContractOwnership {
 
     constructor() ContractOwnership(msg.sender) {}
 
-    /// @dev Emits a {BitValueSet} event.
     /// @param value The value to be assigned to a new bit.
     function addBitValue(uint256 value) external {
         uint256 bitPosition = maxBitCount;
-        _updateBitValue(bitPosition, value);
+        _setBitValue(bitPosition, value);
         maxBitCount = bitPosition + 1;
     }
 
-    /// @dev Reverts with {BitPositionTooBig} if bitPosition is larger than maxBitCount.
-    /// @dev Emits a {BitValueSet} event.
+    /// @dev Reverts with {BitPositionTooBig} if bitPosition is larger than or equal to maxBitCount.
     /// @param bitPosition The bit position of the update.
     /// @param value The value to be updated to.
     function updateBitValue(uint256 bitPosition, uint256 value) external {
@@ -55,25 +53,26 @@ abstract contract BitmapClaim is ContractOwnership {
         if (bitPosition >= maxBitCount) {
             revert BitPositionTooBig(bitPosition, _maxBitCount);
         }
-        _updateBitValue(bitPosition, value);
+        _setBitValue(bitPosition, value);
     }
 
+    /// @notice Called by addBitValue() and updateBitValue().
     /// @dev Reverts with {NotContractOwner} if sender is not owner.
     /// @dev Emits a {BitValueSet} event.
     /// @param bitPosition The bit position of the update.
     /// @param value The value to be updated to.
-    function _updateBitValue(uint256 bitPosition, uint256 value) internal {
+    function _setBitValue(uint256 bitPosition, uint256 value) internal {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
         bitPositionValueMap[bitPosition] = value;
         emit BitValueSet(bitPosition, value);
     }
 
     /// @notice Executes the claim for a given recipient address (anyone can call this function).
-    /// @dev Reverts with {InvalidClaimBits} if claimBits is zero.
+    /// @dev Reverts with {InvalidClaimBits} if claimBits is zero or exceeding maxBitCount.
     /// @dev Reverts with {AlreadyClaimed} if one of the the given claimBits has been claimed.
     /// @dev Emits a {Claimed} event.
     /// @param recipient The recipient for this claim.
-    /// @param claimBits Indicate which flags it is claiming for.
+    /// @param claimBits Indicate which bits it is claiming for.
     /// @param validationData validationData for validating the claim.
     function claim(address recipient, uint256 claimBits, bytes calldata validationData) external {
         if (claimBits == 0 || claimBits >> maxBitCount > 0) {
