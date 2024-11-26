@@ -85,14 +85,14 @@ describe('PointsBitmapClaim', function () {
       it('sets signer to new value', async function () {
         const newSignerAddress = await newSigner.getAddress();
 
-        await this.contract.connect(deployer).setSigner(newSigner);
+        await this.contract.connect(deployer).setSigner(newSignerAddress);
 
-        expect(await this.contract.signer()).to.equal(newSigner);
+        expect(await this.contract.signer()).to.equal(newSignerAddress);
       });
       it('emits a SignerSet event', async function () {
         const newSignerAddress = await newSigner.getAddress();
 
-        await expect(this.contract.connect(deployer).setSigner(newSignerAddress)).to.emit(this.contract, 'SignerSet').withArgs(newSigner);
+        await expect(this.contract.connect(deployer).setSigner(newSignerAddress)).to.emit(this.contract, 'SignerSet').withArgs(newSignerAddress);
       });
     });
   });
