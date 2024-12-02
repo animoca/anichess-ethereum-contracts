@@ -47,8 +47,8 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     /// @notice Mapping from the epoch ID to the claim window.
     mapping(bytes32 => ClaimWindow) public claimWindows;
 
-    /// @notice Mapping from address to the claim state.
-    mapping(address => bool) public claimed;
+    /// @notice Mapping from merkle leaf to the claim state.
+    mapping(bytes32 => bool) public claimed;
 
     /// @notice Event emitted when a claim window is set.
     /// @param epochId The unique epoch ID associated with the specified claim window.
@@ -147,7 +147,9 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
      * @param recipient The recipient of the reward.
      */
     function claim(bytes32 epochId, bytes32[] calldata proof, address recipient) external {
-        ClaimError canClaimResult = _canClaim(epochId, recipient);
+        ClaimWindow storage claimWindow = claimWindows[epochId];
+        bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
+        ClaimError canClaimResult = _canClaim(claimWindow, leaf);
         if (canClaimResult == ClaimError.EpochIdNotExists) {
             revert EpochIdNotExists(epochId);
         } else if (canClaimResult == ClaimError.OutOfClaimWindow) {
@@ -158,14 +160,13 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
             revert ExceededMintSupply();
         }
 
-        bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
-        if (!proof.verify(claimWindows[epochId].merkleRoot, leaf)) {
+        if (!proof.verify(claimWindow.merkleRoot, leaf)) {
             revert InvalidProof(epochId, recipient);
         }
 
         uint256 updatedNoOfTokensClaimed = noOfTokensClaimed + 1;
         noOfTokensClaimed = updatedNoOfTokensClaimed;
-        claimed[recipient] = true;
+        claimed[leaf] = true;
         REWARD_CONTRACT.safeMint(recipient, updatedNoOfTokensClaimed, "");
 
         emit RewardClaimed(epochId, recipient, updatedNoOfTokensClaimed);
@@ -175,7 +176,9 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
      * @notice Returns true if _canClaim() returns ClaimError.OK, otherwise false.
      */
     function canClaim(bytes32 epochId, address recipient) external view returns (bool) {
-        return _canClaim(epochId, recipient) == ClaimError.NoError;
+        ClaimWindow storage claimWindow = claimWindows[epochId];
+        bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
+        return _canClaim(claimWindow, leaf) == ClaimError.NoError;
     }
 
     /**
@@ -186,15 +189,14 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
      * 4) Returns ClaimError.ExceededMintSupply if number of token claimed equals to total supply, and
      * 5) Returns ClaimError.NoError otherwise.
      */
-    function _canClaim(bytes32 epochId, address recipient) internal view returns (ClaimError) {
-        ClaimWindow storage claimWindow = claimWindows[epochId];
+    function _canClaim(ClaimWindow storage claimWindow, bytes32 leaf) internal view returns (ClaimError) {
         if (claimWindow.merkleRoot == bytes32(0)) {
             return ClaimError.EpochIdNotExists;
         }
         if (block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime) {
             return ClaimError.OutOfClaimWindow;
         }
-        if (claimed[recipient]) {
+        if (claimed[leaf]) {
             return ClaimError.AlreadyClaimed;
         }
         if (noOfTokensClaimed == MINT_SUPPLY) {
