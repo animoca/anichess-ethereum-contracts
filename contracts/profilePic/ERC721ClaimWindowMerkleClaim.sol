@@ -60,8 +60,8 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     /// @notice Event emitted when a reward is claimed.
     /// @param epochId The unique epoch ID associated with the claim window.
     /// @param recipient The recipient of the reward.
-    /// @param noOfTokensClaimed The total number of tokens claimed.
-    event RewardClaimed(bytes32 indexed epochId, address indexed recipient, uint256 noOfTokensClaimed);
+    /// @param tokenId The claimed tokenId.
+    event RewardClaimed(bytes32 indexed epochId, address indexed recipient, uint256 tokenId);
 
     /// @notice Error thrown when the reward has already been claimed.
     error AlreadyClaimed(bytes32 epochId, address recipient);
@@ -173,12 +173,12 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     }
 
     /**
-     * @notice Returns true if _canClaim() returns ClaimError.OK, otherwise false.
+     * @notice Returns ClaimError.
      */
-    function canClaim(bytes32 epochId, address recipient) external view returns (bool) {
+    function canClaim(bytes32 epochId, address recipient) external view returns (ClaimError) {
         ClaimWindow storage claimWindow = claimWindows[epochId];
         bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
-        return _canClaim(claimWindow, leaf) == ClaimError.NoError;
+        return _canClaim(claimWindow, leaf);
     }
 
     /**
