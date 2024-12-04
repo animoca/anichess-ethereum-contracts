@@ -63,12 +63,12 @@ describe('BitmapClaim', function () {
         .withArgs(other);
     });
 
-    it('Reverts with {BitPositionTooBig} if bitPosition is larger than maxBitCount', async function () {
+    it('Reverts with {UpdatingInvalidBitPosition} if bitPosition is larger than maxBitCount', async function () {
       const bitPosition = 1;
       const value = 100;
 
       await expect(this.contract.connect(deployer).updateBitValue(bitPosition, value))
-        .to.revertedWithCustomError(this.contract, 'BitPositionTooBig')
+        .to.revertedWithCustomError(this.contract, 'UpdatingInvalidBitPosition')
         .withArgs(bitPosition, 0);
     });
 
@@ -97,23 +97,33 @@ describe('BitmapClaim', function () {
     });
   });
 
-  describe('claim(address recipient, uint256 claimBits, bytes calldata validationData)', function () {
-    it('Reverts with {InvalidClaimBits} if claimBits is zero', async function () {
+  describe('claim(address recipient, uint256[] claimBitPositions, bytes calldata validationData)', function () {
+    it('Reverts with {InvalidClaimBitPositions} if claimBitPositions has zero length', async function () {
       const recipient = recipient1.address;
-      const claimBits = 0;
+      const claimBitPositions = [];
 
-      await expect(this.contract.connect(other).claim(recipient, claimBits, this.validationData))
-        .to.revertedWithCustomError(this.contract, 'InvalidClaimBits')
-        .withArgs(claimBits);
+      await expect(this.contract.connect(other).claim(recipient, claimBitPositions, this.validationData))
+        .to.revertedWithCustomError(this.contract, 'InvalidClaimBitPositions')
+        .withArgs(claimBitPositions);
     });
 
-    it('Reverts with {InvalidClaimBits} if claimBits is too big', async function () {
+    it('Reverts with {DuplicateClaimBit} if two bits of claimBitPositions are the same', async function () {
       const recipient = recipient1.address;
-      const claimBits = 1;
+      const claimBitPositions = [0, 0];
 
-      await expect(this.contract.connect(other).claim(recipient, claimBits, this.validationData))
-        .to.revertedWithCustomError(this.contract, 'InvalidClaimBits')
-        .withArgs(claimBits);
+      await expect(this.contract.connect(other).claim(recipient, claimBitPositions, this.validationData))
+        .to.revertedWithCustomError(this.contract, 'DuplicateClaimBit')
+        .withArgs(0);
+    });
+
+    it('Reverts with {BitPositionTooBig} if one of the bit position is too big', async function () {
+      const recipient = recipient1.address;
+      const claimBitPositions = [10];
+      const consolidatedClaimBits = 2 ** 10;
+
+      await expect(this.contract.connect(other).claim(recipient, claimBitPositions, this.validationData))
+        .to.revertedWithCustomError(this.contract, 'BitPositionTooBig')
+        .withArgs(consolidatedClaimBits, 0);
     });
 
     it('Reverts with {AlreadyClaimed} if one of the the given claimBits has been claimed', async function () {
@@ -121,15 +131,17 @@ describe('BitmapClaim', function () {
       await this.contract.connect(deployer).addBitValue(200);
 
       const recipient = recipient1.address;
-      const claimBits = 1;
+      const claimBitPositions = [0];
+      const consolidatedClaimBits = 1;
 
-      await this.contract.connect(deployer).claim(recipient, claimBits, this.validationData);
+      await this.contract.connect(deployer).claim(recipient, claimBitPositions, this.validationData);
 
-      const claimBitsAgain = 3;
+      const claimBitPositionsAgain = [1, 0];
+      const consolidatedClaimBitsAgain = 3;
 
-      await expect(this.contract.connect(deployer).claim(recipient, claimBitsAgain, this.validationData))
+      await expect(this.contract.connect(deployer).claim(recipient, claimBitPositionsAgain, this.validationData))
         .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
-        .withArgs(recipient, claimBitsAgain, claimBits);
+        .withArgs(recipient, consolidatedClaimBitsAgain, consolidatedClaimBits);
     });
 
     context('when successful', function () {
@@ -138,33 +150,33 @@ describe('BitmapClaim', function () {
         await this.contract.connect(deployer).addBitValue(200);
 
         const recipient = recipient1.address;
-        const claimBits = 1;
+        const claimBitPositions = [0];
+        const consolidatedClaimBits = 1;
 
-        await this.contract.connect(deployer).claim(recipient, claimBits, this.validationData);
+        await this.contract.connect(deployer).claim(recipient, claimBitPositions, this.validationData);
         const claimedBitmap = await this.contract.claimed(recipient);
-        expect(claimedBitmap).to.equal(claimBits);
+        expect(claimedBitmap).to.equal(consolidatedClaimBits);
 
-        const claimBits2 = 2;
-        await this.contract.connect(deployer).claim(recipient, claimBits2, this.validationData);
+        const claimBitPositions2 = [1];
+        const consolidatedClaimBits2 = 2;
+        await this.contract.connect(deployer).claim(recipient, claimBitPositions2, this.validationData);
         const claimedBitmap2 = await this.contract.claimed(recipient);
-        expect(claimedBitmap2).to.equal(BigInt(claimBits2 | claimBits));
+        expect(claimedBitmap2).to.equal(BigInt(consolidatedClaimBits2 | consolidatedClaimBits));
       });
 
       it('emits a Claimed event', async function () {
-        await this.contract.connect(deployer).addBitValue(100);
-
         const recipient = recipient1.address;
         const amount = 100;
-        const bitPosition = 0;
-        const claimBits = 1;
+        const claimBitPositions = [0];
+        const consolidatedClaimBits = 1;
 
-        await this.contract.connect(deployer).updateBitValue(bitPosition, amount);
+        await this.contract.connect(deployer).addBitValue(amount);
 
-        await expect(this.contract.connect(deployer).claim(recipient, claimBits, this.validationData))
+        await expect(this.contract.connect(deployer).claim(recipient, claimBitPositions, this.validationData))
           .to.emit(this.contract, 'Claimed')
-          .withArgs(recipient, 0, claimBits)
+          .withArgs(recipient, 0, consolidatedClaimBits)
           .to.emit(this.contract, 'ValidateClaimCalled')
-          .withArgs(recipient, claimBits, this.validationData)
+          .withArgs(recipient, claimBitPositions, this.validationData)
           .to.emit(this.contract, 'DeliverCalled')
           .withArgs(recipient, amount);
       });

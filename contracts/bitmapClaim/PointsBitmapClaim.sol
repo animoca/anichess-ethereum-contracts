@@ -31,7 +31,7 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
     event SignerSet(address signer);
 
     /// @notice The type hash for ERC712 signature.
-    bytes32 private constant CLAIM_TYPEHASH = keccak256("PointsBitmapClaim(address recipient,uint256 claimBits)");
+    bytes32 private constant CLAIM_TYPEHASH = keccak256("PointsBitmapClaim(address recipient,bytes32 claimBitPositionsHash)");
 
     /// @notice The Points contract for despoit.
     IPoints public immutable POINTS;
@@ -80,10 +80,10 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
     /// @inheritdoc BitmapClaim
     /// @dev Reverts with {InvalidSignature} if validationData is not a valid ERC712 signature by contract owner.
     /// @param recipient Recipient of the claim.
-    /// @param claimBits Bits for the claim.
+    /// @param claimBitPositions Bit position array for the claim.
     /// @param validationData Data for validation. Expects a valid ERC712 signature by contract owner.
-    function _validateClaim(address recipient, uint256 claimBits, bytes calldata validationData) internal view override {
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CLAIM_TYPEHASH, recipient, claimBits)));
+    function _validateClaim(address recipient, uint256[] calldata claimBitPositions, bytes calldata validationData) internal view override {
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CLAIM_TYPEHASH, recipient, keccak256(abi.encode(claimBitPositions)))));
         bool isValid = SignatureChecker.isValidSignatureNow(signer, digest, validationData);
         if (!isValid) {
             revert InvalidSignature();
@@ -92,7 +92,9 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
 
     /// @inheritdoc BitmapClaim
     function _deliver(address recipient, uint256 amount) internal override {
-        POINTS.deposit(recipient, amount, DEPOSIT_REASON_CODE);
+        if (amount > 0) {
+            POINTS.deposit(recipient, amount, DEPOSIT_REASON_CODE);
+        }
     }
 
     /// @inheritdoc ForwarderRegistryContextBase

@@ -3,6 +3,7 @@ const {expect} = require('chai');
 const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
 const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
+const keccak256 = require('keccak256');
 
 describe('PointsBitmapClaim', function () {
   before(async function () {
@@ -108,10 +109,10 @@ describe('PointsBitmapClaim', function () {
       );
 
       const recipient = recipient1.address;
-      const claimBits = 1;
+      const claimBitPositions = [0];
       const validationData = '0x1234';
 
-      await expect(this.contract.connect(deployer).__validateClaim(recipient, claimBits, validationData)).to.be.revertedWithCustomError(
+      await expect(this.contract.connect(deployer).__validateClaim(recipient, claimBitPositions, validationData)).to.be.revertedWithCustomError(
         this.contract,
         'InvalidSignature'
       );
@@ -120,7 +121,7 @@ describe('PointsBitmapClaim', function () {
     context('when successful', function () {
       it('Does not revert', async function () {
         const recipient = recipient1.address;
-        const claimBits = 1;
+        const claimBitPositions = [0];
 
         this.contract = await deployContract(
           'PointsBitmapClaimMock',
@@ -140,16 +141,17 @@ describe('PointsBitmapClaim', function () {
         const pointsBitmapClaimType = {
           PointsBitmapClaim: [
             {name: 'recipient', type: 'address'},
-            {name: 'claimBits', type: 'uint256'},
+            {name: 'claimBitPositionsHash', type: 'bytes32'},
           ],
         };
 
         const validationData = await signer.signTypedData(domain, pointsBitmapClaimType, {
           recipient,
-          claimBits,
+          claimBitPositionsHash: keccak256(new ethers.AbiCoder().encode(['uint256[]'], [claimBitPositions])),
         });
 
-        await expect(this.contract.connect(other).__validateClaim(recipient, claimBits, validationData)).to.not.be.reverted;
+        await this.contract.connect(other).__validateClaim(recipient, claimBitPositions, validationData);
+        // await expect(this.contract.connect(other).__validateClaim(recipient, claimBitPositions, validationData)).to.not.be.reverted;
       });
     });
   });
@@ -165,10 +167,10 @@ describe('PointsBitmapClaim', function () {
       );
 
       const recipient = recipient1.address;
-      const claimBits = 1;
+      const claimBitPosition = [0];
       const validationData = '0x1234';
 
-      await expect(this.contract.connect(deployer).__validateClaim(recipient, claimBits, validationData)).to.be.revertedWithCustomError(
+      await expect(this.contract.connect(deployer).__validateClaim(recipient, claimBitPosition, validationData)).to.be.revertedWithCustomError(
         this.contract,
         'InvalidSignature'
       );
@@ -192,6 +194,28 @@ describe('PointsBitmapClaim', function () {
         await this.contract.connect(deployer).__deliver(recipient, amount);
 
         expect(await this.points.balances(recipient)).to.equal(amount);
+      });
+      it('Does nothing if deliver zero amount', async function () {
+        const recipient = recipient1.address;
+        const amount = 0;
+
+        this.contract = await deployContract(
+          'PointsBitmapClaimMock',
+          await this.points.getAddress(),
+          this.forwarderRegistryAddress,
+          this.depositReasonCode,
+          await signer.getAddress()
+        );
+
+        await this.points.connect(deployer).grantRole(await this.points.DEPOSITOR_ROLE(), await this.contract.getAddress());
+
+        const balanceBefore = await this.points.balances(recipient);
+
+        await this.contract.connect(deployer).__deliver(recipient, amount);
+
+        const balanceAfter = await this.points.balances(recipient);
+
+        expect(balanceAfter).to.equal(balanceBefore);
       });
     });
   });

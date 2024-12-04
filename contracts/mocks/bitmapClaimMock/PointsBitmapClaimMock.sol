@@ -9,11 +9,11 @@ contract PointsBitmapClaimMock is PointsBitmapClaim {
         address pointsContractAddress,
         IForwarderRegistry forwarderRegistry_,
         bytes32 depositReasonCode,
-        address signer
-    ) PointsBitmapClaim(pointsContractAddress, forwarderRegistry_, depositReasonCode, signer) {}
+        address _signer
+    ) PointsBitmapClaim(pointsContractAddress, forwarderRegistry_, depositReasonCode, _signer) {}
 
-    function __validateClaim(address recipient, uint256 claimBits, bytes calldata validationData) external view {
-        _validateClaim(recipient, claimBits, validationData);
+    function __validateClaim(address recipient, uint256[] calldata claimBitPositions, bytes calldata validationData) external view {
+        _validateClaim(recipient, claimBitPositions, validationData);
     }
 
     function __deliver(address recipient, uint256 amount) external {
