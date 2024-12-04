@@ -98,13 +98,14 @@ describe('BitmapClaim', function () {
   });
 
   describe('claim(address recipient, uint256[] claimBitPositions, bytes calldata validationData)', function () {
-    it('Reverts with {InvalidClaimBitPositions} if claimBitPositions has zero length', async function () {
+    it('Reverts with {ZeroLengthClaimBitPositions} if claimBitPositions has zero length', async function () {
       const recipient = recipient1.address;
       const claimBitPositions = [];
 
-      await expect(this.contract.connect(other).claim(recipient, claimBitPositions, this.validationData))
-        .to.revertedWithCustomError(this.contract, 'InvalidClaimBitPositions')
-        .withArgs(claimBitPositions);
+      await expect(this.contract.connect(other).claim(recipient, claimBitPositions, this.validationData)).to.revertedWithCustomError(
+        this.contract,
+        'ZeroLengthClaimBitPositions'
+      );
     });
 
     it('Reverts with {DuplicateClaimBit} if two bits of claimBitPositions are the same', async function () {

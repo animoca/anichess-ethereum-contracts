@@ -7,14 +7,14 @@ import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/ac
 abstract contract BitmapClaim is ContractOwnership {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
 
-    /// @notice Thrown when the bit position to be updated is bigger than maxBitCount.
+    /// @notice Thrown when the bit position to be updated is bigger than or equal to maxBitCount.
     error UpdatingInvalidBitPosition(uint256 bitPosition, uint256 maxBitCount);
 
     /// @notice Thrown when one of the claim bits is bigger than maxBitCount.
     error BitPositionTooBig(uint256 consolidatedClaimBits, uint256 maxBitCount);
 
     /// @notice Thrown when the claim bit position array is invalid.
-    error InvalidClaimBitPositions(uint256[] claimBitPositions);
+    error ZeroLengthClaimBitPositions();
 
     /// @notice Thrown when the claim has been done before.
     error AlreadyClaimed(address recipient, uint256 claimBits, uint256 claimedBitmap);
@@ -78,38 +78,6 @@ abstract contract BitmapClaim is ContractOwnership {
     /// @dev Reverts with {AlreadyClaimed} if one of the the given claimBits has been claimed.
     /// @dev Emits a {Claimed} event.
     /// @param recipient The recipient for this claim.
-    /// @param claimBitPositions Indicate which bit position it is claiming for.
-    /// @param validationData validationData for validating the claim.
-    // function claim(address recipient, uint256[] claimBitPositions, bytes calldata validationData) external {
-    //     uint256 storedBitmap = claimed[recipient];
-    //     if (storedBitmap & claimBits > 0) {
-    //         revert AlreadyClaimed(recipient, claimBits, storedBitmap);
-    //     }
-
-    //     _validateClaim(recipient, claimBits, validationData);
-
-    //     uint256 newBitmap = storedBitmap | claimBits;
-    //     claimed[recipient] = newBitmap;
-
-    //     emit Claimed(recipient, storedBitmap, newBitmap);
-
-    //     uint256 deliverAmount;
-    //     uint256 count = maxBitCount;
-    //     for (uint256 bitPos; bitPos < count; ++bitPos) {
-    //         if (claimBits & 1 > 0) {
-    //             deliverAmount += bitPositionValueMap[bitPos];
-    //         }
-    //         claimBits >>= 1;
-    //     }
-
-    //     _deliver(recipient, deliverAmount);
-    // }
-
-    /// @notice Executes the claim for a given recipient address (anyone can call this function).
-    /// @dev Reverts with {InvalidClaimBits} if claimBits is zero or exceeding maxBitCount.
-    /// @dev Reverts with {AlreadyClaimed} if one of the the given claimBits has been claimed.
-    /// @dev Emits a {Claimed} event.
-    /// @param recipient The recipient for this claim.
     /// @param claimBitPositions Bit position array for the claim.
     /// @param validationData validationData for validating the claim.
     function claim(address recipient, uint256[] calldata claimBitPositions, bytes calldata validationData) external {
@@ -117,7 +85,7 @@ abstract contract BitmapClaim is ContractOwnership {
         uint256 deliverAmount;
         uint256 len = claimBitPositions.length;
         if (len == 0) {
-            revert InvalidClaimBitPositions(claimBitPositions);
+            revert ZeroLengthClaimBitPositions();
         }
 
         for (uint256 i; i < len; ++i) {
