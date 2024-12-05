@@ -10,10 +10,10 @@ abstract contract BitmapClaim is ContractOwnership {
     /// @notice Thrown when the bit position to be updated is bigger than or equal to maxBitCount.
     error UpdatingInvalidBitPosition(uint256 bitPosition, uint256 maxBitCount);
 
-    /// @notice Thrown when one of the claim bits is bigger than maxBitCount.
-    error BitPositionTooBig(uint256 consolidatedClaimBits, uint256 maxBitCount);
+    /// @notice Thrown when one of the claim bits is bigger than or equal to maxBitCount.
+    error BitPositionTooBig(uint256 claimBits, uint256 maxBitCount);
 
-    /// @notice Thrown when the claim bit position array is invalid.
+    /// @notice Thrown when the claim bit position array has zero length.
     error ZeroLengthClaimBitPositions();
 
     /// @notice Thrown when the claim has been done before.
@@ -74,8 +74,9 @@ abstract contract BitmapClaim is ContractOwnership {
     }
 
     /// @notice Executes the claim for a given recipient address (anyone can call this function).
+    /// @dev Reverts with {ZeroLengthClaimBitPositions} if claimBits is zero or exceeding maxBitCount.
     /// @dev Reverts with {InvalidClaimBits} if claimBits is zero or exceeding maxBitCount.
-    /// @dev Reverts with {AlreadyClaimed} if one of the the given claimBits has been claimed.
+    /// @dev Reverts with {AlreadyClaimed} if one of the the given claimBitPositions has been claimed.
     /// @dev Emits a {Claimed} event.
     /// @param recipient The recipient for this claim.
     /// @param claimBitPositions Bit position array for the claim.
@@ -100,9 +101,9 @@ abstract contract BitmapClaim is ContractOwnership {
             consolidatedClaimBits |= claimBit;
         }
 
-        uint256 _maxBitCount = maxBitCount;
-        if (consolidatedClaimBits > (1 << _maxBitCount) - 1) {
-            revert BitPositionTooBig(consolidatedClaimBits, _maxBitCount);
+        uint256 maxBitCount_ = maxBitCount;
+        if (consolidatedClaimBits >> maxBitCount_ > 0) {
+            revert BitPositionTooBig(consolidatedClaimBits, maxBitCount_);
         }
 
         uint256 storedBitmap = claimed[recipient];
@@ -110,13 +111,14 @@ abstract contract BitmapClaim is ContractOwnership {
             revert AlreadyClaimed(recipient, consolidatedClaimBits, storedBitmap);
         }
 
+        _validateClaim(recipient, claimBitPositions, validationData);
+
         uint256 newBitmap = storedBitmap | consolidatedClaimBits;
         claimed[recipient] = newBitmap;
 
         emit Claimed(recipient, storedBitmap, newBitmap);
 
         _deliver(recipient, deliverAmount);
-        _validateClaim(recipient, claimBitPositions, validationData);
     }
 
     /// @notice Called by claim(). Inheriting contract must implement this function to validate the claim with given validationData.
