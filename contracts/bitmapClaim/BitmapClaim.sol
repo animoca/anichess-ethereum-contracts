@@ -25,7 +25,7 @@ abstract contract BitmapClaim is ContractOwnership {
     /// @notice Event emitted when value of the bitPosition is set successfully.
     /// @param bitPosition The bit position to be set.
     /// @param value The value of the bit position.
-    event BitValueSet(uint256 bitPosition, uint256 value);
+    event BitValueAdded(uint256 bitPosition, uint256 value);
 
     /// @notice Event emitted when claim is done successfully.
     /// @param recipient The recipient of the points.
@@ -44,33 +44,17 @@ abstract contract BitmapClaim is ContractOwnership {
 
     constructor() ContractOwnership(msg.sender) {}
 
+    /// @dev Reverts with {NotContractOwner} if sender is not owner.
+    /// @dev Emits a {BitValueAdded} event.
     /// @param value The value to be assigned to a new bit.
     function addBitValue(uint256 value) external {
-        uint256 bitPosition = maxBitCount;
-        _setBitValue(bitPosition, value);
-        maxBitCount = bitPosition + 1;
-    }
-
-    /// @dev Reverts with {UpdatingInvalidBitPosition} if bitPosition is larger than or equal to maxBitCount.
-    /// @param bitPosition The bit position of the update.
-    /// @param value The value to be updated to.
-    function updateBitValue(uint256 bitPosition, uint256 value) external {
-        uint256 _maxBitCount = maxBitCount;
-        if (bitPosition >= maxBitCount) {
-            revert UpdatingInvalidBitPosition(bitPosition, _maxBitCount);
-        }
-        _setBitValue(bitPosition, value);
-    }
-
-    /// @notice Called by addBitValue() and updateBitValue().
-    /// @dev Reverts with {NotContractOwner} if sender is not owner.
-    /// @dev Emits a {BitValueSet} event.
-    /// @param bitPosition The bit position of the update.
-    /// @param value The value to be updated to.
-    function _setBitValue(uint256 bitPosition, uint256 value) internal {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
+
+        uint256 bitPosition = maxBitCount;
         bitPositionValueMap[bitPosition] = value;
-        emit BitValueSet(bitPosition, value);
+        maxBitCount = bitPosition + 1;
+
+        emit BitValueAdded(bitPosition, value);
     }
 
     /// @notice Executes the claim for a given recipient address (anyone can call this function).

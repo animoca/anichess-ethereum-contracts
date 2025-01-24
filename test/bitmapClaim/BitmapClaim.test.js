@@ -21,7 +21,6 @@ describe('BitmapClaim', function () {
 
   describe('addBitValue(uint256 value)', function () {
     it('Reverts with {NotContractOwner} if not called by owner', async function () {
-      const bitPosition = 1;
       const value = 100;
 
       await expect(this.contract.connect(other).addBitValue(value)).to.revertedWithCustomError(this.contract, 'NotContractOwner').withArgs(other);
@@ -43,56 +42,10 @@ describe('BitmapClaim', function () {
 
         expect(await this.contract.maxBitCount()).to.equal(1);
       });
-      it('emits a BitValueSet event', async function () {
+      it('emits a BitValueAdded event', async function () {
         const value = 100;
 
-        await expect(this.contract.connect(deployer).addBitValue(value)).to.emit(this.contract, 'BitValueSet').withArgs(0, value);
-      });
-    });
-  });
-
-  describe('updateBitValue(uint256 bitPosition, uint256 value)', function () {
-    it('Reverts with {NotContractOwner} if not called by owner', async function () {
-      const bitPosition = 0;
-      const value = 100;
-
-      await this.contract.connect(deployer).addBitValue(value);
-
-      await expect(this.contract.connect(other).updateBitValue(bitPosition, value))
-        .to.revertedWithCustomError(this.contract, 'NotContractOwner')
-        .withArgs(other);
-    });
-
-    it('Reverts with {UpdatingInvalidBitPosition} if bitPosition is larger than maxBitCount', async function () {
-      const bitPosition = 1;
-      const value = 100;
-
-      await expect(this.contract.connect(deployer).updateBitValue(bitPosition, value))
-        .to.revertedWithCustomError(this.contract, 'UpdatingInvalidBitPosition')
-        .withArgs(bitPosition, 0);
-    });
-
-    context('when successful', function () {
-      it('sets value for bitPosition', async function () {
-        const bitPosition = 0;
-        const oldValue = 100;
-        const newValue = 200;
-
-        await this.contract.connect(deployer).addBitValue(oldValue);
-
-        await this.contract.connect(deployer).updateBitValue(bitPosition, newValue);
-
-        expect(await this.contract.bitPositionValueMap(bitPosition)).to.equal(newValue);
-      });
-      it('emits a BitValueSet event', async function () {
-        const bitPosition = 0;
-        const value = 100;
-
-        await this.contract.connect(deployer).addBitValue(value);
-
-        await expect(this.contract.connect(deployer).updateBitValue(bitPosition, value))
-          .to.emit(this.contract, 'BitValueSet')
-          .withArgs(bitPosition, value);
+        await expect(this.contract.connect(deployer).addBitValue(value)).to.emit(this.contract, 'BitValueAdded').withArgs(0, value);
       });
     });
   });
