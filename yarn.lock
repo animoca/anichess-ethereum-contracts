@@ -23,7 +23,7 @@
     lodash.isequal "^4.5.0"
     lodash.mergewith "^4.6.2"
 
-"@animoca/ethereum-contracts@3.0.0":
+"@animoca/ethereum-contracts@=3.0.0":
   version "3.0.0"
   resolved "https://registry.npmjs.org/@animoca/ethereum-contracts/-/ethereum-contracts-3.0.0.tgz#300c1e8d93d048e64bd7e7de16ca502d593ffa73"
   integrity sha512-0q/nXUGArV0Piyr2PGVMzS93L6K0h3F2BNFPeTUBB1xqT2QonUuDZpjWhCoUlaKKdOl6TLB5+wjBNpGJSHOzdQ==
