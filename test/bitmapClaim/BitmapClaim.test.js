@@ -70,13 +70,13 @@ describe('BitmapClaim', function () {
         .withArgs(0);
     });
 
-    it('Reverts with {BitPositionTooBig} if one of the bit position is too big', async function () {
+    it('Reverts with {InvalidBitPosition} if claimBits is zero or exceeding maxBitCount.', async function () {
       const recipient = recipient1.address;
       const claimBitPositions = [10];
       const consolidatedClaimBits = 2 ** 10;
 
       await expect(this.contract.connect(other).claim(recipient, claimBitPositions, this.validationData))
-        .to.revertedWithCustomError(this.contract, 'BitPositionTooBig')
+        .to.revertedWithCustomError(this.contract, 'InvalidBitPosition')
         .withArgs(consolidatedClaimBits, 0);
     });
 
