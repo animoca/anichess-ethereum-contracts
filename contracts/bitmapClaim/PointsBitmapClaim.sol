@@ -17,9 +17,6 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
     /// @notice Thrown when the given points address is zero address.
     error InvalidPointsContractAddress();
 
-    /// @notice Thrown when the given forwarder registry address is zero address.
-    error InvalidForwarderRegistry();
-
     /// @notice Thrown when the signature is invalid.
     error SignerAlreadySet(address signer);
 
@@ -50,10 +47,6 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
     ) EIP712("PointsBitmapClaim", "1.0") ForwarderRegistryContext(_forwarderRegistry) {
         if (pointsContractAddress == address(0)) {
             revert InvalidPointsContractAddress();
-        }
-
-        if (address(_forwarderRegistry) == address(0)) {
-            revert InvalidForwarderRegistry();
         }
 
         POINTS = IPoints(pointsContractAddress);

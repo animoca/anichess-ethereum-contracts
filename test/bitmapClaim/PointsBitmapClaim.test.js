@@ -41,17 +41,6 @@ describe('PointsBitmapClaim', function () {
         )
       ).to.be.revertedWithCustomError(this.contract, 'InvalidPointsContractAddress');
     });
-    it('reverts if the forwarder registry address is 0', async function () {
-      await expect(
-        deployContract(
-          'PointsBitmapClaim',
-          this.points,
-          '0x0000000000000000000000000000000000000000',
-          this.depositReasonCode,
-          await signer.getAddress()
-        )
-      ).to.be.revertedWithCustomError(this.contract, 'InvalidForwarderRegistry');
-    });
     context('when successful', function () {
       it('sets the points contract', async function () {
         expect(await this.contract.POINTS()).to.equal(await this.points.getAddress());
