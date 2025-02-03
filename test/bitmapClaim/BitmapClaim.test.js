@@ -42,10 +42,10 @@ describe('BitmapClaim', function () {
 
         expect(await this.contract.maxBitCount()).to.equal(1);
       });
-      it('emits a BitValueAdded event', async function () {
+      it('emits a BitValueSet event', async function () {
         const value = 100;
 
-        await expect(this.contract.connect(deployer).addBitValue(value)).to.emit(this.contract, 'BitValueAdded').withArgs(0, value);
+        await expect(this.contract.connect(deployer).addBitValue(value)).to.emit(this.contract, 'BitValueSet').withArgs(0, value);
       });
     });
   });
