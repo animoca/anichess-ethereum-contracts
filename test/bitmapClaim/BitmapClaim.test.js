@@ -20,32 +20,32 @@ describe('BitmapClaim', function () {
   });
 
   describe('addBitValue(uint256 value)', function () {
-    it('Reverts with {NotContractOwner} if not called by owner', async function () {
-      const value = 100;
+    before(function () {
+      this.bitValue = 100;
+      this.bitPosition = 0;
+    });
 
-      await expect(this.contract.connect(other).addBitValue(value)).to.revertedWithCustomError(this.contract, 'NotContractOwner').withArgs(other);
+    it('Reverts with {NotContractOwner} if not called by owner', async function () {
+      await expect(this.contract.connect(other).addBitValue(this.bitValue))
+        .to.revertedWithCustomError(this.contract, 'NotContractOwner')
+        .withArgs(other);
     });
 
     context('when successful', function () {
-      it('adds value to new bit position', async function () {
-        const bitPosition = 0;
-        const value = 100;
-
-        await this.contract.connect(deployer).addBitValue(value);
-
-        expect(await this.contract.bitPositionValueMap(bitPosition)).to.equal(value);
+      beforeEach(async function () {
+        this.receipt = await this.contract.addBitValue(this.bitValue);
       });
+
+      it('adds value to new bit position', async function () {
+        expect(await this.contract.bitPositionValueMap(this.bitPosition)).to.equal(this.bitValue);
+      });
+
       it('increases maxBitCount by 1', async function () {
-        const value = 100;
-
-        await this.contract.connect(deployer).addBitValue(value);
-
         expect(await this.contract.maxBitCount()).to.equal(1);
       });
-      it('emits a BitValueSet event', async function () {
-        const value = 100;
 
-        await expect(this.contract.connect(deployer).addBitValue(value)).to.emit(this.contract, 'BitValueSet').withArgs(0, value);
+      it('emits a BitValueSet event', function () {
+        expect(this.receipt).to.emit(this.contract, 'BitValueSet').withArgs(this.bitPosition, this.bitValue);
       });
     });
   });
@@ -80,59 +80,55 @@ describe('BitmapClaim', function () {
         .withArgs(consolidatedClaimBits, 0);
     });
 
-    it('Reverts with {AlreadyClaimed} if one of the the given claimBits has been claimed', async function () {
-      await this.contract.connect(deployer).addBitValue(100);
-      await this.contract.connect(deployer).addBitValue(200);
-
-      const recipient = recipient1.address;
-      const claimBitPositions = [0];
-      const consolidatedClaimBits = 1;
-
-      await this.contract.connect(deployer).claim(recipient, claimBitPositions, this.validationData);
-
-      const claimBitPositionsAgain = [1, 0];
-      const consolidatedClaimBitsAgain = 3;
-
-      await expect(this.contract.connect(deployer).claim(recipient, claimBitPositionsAgain, this.validationData))
-        .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
-        .withArgs(recipient, consolidatedClaimBitsAgain, consolidatedClaimBits);
-    });
-
-    context('when successful', function () {
-      it('sets claimed to claimBits', async function () {
-        await this.contract.connect(deployer).addBitValue(100);
-        await this.contract.connect(deployer).addBitValue(200);
-
-        const recipient = recipient1.address;
-        const claimBitPositions = [0];
-        const consolidatedClaimBits = 1;
-
-        await this.contract.connect(deployer).claim(recipient, claimBitPositions, this.validationData);
-        const claimedBitmap = await this.contract.claimed(recipient);
-        expect(claimedBitmap).to.equal(consolidatedClaimBits);
-
-        const claimBitPositions2 = [1];
-        const consolidatedClaimBits2 = 2;
-        await this.contract.connect(deployer).claim(recipient, claimBitPositions2, this.validationData);
-        const claimedBitmap2 = await this.contract.claimed(recipient);
-        expect(claimedBitmap2).to.equal(BigInt(consolidatedClaimBits2 | consolidatedClaimBits));
+    context('when bit value is added', function () {
+      beforeEach(async function () {
+        this.bitValue = 100;
+        await this.contract.addBitValue(this.bitValue);
       });
 
-      it('emits a Claimed event', async function () {
+      it('Reverts with {AlreadyClaimed} if one of the the given claimBits has been claimed', async function () {
         const recipient = recipient1.address;
-        const amount = 100;
         const claimBitPositions = [0];
         const consolidatedClaimBits = 1;
 
-        await this.contract.connect(deployer).addBitValue(amount);
+        await this.contract.claim(recipient, claimBitPositions, this.validationData);
+        await expect(this.contract.claim(recipient, claimBitPositions, this.validationData))
+          .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
+          .withArgs(recipient, consolidatedClaimBits, consolidatedClaimBits);
+      });
 
-        await expect(this.contract.connect(deployer).claim(recipient, claimBitPositions, this.validationData))
-          .to.emit(this.contract, 'Claimed')
-          .withArgs(recipient, 0, consolidatedClaimBits)
-          .to.emit(this.contract, 'ValidateClaimCalled')
-          .withArgs(recipient, claimBitPositions, this.validationData)
-          .to.emit(this.contract, 'DeliverCalled')
-          .withArgs(recipient, amount);
+      context('when successful', function () {
+        it('sets claimed to claimBits', async function () {
+          const recipient = recipient1.address;
+          const claimBitPositions = [0];
+          const consolidatedClaimBits = 1;
+
+          await this.contract.claim(recipient, claimBitPositions, this.validationData);
+          const claimedBitmap = await this.contract.claimed(recipient);
+          expect(claimedBitmap).to.equal(consolidatedClaimBits);
+
+          await this.contract.addBitValue(200);
+
+          const claimBitPositions2 = [1];
+          const consolidatedClaimBits2 = 2;
+          await this.contract.claim(recipient, claimBitPositions2, this.validationData);
+          const claimedBitmap2 = await this.contract.claimed(recipient);
+          expect(claimedBitmap2).to.equal(BigInt(consolidatedClaimBits2 | consolidatedClaimBits));
+        });
+
+        it('emits a Claimed event', async function () {
+          const recipient = recipient1.address;
+          const claimBitPositions = [0];
+          const consolidatedClaimBits = 1;
+
+          await expect(this.contract.claim(recipient, claimBitPositions, this.validationData))
+            .to.emit(this.contract, 'Claimed')
+            .withArgs(recipient, 0, consolidatedClaimBits)
+            .to.emit(this.contract, 'ValidateClaimCalled')
+            .withArgs(recipient, claimBitPositions, this.validationData)
+            .to.emit(this.contract, 'DeliverCalled')
+            .withArgs(recipient, this.bitValue);
+        });
       });
     });
   });

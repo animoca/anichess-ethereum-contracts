@@ -14,6 +14,7 @@ describe('PointsBitmapClaim', function () {
     this.depositReasonCode = '0x0000000000000000000000000000000000000000000000000000000000000001';
     this.forwarderRegistryAddress = await getForwarderRegistryAddress();
     this.points = await deployContract('Points', this.forwarderRegistryAddress);
+    this.pointsContractAddress = await this.points.getAddress();
     this.contract = await deployContract(
       'PointsBitmapClaim',
       this.points,
@@ -21,8 +22,19 @@ describe('PointsBitmapClaim', function () {
       this.depositReasonCode,
       await signer.getAddress()
     );
+    this.claimContractAddress = await this.contract.getAddress();
 
-    await this.points.connect(deployer).grantRole(await this.points.DEPOSITOR_ROLE(), await this.contract.getAddress());
+    await this.points.grantRole(await this.points.DEPOSITOR_ROLE(), this.claimContractAddress);
+
+    this.mockContract = await deployContract(
+      'PointsBitmapClaimMock',
+      this.pointsContractAddress,
+      this.forwarderRegistryAddress,
+      this.depositReasonCode,
+      await signer.getAddress()
+    );
+    this.mockContractAddress = await this.mockContract.getAddress();
+    await this.points.grantRole(await this.points.DEPOSITOR_ROLE(), this.mockContractAddress);
   };
 
   beforeEach(async function () {
@@ -32,18 +44,12 @@ describe('PointsBitmapClaim', function () {
   describe('constructor', function () {
     it('reverts if the points contract address is 0', async function () {
       await expect(
-        deployContract(
-          'PointsBitmapClaim',
-          '0x0000000000000000000000000000000000000000',
-          this.forwarderRegistryAddress,
-          this.depositReasonCode,
-          await signer.getAddress()
-        )
+        deployContract('PointsBitmapClaim', ethers.ZeroAddress, this.forwarderRegistryAddress, this.depositReasonCode, await signer.getAddress())
       ).to.be.revertedWithCustomError(this.contract, 'InvalidPointsContractAddress');
     });
     context('when successful', function () {
       it('sets the points contract', async function () {
-        expect(await this.contract.POINTS()).to.equal(await this.points.getAddress());
+        expect(await this.contract.POINTS()).to.equal(this.pointsContractAddress);
       });
       it('sets the deposit reason code', async function () {
         expect(await this.contract.DEPOSIT_REASON_CODE()).to.equal(await this.depositReasonCode);
@@ -58,9 +64,7 @@ describe('PointsBitmapClaim', function () {
     it('Reverts with {SignerAlreadySet} if signer address has already been set', async function () {
       const signerAddress = await signer.getAddress();
 
-      await expect(this.contract.connect(deployer).setSigner(signerAddress))
-        .to.revertedWithCustomError(this.contract, 'SignerAlreadySet')
-        .withArgs(signerAddress);
+      await expect(this.contract.setSigner(signerAddress)).to.revertedWithCustomError(this.contract, 'SignerAlreadySet').withArgs(signerAddress);
     });
 
     it('Reverts with {NotContractOwner} if not called by owner', async function () {
@@ -75,56 +79,46 @@ describe('PointsBitmapClaim', function () {
       it('sets signer to new value', async function () {
         const newSignerAddress = await newSigner.getAddress();
 
-        await this.contract.connect(deployer).setSigner(newSignerAddress);
+        await this.contract.setSigner(newSignerAddress);
 
         expect(await this.contract.signer()).to.equal(newSignerAddress);
       });
       it('emits a SignerSet event', async function () {
         const newSignerAddress = await newSigner.getAddress();
 
-        await expect(this.contract.connect(deployer).setSigner(newSignerAddress)).to.emit(this.contract, 'SignerSet').withArgs(newSignerAddress);
+        await expect(this.contract.setSigner(newSignerAddress)).to.emit(this.contract, 'SignerSet').withArgs(newSignerAddress);
       });
     });
   });
 
-  describe('mock: __validateClaim(address recipient, uint256 claimBits, bytes calldata validationData)', function () {
-    it('Reverts if the validationData is not a valid signature', async function () {
-      this.contract = await deployContract(
-        'PointsBitmapClaimMock',
-        await this.points.getAddress(),
-        this.forwarderRegistryAddress,
-        this.depositReasonCode,
-        await signer.getAddress()
-      );
+  describe('claim(address recipient, uint256[] calldata claimBitPositions, bytes calldata validationData)', function () {
+    beforeEach(async function () {
+      await this.contract.addBitValue(100);
+      await this.contract.addBitValue(0);
+      this.oldBalance = await this.points.balances(recipient1.address);
+    });
 
+    it('Reverts if the validationData is not a valid signature', async function () {
       const recipient = recipient1.address;
       const claimBitPositions = [0];
       const validationData = '0x1234';
 
-      await expect(this.contract.connect(deployer).__validateClaim(recipient, claimBitPositions, validationData)).to.be.revertedWithCustomError(
-        this.contract,
+      await expect(this.contract.claim(recipient, claimBitPositions, validationData)).to.be.revertedWithCustomError(
+        this.mockContract,
         'InvalidSignature'
       );
     });
 
     context('when successful', function () {
-      it('Does not revert', async function () {
+      it('should not revert if the value claimed is larger than zero', async function () {
         const recipient = recipient1.address;
         const claimBitPositions = [0];
-
-        this.contract = await deployContract(
-          'PointsBitmapClaimMock',
-          await this.points.getAddress(),
-          this.forwarderRegistryAddress,
-          this.depositReasonCode,
-          await signer.getAddress()
-        );
 
         const domain = {
           name: 'PointsBitmapClaim',
           version: '1.0',
           chainId: await getChainId(),
-          verifyingContract: await this.contract.getAddress(),
+          verifyingContract: this.claimContractAddress,
         };
 
         const pointsBitmapClaimType = {
@@ -139,103 +133,47 @@ describe('PointsBitmapClaim', function () {
           claimBitPositionsHash: keccak256(new ethers.AbiCoder().encode(['uint256[]'], [claimBitPositions])),
         });
 
-        await this.contract.connect(other).__validateClaim(recipient, claimBitPositions, validationData);
-        // await expect(this.contract.connect(other).__validateClaim(recipient, claimBitPositions, validationData)).to.not.be.reverted;
+        await this.contract.connect(other).claim(recipient, claimBitPositions, validationData);
+
+        expect(await this.points.balances(recipient)).to.equal(100);
+      });
+
+      it('should not revert if the value claimed is equal to zero', async function () {
+        const recipient = recipient1.address;
+        const claimBitPositions = [1];
+
+        const domain = {
+          name: 'PointsBitmapClaim',
+          version: '1.0',
+          chainId: await getChainId(),
+          verifyingContract: this.claimContractAddress,
+        };
+
+        const pointsBitmapClaimType = {
+          PointsBitmapClaim: [
+            {name: 'recipient', type: 'address'},
+            {name: 'claimBitPositionsHash', type: 'bytes32'},
+          ],
+        };
+
+        const validationData = await signer.signTypedData(domain, pointsBitmapClaimType, {
+          recipient,
+          claimBitPositionsHash: keccak256(new ethers.AbiCoder().encode(['uint256[]'], [claimBitPositions])),
+        });
+
+        await this.contract.connect(other).claim(recipient, claimBitPositions, validationData);
+        expect(await this.points.balances(recipient)).to.equal(0);
       });
     });
   });
 
-  describe('mock: __deliver(address recipient, uint256 amount)', function () {
-    it('Reverts if the validationData is not a valid signature', async function () {
-      this.contract = await deployContract(
-        'PointsBitmapClaimMock',
-        await this.points.getAddress(),
-        this.forwarderRegistryAddress,
-        this.depositReasonCode,
-        await signer.getAddress()
-      );
-
-      const recipient = recipient1.address;
-      const claimBitPosition = [0];
-      const validationData = '0x1234';
-
-      await expect(this.contract.connect(deployer).__validateClaim(recipient, claimBitPosition, validationData)).to.be.revertedWithCustomError(
-        this.contract,
-        'InvalidSignature'
-      );
-    });
-
-    context('when successful', function () {
-      it('Updates points balance', async function () {
-        const recipient = recipient1.address;
-        const amount = 100;
-
-        this.contract = await deployContract(
-          'PointsBitmapClaimMock',
-          await this.points.getAddress(),
-          this.forwarderRegistryAddress,
-          this.depositReasonCode,
-          await signer.getAddress()
-        );
-
-        await this.points.connect(deployer).grantRole(await this.points.DEPOSITOR_ROLE(), await this.contract.getAddress());
-
-        await this.contract.connect(deployer).__deliver(recipient, amount);
-
-        expect(await this.points.balances(recipient)).to.equal(amount);
-      });
-      it('Does nothing if deliver zero amount', async function () {
-        const recipient = recipient1.address;
-        const amount = 0;
-
-        this.contract = await deployContract(
-          'PointsBitmapClaimMock',
-          await this.points.getAddress(),
-          this.forwarderRegistryAddress,
-          this.depositReasonCode,
-          await signer.getAddress()
-        );
-
-        await this.points.connect(deployer).grantRole(await this.points.DEPOSITOR_ROLE(), await this.contract.getAddress());
-
-        const balanceBefore = await this.points.balances(recipient);
-
-        await this.contract.connect(deployer).__deliver(recipient, amount);
-
-        const balanceAfter = await this.points.balances(recipient);
-
-        expect(balanceAfter).to.equal(balanceBefore);
-      });
-    });
-  });
-
-  context('meta-transactions', function () {
+  describe('meta-transactions', function () {
     it('mock: _msgData()', async function () {
-      // Arrange
-      this.contract = await deployContract(
-        'PointsBitmapClaimMock',
-        await this.points.getAddress(),
-        this.forwarderRegistryAddress,
-        this.depositReasonCode,
-        await signer.getAddress()
-      );
-      expect(await this.contract.connect(deployer).__msgData()).to.be.exist;
+      expect(await this.mockContract.__msgData()).to.be.exist;
     });
 
     it('mock: _msgSender()', async function () {
-      // Arrange
-      this.contract = await deployContract(
-        'PointsBitmapClaimMock',
-        await this.points.getAddress(),
-        this.forwarderRegistryAddress,
-        this.depositReasonCode,
-        await signer.getAddress()
-      );
-
-      // Act
-
-      // Assert
-      expect(await this.contract.connect(deployer).__msgSender()).to.be.exist;
+      expect(await this.mockContract.__msgSender()).to.be.exist;
     });
   });
 });
