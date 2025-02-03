@@ -1,6 +1,6 @@
 {
   "name": "@animoca/anichess-ethereum-contracts",
-  "version": "2.2.3",
+  "version": "2.3.0",
   "description": "Solidity contracts for the Anichess project.",
   "author": "Animoca Brands",
   "license": "MIT",
@@ -47,7 +47,7 @@
   },
   "devDependencies": {
     "@animoca/ethereum-contract-helpers": "^1.0.1",
-    "@animoca/ethereum-contracts": "^3.0.0",
+    "@animoca/ethereum-contracts": "=3.0.0",
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
     "@nomicfoundation/hardhat-ethers": "^3.0.4",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
@@ -81,5 +81,6 @@
     "solhint-plugin-prettier": "^0.0.5",
     "solidity-coverage": "^0.8.2",
     "solidity-docgen": "^0.6.0-beta.35"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
