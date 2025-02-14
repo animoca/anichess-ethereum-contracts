@@ -131,5 +131,26 @@ describe('BitmapClaim', function () {
         });
       });
     });
+
+    context('when reentrancy happens', function () {
+      it('reverts with {AlreadyClaimed} when reentrancy happens at _validateClaim function', async function () {
+        const bitmapClaimMockReentrancyAttackContract = await deployContract('BitmapClaimMockReentrancyAttack');
+        const bitmapClaimMockReentrancyAttackRecipientContract = await deployContract(
+          'BitmapClaimMockReentrancyRecipient',
+          await bitmapClaimMockReentrancyAttackContract.getAddress()
+        );
+
+        const bitValue = 100;
+        await bitmapClaimMockReentrancyAttackContract.addBitValue(bitValue);
+
+        const recipient = await bitmapClaimMockReentrancyAttackRecipientContract.getAddress();
+        const claimBitPositions = [0];
+        const consolidatedClaimBits = 1;
+
+        await expect(bitmapClaimMockReentrancyAttackContract.claim(recipient, claimBitPositions, this.validationData))
+          .to.be.revertedWithCustomError(bitmapClaimMockReentrancyAttackContract, 'AlreadyClaimed')
+          .withArgs(recipient, consolidatedClaimBits, 1);
+      });
+    });
   });
 });
