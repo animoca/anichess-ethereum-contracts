@@ -52,6 +52,7 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
         POINTS = IPoints(pointsContractAddress);
         DEPOSIT_REASON_CODE = depositReasonCode;
         signer = _signer;
+        emit SignerSet(_signer);
     }
 
     /// @notice Sets the signer of the ERC712 signature for claim validation.
@@ -71,7 +72,7 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
     }
 
     /// @inheritdoc BitmapClaim
-    /// @dev Reverts with {InvalidSignature} if validationData is not a valid ERC712 signature by contract owner.
+    /// @dev Reverts with {InvalidSignature} if validationData is not a valid ERC712 signature by the specified signer.
     /// @param recipient Recipient of the claim.
     /// @param claimBitPositions Bit position array for the claim.
     /// @param validationData Data for validation. Expects a valid ERC712 signature by contract owner.

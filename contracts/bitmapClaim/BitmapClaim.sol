@@ -22,13 +22,13 @@ abstract contract BitmapClaim is ContractOwnership {
     /// @notice Event emitted when value of the bitPosition is set successfully.
     /// @param bitPosition The bit position to be set.
     /// @param value The value of the bit position.
-    event BitValueSet(uint256 bitPosition, uint256 value);
+    event BitValueSet(uint256 indexed bitPosition, uint256 indexed value);
 
     /// @notice Event emitted when claim is done successfully.
     /// @param recipient The recipient of the points.
     /// @param oldBitmap The original bitmap value before setting to new value.
     /// @param newBitmap The new bitmap value.
-    event Claimed(address recipient, uint256 oldBitmap, uint256 newBitmap);
+    event Claimed(address indexed recipient, uint256 indexed oldBitmap, uint256 indexed newBitmap);
 
     /// @notice Max number of bits in claimBits for validating claims.
     uint256 public maxBitCount;
@@ -94,14 +94,13 @@ abstract contract BitmapClaim is ContractOwnership {
             revert AlreadyClaimed(recipient, consolidatedClaimBits, storedBitmap);
         }
 
-        _validateClaim(recipient, claimBitPositions, validationData);
-
         uint256 newBitmap = storedBitmap | consolidatedClaimBits;
         claimed[recipient] = newBitmap;
 
-        emit Claimed(recipient, storedBitmap, newBitmap);
-
+        _validateClaim(recipient, claimBitPositions, validationData);
         _deliver(recipient, deliverAmount);
+
+        emit Claimed(recipient, storedBitmap, newBitmap);
     }
 
     /// @notice Called by claim(). Inheriting contract must implement this function to validate the claim with given validationData.

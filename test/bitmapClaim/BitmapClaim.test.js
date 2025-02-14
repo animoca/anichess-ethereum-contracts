@@ -131,5 +131,39 @@ describe('BitmapClaim', function () {
         });
       });
     });
+
+    context('when reentrancy happens', function () {
+      it('reverts with {AlreadyClaimed} when reentrancy happens at _validateClaim function', async function () {
+        const bitmapClaimMockReentrancyAttackContract = await deployContract('BitmapClaimMockReentrancyAttack');
+        bitmapClaimMockReentrancyAttackContract.setEnableValidateClaimReentrancy(true);
+
+        const bitValue = 100;
+        await bitmapClaimMockReentrancyAttackContract.addBitValue(bitValue);
+
+        const recipient = recipient1.address;
+        const claimBitPositions = [0];
+        const consolidatedClaimBits = 1;
+
+        await expect(bitmapClaimMockReentrancyAttackContract.claim(recipient, claimBitPositions, this.validationData))
+          .to.be.revertedWithCustomError(bitmapClaimMockReentrancyAttackContract, 'AlreadyClaimed')
+          .withArgs(recipient, consolidatedClaimBits, 1);
+      });
+
+      it('reverts with {AlreadyClaimed} when reentrancy happens at _deliver function', async function () {
+        const bitmapClaimMockReentrancyAttackContract = await deployContract('BitmapClaimMockReentrancyAttack');
+        bitmapClaimMockReentrancyAttackContract.setEnableValidateClaimReentrancy(false);
+
+        const bitValue = 100;
+        await bitmapClaimMockReentrancyAttackContract.addBitValue(bitValue);
+
+        const recipient = recipient1.address;
+        const claimBitPositions = [0];
+        const consolidatedClaimBits = 1;
+
+        await expect(bitmapClaimMockReentrancyAttackContract.claim(recipient, claimBitPositions, this.validationData))
+          .to.be.revertedWithCustomError(bitmapClaimMockReentrancyAttackContract, 'AlreadyClaimed')
+          .withArgs(recipient, consolidatedClaimBits, 1);
+      });
+    });
   });
 });
