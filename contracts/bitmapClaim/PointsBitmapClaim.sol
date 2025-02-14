@@ -52,6 +52,7 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
         POINTS = IPoints(pointsContractAddress);
         DEPOSIT_REASON_CODE = depositReasonCode;
         signer = _signer;
+        emit SignerSet(_signer);
     }
 
     /// @notice Sets the signer of the ERC712 signature for claim validation.
