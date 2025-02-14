@@ -7,7 +7,7 @@ contract BitmapClaimMock is BitmapClaim {
     event ValidateClaimCalled(address recipient, uint256[] claimBitPositions, bytes validationData);
     event DeliverCalled(address recipient, uint256 amount);
 
-    function _validateClaim(address recipient, uint256[] calldata claimBitPositions, bytes calldata validationData) internal virtual override {
+    function _validateClaim(address recipient, uint256[] calldata claimBitPositions, bytes calldata validationData) internal override {
         emit ValidateClaimCalled(recipient, claimBitPositions, validationData);
     }
 

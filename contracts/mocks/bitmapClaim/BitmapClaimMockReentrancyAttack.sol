@@ -4,8 +4,6 @@ pragma solidity 0.8.22;
 import {BitmapClaim} from "../../bitmapClaim/BitmapClaim.sol";
 
 contract BitmapClaimMockReentrancyAttack is BitmapClaim {
-    event DeliverCalled(address recipient, uint256 amount);
-
     bool private enableValidateClaimReentrancy;
 
     function setEnableValidateClaimReentrancy(bool enabled) external {
