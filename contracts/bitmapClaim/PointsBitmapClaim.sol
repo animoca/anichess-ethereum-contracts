@@ -75,7 +75,7 @@ contract PointsBitmapClaim is BitmapClaim, EIP712, ForwarderRegistryContext {
     /// @dev Reverts with {InvalidSignature} if validationData is not a valid ERC712 signature by the specified signer.
     /// @param recipient Recipient of the claim.
     /// @param claimBitPositions Bit position array for the claim.
-    /// @param validationData Data for validation. Expects a valid ERC712 signature by contract owner.
+    /// @param validationData Data for validation. Expects a valid ERC712 signature by the specified signer.
     function _validateClaim(address recipient, uint256[] calldata claimBitPositions, bytes calldata validationData) internal view override {
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CLAIM_TYPEHASH, recipient, keccak256(abi.encode(claimBitPositions)))));
         bool isValid = SignatureChecker.isValidSignatureNow(signer, digest, validationData);
