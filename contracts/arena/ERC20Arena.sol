@@ -119,18 +119,31 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, PayoutWallet, ForwarderRegistry
     /// @param matchId The match id.
     /// @param player1SessionId The session id of the winner, or the session id of the player in case of a draw.
     /// @param player2SessionId The session id of the opponent.
-    /// @param isDraw A boolean indicating if the match is a draw.
+    /// @param result The result of the match, either Player1Won, Player2Won, or Draw.
     /// @param signature The signature of the match completion.
-    function completeMatch(uint256 matchId, uint256 player1SessionId, uint256 player2SessionId, bool isDraw, bytes calldata signature) external {
-        (address winner, ) = _completeMatch(matchId, player1SessionId, player2SessionId, isDraw, signature);
+    function completeMatch(
+        uint256 matchId,
+        uint256 player1SessionId,
+        uint256 player2SessionId,
+        MatchResult result,
+        bytes calldata signature
+    ) external {
+        (address player1, address player2) = _completeMatch(matchId, player1SessionId, player2SessionId, result, signature);
 
         uint256 commission_ = commission;
+        uint256 reward_ = reward;
         if (commission_ > 0) {
             ERC20.transfer(PayoutWalletStorage.layout().payoutWallet(), commission_);
         }
 
-        if (address(winner) != address(0)) {
-            uint256 reward_ = reward;
+        if (result == MatchResult.Draw) {
+            uint256 refund = reward_ / 2;
+            ERC20.transfer(player1, refund);
+            ERC20.transfer(player2, refund);
+            emit PayoutDelivered(player1, matchId, refund);
+            emit PayoutDelivered(player2, matchId, refund);
+        } else {
+            address winner = result == MatchResult.Player1Won ? player1 : player2;
             ERC20.transfer(winner, reward_);
             emit PayoutDelivered(winner, matchId, reward_);
         }

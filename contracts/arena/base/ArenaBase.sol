@@ -12,8 +12,14 @@ import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/ac
 abstract contract ArenaBase is EIP712, ContractOwnership {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
 
+    enum MatchResult {
+        Draw,
+        Player1Won,
+        Player2Won
+    }
+
     bytes32 public constant COMPLETE_MATCH_TYPEHASH =
-        keccak256("CompleteMatch(uint256 matchId,address player1,address player2,uint256 player1SessionId,uint256 player2SessionId,bool isDraw)");
+        keccak256("CompleteMatch(uint256 matchId,address player1,address player2,uint256 player1SessionId,uint256 player2SessionId,uint8 result)");
 
     /// @notice The address of the message signer.
     address public messageSigner;
@@ -32,18 +38,18 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
 
     /// @notice An event emitted when a match is completed.
     /// @param matchId The match id.
-    /// @param player1 The address of the winner, or the address of the player in case of a draw.
-    /// @param player2 The address of the opponent.
-    /// @param player1SessionId The session id of the winner, or the session id of the player in case of a draw.
-    /// @param player2SessionId The session id of the opponent.
-    /// @param isDraw A boolean indicating if the match is a draw.
+    /// @param player1 The first player account.
+    /// @param player2 The second player account.
+    /// @param player1SessionId The session id of the first player.
+    /// @param player2SessionId The session id of the second player.
+    /// @param result The result of the match, either Player1Won, Player2Won, or Draw.
     event MatchCompleted(
         uint256 indexed matchId,
         address indexed player1,
         address indexed player2,
         uint256 player1SessionId,
         uint256 player2SessionId,
-        bool isDraw
+        MatchResult result
     );
 
     /// @notice Thrown when the session id is already admitted.
@@ -94,43 +100,36 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
     /// @dev Reverts with {InvalidSignature} if the signature is invalid.
     /// @dev Emits a {MatchCompleted} event.
     /// @param matchId The match id.
-    /// @param player1SessionId The session id of the winner, or the session id of the player in case of a draw.
-    /// @param player2SessionId The session id of the opponent.
-    /// @param isDraw A boolean indicating if the match is a draw.
+    /// @param player1SessionId The session id of the first player.
+    /// @param player2SessionId The session id of the second player.
+    /// @param result The result of the match, either Player1Won, Player2Won, or Draw.
     /// @param signature The signature of the match completion.
-    /// @return winner The address of the winner, or zero address in case of a draw.
-    /// @return opponent The address of the opponent, or zero address in case of a draw.
     function _completeMatch(
         uint256 matchId,
         uint256 player1SessionId,
         uint256 player2SessionId,
-        bool isDraw,
+        MatchResult result,
         bytes calldata signature
-    ) internal returns (address winner, address opponent) {
-        address player1 = sessions[player1SessionId];
+    ) internal returns (address player1, address player2) {
+        player1 = sessions[player1SessionId];
         if (player1 == address(0)) {
             revert SessionNotExists(player1SessionId);
         }
-        address player2 = sessions[player2SessionId];
+        player2 = sessions[player2SessionId];
         if (player2 == address(0)) {
             revert SessionNotExists(player2SessionId);
         }
 
         bytes32 digest = _hashTypedDataV4(
-            keccak256(abi.encode(COMPLETE_MATCH_TYPEHASH, matchId, player1, player2, player1SessionId, player2SessionId, isDraw))
+            keccak256(abi.encode(COMPLETE_MATCH_TYPEHASH, matchId, player1, player2, player1SessionId, player2SessionId, result))
         );
         bool isValid = SignatureChecker.isValidSignatureNow(messageSigner, digest, signature);
         if (!isValid) {
             revert InvalidSignature();
         }
 
-        if (!isDraw) {
-            winner = player1;
-            opponent = player2;
-        }
-
         delete sessions[player1SessionId];
         delete sessions[player2SessionId];
-        emit MatchCompleted(matchId, player1, player2, player1SessionId, player2SessionId, isDraw);
+        emit MatchCompleted(matchId, player1, player2, player1SessionId, player2SessionId, result);
     }
 }

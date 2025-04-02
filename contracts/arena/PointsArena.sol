@@ -25,6 +25,9 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
     /// @notice The reason code for the reward deposit.
     bytes32 public constant REWARD_REASON_CODE = bytes32("ARENA_REWARD");
 
+    /// @notice The reason code for the refund deposit, when a match ends in a draw.
+    bytes32 public constant REFUND_REASON_CODE = bytes32("ARENA_REFUND");
+
     /// @notice The reason code for the commission deposit.
     bytes32 public constant COMMISSION_REASON_CODE = bytes32("ARENA_COMMISSION");
 
@@ -103,18 +106,31 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
     /// @param matchId The match id.
     /// @param player1SessionId The session id of the winner, or the session id of the player in case of a draw.
     /// @param player2SessionId The session id of the opponent.
-    /// @param isDraw A boolean indicating if the match is a draw.
+    /// @param result The result of the match, either Player1Won, Player2Won, or Draw.
     /// @param signature The signature of the match completion.
-    function completeMatch(uint256 matchId, uint256 player1SessionId, uint256 player2SessionId, bool isDraw, bytes calldata signature) external {
-        (address winner, ) = _completeMatch(matchId, player1SessionId, player2SessionId, isDraw, signature);
+    function completeMatch(
+        uint256 matchId,
+        uint256 player1SessionId,
+        uint256 player2SessionId,
+        MatchResult result,
+        bytes calldata signature
+    ) external {
+        (address player1, address player2) = _completeMatch(matchId, player1SessionId, player2SessionId, result, signature);
 
         uint256 commission_ = commission;
+        uint256 reward_ = reward;
         if (commission_ > 0) {
             POINTS.deposit(PayoutWalletStorage.layout().payoutWallet(), commission_, COMMISSION_REASON_CODE);
         }
 
-        if (address(winner) != address(0)) {
-            uint256 reward_ = reward;
+        if (result == MatchResult.Draw) {
+            uint256 refund = reward_ / 2;
+            POINTS.deposit(player1, refund, REFUND_REASON_CODE);
+            POINTS.deposit(player2, refund, REFUND_REASON_CODE);
+            emit PayoutDelivered(player1, matchId, refund);
+            emit PayoutDelivered(player2, matchId, refund);
+        } else {
+            address winner = result == MatchResult.Player1Won ? player1 : player2;
             POINTS.deposit(winner, reward_, REWARD_REASON_CODE);
             emit PayoutDelivered(winner, matchId, reward_);
         }
