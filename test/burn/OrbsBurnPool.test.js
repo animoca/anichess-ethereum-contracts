@@ -152,6 +152,7 @@ describe('OrbsBurnPool', function () {
         )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroCycleDuration');
     });
+
     it('reverts if the max cycle is 0', async function () {
       await expect(
         deployContract(
@@ -166,6 +167,7 @@ describe('OrbsBurnPool', function () {
         )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroMaxCycle');
     });
+
     it('reverts if the token burn weights length is not equal to 7', async function () {
       try {
         await deployContract(
@@ -182,6 +184,7 @@ describe('OrbsBurnPool', function () {
         expect(e.message).to.equal('array is wrong length');
       }
     });
+
     it('reverts if the token burn weights value is 0', async function () {
       await expect(
         deployContract(
@@ -444,6 +447,7 @@ describe('OrbsBurnPool', function () {
         .to.be.revertedWithCustomError(this.contract, 'InvalidTokenAddress')
         .withArgs(other.address);
     });
+
     it('reverts if the current cycle is greater than the max cycle', async function () {
       const snapshot = await helpers.takeSnapshot();
       await helpers.time.increaseTo(this.initialTime + this.cycleDuration * (this.maxCycle + 1));

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.22;
+pragma solidity 0.8.28;
 
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {ERC721Full} from "@animoca/ethereum-contracts/contracts/token/ERC721/preset/ERC721Full.sol";
-import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
-import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
-import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
-import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
-import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {ERC721Full} from "@animoca/ethereum-contracts-4.1/contracts/token/ERC721/preset/ERC721Full.sol";
+import {ContractOwnership} from "@animoca/ethereum-contracts-4.1/contracts/access/ContractOwnership.sol";
+import {ContractOwnershipStorage} from "@animoca/ethereum-contracts-4.1/contracts/access/libraries/ContractOwnershipStorage.sol";
+import {IForwarderRegistry} from "@animoca/ethereum-contracts-4.1/contracts/metatx/interfaces/IForwarderRegistry.sol";
+import {ForwarderRegistryContext} from "@animoca/ethereum-contracts-4.1/contracts/metatx/ForwarderRegistryContext.sol";
+import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts-4.1/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 
 /**
  * @title ERC721 Claim Window Merkle Claim Contract

@@ -2,7 +2,7 @@ const {ethers} = require('hardhat');
 const {expect} = require('chai');
 const {MerkleTree} = require('merkletreejs');
 const keccak256 = require('keccak256');
-const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
+const {deployContract, deployContractFromPath} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
 const {
   getOperatorFilterRegistryAddress,
@@ -17,8 +17,13 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
   });
 
   const fixture = async function () {
+    const forwarderRegistry = await deployContractFromPath(
+      'ForwarderRegistry',
+      'node_modules/@animoca/ethereum-contracts-4.1/artifacts/contracts/metatx/ForwarderRegistry.sol'
+    );
+    const forwarderRegistryAddress = await forwarderRegistry.getAddress();
+
     const metadataResolverAddress = await getTokenMetadataResolverWithBaseURIAddress();
-    const forwarderRegistryAddress = await getForwarderRegistryAddress();
     const operatorFilterRegistryAddress = await getOperatorFilterRegistryAddress();
 
     this.rewardContract = await deployContract(
@@ -60,6 +65,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
     it('set the mint supply', async function () {
       expect(await this.contract.MINT_SUPPLY()).to.equal(this.mintSupply);
     });
+
     it('sets the rewards contract', async function () {
       expect(await this.contract.REWARD_CONTRACT()).to.equal(await this.rewardContract.getAddress());
     });
@@ -156,10 +162,13 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       const merkleClaimData = this.merkleClaimDataArr[0];
       const {proof, recipient, epochId} = merkleClaimData;
 
+      this.contract.fo;
+
       await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
         .withArgs(this.epochId);
     });
+
     it('reverts with "OutOfClaimWindow" if the epoch has not started', async function () {
       const startTime = (await helpers.time.latest()) + 100; // unit: seconds
       const endTime = startTime + 1; // unit: seconds
@@ -175,6 +184,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
         .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
         .withArgs(epochId, latestBlockTimestamp + 1);
     });
+
     it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
       const startTime = (await helpers.time.latest()) - 100; // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
@@ -190,6 +200,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
         .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
         .withArgs(epochId, latestBlockTimestamp + 1);
     });
+
     it('reverts with "InvalidProof" if the proof can not be verified', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
@@ -203,6 +214,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
         .to.revertedWithCustomError(this.contract, 'InvalidProof')
         .withArgs(epochId, recipient);
     });
+
     it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
@@ -216,6 +228,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
         .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
         .withArgs(this.epochId, recipient);
     });
+
     it('reverts with "ExceededMintSupply" if the mint supply has been exceeded', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
@@ -320,6 +333,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       const canClaim = await this.contract.canClaim(this.epochId, claimer1);
       expect(canClaim).to.equal(1);
     });
+
     it('returns ClaimError.OutOfClaimWindow(2) if block time is earlier than start time of claim window', async function () {
       const startTime = (await helpers.time.latest()) + 100; // unit: seconds
       const endTime = (await helpers.time.latest()) + 200; // unit: seconds
@@ -329,6 +343,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       const canClaim = await this.contract.canClaim(epochId, claimer1);
       expect(canClaim).to.equal(2);
     });
+
     it('returns ClaimError.OutOfClaimWindow(2) if block time is after end time of claim window', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
@@ -340,6 +355,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       const canClaim = await this.contract.canClaim(epochId, claimer1);
       expect(canClaim).to.equal(2);
     });
+
     it('returns ClaimError.AlreadyClaimed(3) if already claimed', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
@@ -350,6 +366,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       const canClaim = await this.contract.canClaim(epochId, claimer1);
       expect(canClaim).to.equal(3);
     });
+
     it('returns ClaimError.ExceededMintSupply(4) if number of claimed tokens is equal to total supply', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds

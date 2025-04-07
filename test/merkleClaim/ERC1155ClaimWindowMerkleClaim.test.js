@@ -65,9 +65,11 @@ describe('ERC1155ClaimWindowMerkleClaim', function () {
     it('sets the token id', async function () {
       expect(await this.contract.TOKEN_ID()).to.equal(this.tokenId);
     });
+
     it('set the mint supply', async function () {
       expect(await this.contract.MINT_SUPPLY()).to.equal(this.mintSupply);
     });
+
     it('sets the rewards contract', async function () {
       expect(await this.contract.REWARD_CONTRACT()).to.equal(await this.rewardContract.getAddress());
     });
@@ -168,6 +170,7 @@ describe('ERC1155ClaimWindowMerkleClaim', function () {
         .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
         .withArgs(this.epochId);
     });
+
     it('reverts with "OutOfClaimWindow" if the epoch has not started', async function () {
       const startTime = (await helpers.time.latest()) + 100; // unit: seconds
       const endTime = startTime + 1; // unit: seconds
@@ -183,6 +186,7 @@ describe('ERC1155ClaimWindowMerkleClaim', function () {
         .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
         .withArgs(epochId, latestBlockTimestamp + 1);
     });
+
     it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
       const startTime = (await helpers.time.latest()) - 100; // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
@@ -198,6 +202,7 @@ describe('ERC1155ClaimWindowMerkleClaim', function () {
         .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
         .withArgs(epochId, latestBlockTimestamp + 1);
     });
+
     it('reverts with "InvalidProof" if the proof can not be verified', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
@@ -211,6 +216,7 @@ describe('ERC1155ClaimWindowMerkleClaim', function () {
         .to.revertedWithCustomError(this.contract, 'InvalidProof')
         .withArgs(epochId, recipient);
     });
+
     it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
@@ -224,6 +230,7 @@ describe('ERC1155ClaimWindowMerkleClaim', function () {
         .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
         .withArgs(this.epochId, recipient);
     });
+
     it('reverts with "ExceededMintSupply" if the mint supply has been exceeded', async function () {
       const startTime = await helpers.time.latest(); // unit: seconds
       const endTime = (await helpers.time.latest()) + 100; // unit: seconds
