@@ -14,7 +14,7 @@ import {PayoutWallet} from "@animoca/ethereum-contracts/contracts/payment/Payout
 import {PayoutWalletStorage} from "@animoca/ethereum-contracts/contracts/payment/libraries/PayoutWalletStorage.sol";
 import {ArenaBase} from "./base/ArenaBase.sol";
 
-/// @title PointsArena
+/// @title ERC20Arena
 /// @notice A contract to register game sessions and distribute rewards for arena-style game modes with ERC20 payments.
 /// @notice The winner of a match will receive a reward that is twice the entry fee, minus a commission.
 /// @notice The commission rate can be set by the contract owner.
@@ -119,7 +119,7 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, PayoutWallet, ForwarderRegistry
     /// @param matchId The match id.
     /// @param player1SessionId The session id of the winner, or the session id of the player in case of a draw.
     /// @param player2SessionId The session id of the opponent.
-    /// @param result The result of the match, either Player1Won, Player2Won, or Draw.
+    /// @param result The result of the match, either Draw, Player1Won or Player2Won.
     /// @param signature The signature of the match completion.
     function completeMatch(
         uint256 matchId,

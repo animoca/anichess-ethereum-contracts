@@ -42,7 +42,7 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
     /// @param player2 The second player account.
     /// @param player1SessionId The session id of the first player.
     /// @param player2SessionId The session id of the second player.
-    /// @param result The result of the match, either Player1Won, Player2Won, or Draw.
+    /// @param result The result of the match, either Draw, Player1Won or Player2Won.
     event MatchCompleted(
         uint256 indexed matchId,
         address indexed player1,
@@ -102,7 +102,7 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
     /// @param matchId The match id.
     /// @param player1SessionId The session id of the first player.
     /// @param player2SessionId The session id of the second player.
-    /// @param result The result of the match, either Player1Won, Player2Won, or Draw.
+    /// @param result The result of the match, either Draw, Player1Won or Player2Won.
     /// @param signature The signature of the match completion.
     function _completeMatch(
         uint256 matchId,

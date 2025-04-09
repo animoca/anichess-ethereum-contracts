@@ -106,7 +106,7 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
     /// @param matchId The match id.
     /// @param player1SessionId The session id of the winner, or the session id of the player in case of a draw.
     /// @param player2SessionId The session id of the opponent.
-    /// @param result The result of the match, either Player1Won, Player2Won, or Draw.
+    /// @param result The result of the match, either Draw, Player1Won or Player2Won.
     /// @param signature The signature of the match completion.
     function completeMatch(
         uint256 matchId,
