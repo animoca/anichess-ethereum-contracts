@@ -48,6 +48,10 @@ describe('PointsArena', function () {
       messageSigner,
       payoutWallet,
       this.points,
+      CONSUME_REASON_CODE,
+      REWARD_REASON_CODE,
+      REFUND_REASON_CODE,
+      COMMISSION_REASON_CODE,
       this.forwarderRegistryAddress
     );
 
@@ -70,7 +74,19 @@ describe('PointsArena', function () {
   describe('constructor', function () {
     it('should revert if the price is zero', async function () {
       await expect(
-        deployContract('PointsArenaMock', 0, this.commissionRate, messageSigner, payoutWallet, this.points, this.forwarderRegistryAddress)
+        deployContract(
+          'PointsArenaMock',
+          0,
+          this.commissionRate,
+          messageSigner,
+          payoutWallet,
+          this.points,
+          CONSUME_REASON_CODE,
+          REWARD_REASON_CODE,
+          REFUND_REASON_CODE,
+          COMMISSION_REASON_CODE,
+          this.forwarderRegistryAddress
+        )
       ).to.be.revertedWithCustomError(this.contract, 'ZeroPrice');
     });
 
@@ -89,6 +105,30 @@ describe('PointsArena', function () {
 
       it('should set the commission', async function () {
         expect(await this.contract.commission()).to.equal(this.commission);
+      });
+
+      it('should set the payout wallet', async function () {
+        expect(await this.contract.payoutWallet()).to.equal(payoutWallet.address);
+      });
+
+      it('should set the message signer', async function () {
+        expect(await this.contract.messageSigner()).to.equal(messageSigner.address);
+      });
+
+      it('should set the consume reason code', async function () {
+        expect(await this.contract.CONSUME_REASON_CODE()).to.equal(CONSUME_REASON_CODE);
+      });
+
+      it('should set the reward reason code', async function () {
+        expect(await this.contract.REWARD_REASON_CODE()).to.equal(REWARD_REASON_CODE);
+      });
+
+      it('should set the refund reason code', async function () {
+        expect(await this.contract.REFUND_REASON_CODE()).to.equal(REFUND_REASON_CODE);
+      });
+
+      it('should set the commission reason code', async function () {
+        expect(await this.contract.COMMISSION_REASON_CODE()).to.equal(COMMISSION_REASON_CODE);
       });
     });
   });

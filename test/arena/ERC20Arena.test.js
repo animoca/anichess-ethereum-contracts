@@ -83,6 +83,14 @@ describe('ERC20Arena', function () {
       it('should set the commission', async function () {
         expect(await this.contract.commission()).to.equal(this.commission);
       });
+
+      it('should set the payout wallet', async function () {
+        expect(await this.contract.payoutWallet()).to.equal(payoutWallet.address);
+      });
+
+      it('should set the message signer', async function () {
+        expect(await this.contract.messageSigner()).to.equal(messageSigner.address);
+      });
     });
   });
 
@@ -164,7 +172,9 @@ describe('ERC20Arena', function () {
         this.forwarderRegistryAddress
       );
 
-      await expect(anotherToken.connect(user).safeTransfer(this.contract, this.entryFee, '0x')).to.be.revertedWithoutReason();
+      await expect(anotherToken.connect(user).safeTransfer(this.contract, this.entryFee, '0x'))
+        .to.be.revertedWithCustomError(this.contract, 'InvalidPaymentToken')
+        .withArgs(anotherToken.getAddress());
     });
 
     it('should revert if the user does not have enough balance', async function () {

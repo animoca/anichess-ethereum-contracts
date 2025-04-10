@@ -20,16 +20,16 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
     using PayoutWalletStorage for PayoutWalletStorage.Layout;
 
     /// @notice The reason code for consuming the entry fee.
-    bytes32 public constant CONSUME_REASON_CODE = bytes32("ARENA_ADMISSION");
+    bytes32 public immutable CONSUME_REASON_CODE;
 
     /// @notice The reason code for the reward deposit.
-    bytes32 public constant REWARD_REASON_CODE = bytes32("ARENA_REWARD");
+    bytes32 public immutable REWARD_REASON_CODE;
 
     /// @notice The reason code for the refund deposit, when a match ends in a draw.
-    bytes32 public constant REFUND_REASON_CODE = bytes32("ARENA_REFUND");
+    bytes32 public immutable REFUND_REASON_CODE;
 
     /// @notice The reason code for the commission deposit.
-    bytes32 public constant COMMISSION_REASON_CODE = bytes32("ARENA_COMMISSION");
+    bytes32 public immutable COMMISSION_REASON_CODE;
 
     /// @notice The M8Points contract.
     Points public immutable POINTS;
@@ -61,12 +61,29 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
     /// @notice Thrown when the entry fee is zero.
     error ZeroPrice();
 
+    /// @notice Constructor.
+    /// @dev Reverts with {ZeroPrice} if the entry fee is zero.
+    /// @dev Emits a {CommissionRateSet} event.
+    /// @param entryFee The entry fee for each session.
+    /// @param commissionRate_ The initial commission rate.
+    /// @param messageSigner The address of the message signer.
+    /// @param payoutWallet The address of the payout wallet.
+    /// @param points The address of the M8Points contract.
+    /// @param consumeReasonCode The reason code for consuming the entry fee.
+    /// @param rewardReasonCode The reason code for the reward deposit.
+    /// @param refundReasonCode The reason code for the refund deposit, when a match ends in a draw.
+    /// @param commissionReasonCode The reason code for the commission deposit.
+    /// @param forwarderRegistry The address of the forwarder registry contract.
     constructor(
         uint256 entryFee,
         uint256 commissionRate_,
         address messageSigner,
         address payable payoutWallet,
         address points,
+        bytes32 consumeReasonCode,
+        bytes32 rewardReasonCode,
+        bytes32 refundReasonCode,
+        bytes32 commissionReasonCode,
         IForwarderRegistry forwarderRegistry
     ) ArenaBase(messageSigner) PayoutWallet(payoutWallet) ForwarderRegistryContext(forwarderRegistry) {
         if (entryFee == 0) {
@@ -76,6 +93,11 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
         _setCommissionRate(commissionRate_);
 
         POINTS = Points(points);
+
+        CONSUME_REASON_CODE = consumeReasonCode;
+        REWARD_REASON_CODE = rewardReasonCode;
+        REFUND_REASON_CODE = refundReasonCode;
+        COMMISSION_REASON_CODE = commissionReasonCode;
     }
 
     /// @notice Sets the commission rate commission rate and update related values.

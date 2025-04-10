@@ -52,6 +52,10 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, PayoutWallet, ForwarderRegistry
     /// @notice Thrown when the entry fee is zero.
     error ZeroPrice();
 
+    /// @notice Thrown when the payment token is not the expected ERC20 token.
+    /// @param token The address of the payment token.
+    error InvalidPaymentToken(address token);
+
     /// @notice Thrown when the entry fee is not equal to the payment amount.
     /// @param amount The payment amount.
     error InvalidPaymentAmount(uint256 amount);
@@ -94,6 +98,7 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, PayoutWallet, ForwarderRegistry
 
     /// @inheritdoc IERC20Receiver
     /// @notice Receives the target ERC20 payment and admits the `from` account to the session.
+    /// @dev Reverts with {InvalidPaymentToken} if the payment token is not the expected ERC20 token.
     /// @dev Reverts with {InvalidPaymentAmount} if the amount is not equal to the entry fee.
     /// @dev Reverts with {AlreadyAdmitted} if the session id is already admitted.
     /// @dev Emits an {Admission} event.
@@ -102,6 +107,10 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, PayoutWallet, ForwarderRegistry
     /// @param data The encoded session id in uint256.
     /// @return The ERC20_RECEIVED selector.
     function onERC20Received(address, address from, uint256 amount, bytes calldata data) external returns (bytes4) {
+        address sender = _msgSender();
+        if (sender != address(ERC20)) {
+            revert InvalidPaymentToken(sender);
+        }
         if (ENTRY_FEE != amount) {
             revert InvalidPaymentAmount(amount);
         }

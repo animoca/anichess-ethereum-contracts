@@ -11,8 +11,25 @@ contract PointsArenaMock is PointsArena {
         address messageSigner,
         address payable payoutWallet,
         address points,
+        bytes32 consumeReasonCode,
+        bytes32 rewardReasonCode,
+        bytes32 refundReasonCode,
+        bytes32 commissionReasonCode,
         IForwarderRegistry forwarderRegistry
-    ) PointsArena(price, commissionRate, messageSigner, payoutWallet, points, forwarderRegistry) {}
+    )
+        PointsArena(
+            price,
+            commissionRate,
+            messageSigner,
+            payoutWallet,
+            points,
+            consumeReasonCode,
+            rewardReasonCode,
+            refundReasonCode,
+            commissionReasonCode,
+            forwarderRegistry
+        )
+    {}
 
     function __msgSender() external view returns (address) {
         return _msgSender();
