@@ -26,23 +26,23 @@ contract ERC20MerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCont
     /// @notice a reference to staking contract
     address public immutable STAKING_CONTRACT;
 
-    /// @notice Store the nonce
-    uint256 public nonce;
-
     /// @notice Store the merkle roots for claiming
-    mapping(uint256 nonce => bytes32 root) public rootMap;
+    mapping(uint96 nonce => bytes32 root) public rootMap;
+
+    /// @notice leaf hash to claimed state
+    mapping(bytes32 leaf => bool claimed) public claimed;
+
+    /// @notice Store the nonce
+    uint96 public nonce;
 
     /// @notice Store the payout wallet address for transfering reward token
     address public payoutWallet;
 
-    /// @notice leaf hash to claimed state
-    mapping(bytes32 => bool) public claimed;
-
-    /// @notice Store the treasury wallet address for fee
-    address public treasuryWallet;
-
     /// @notice Store the fee percentage
     uint96 public fee;
+
+    /// @notice Store the treasury wallet address for collecting fee
+    address public treasuryWallet;
 
     /// @notice Emitted when a new merkle root is set.
     /// @param nonce The nonce used for setting the root.
@@ -162,30 +162,18 @@ contract ERC20MerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCont
         return ForwarderRegistryContextBase._msgData();
     }
 
-    /// @notice Sets the new merkle root for claiming.
+    /// @notice Sets the new merkle root with current nonce for claiming.
     /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
     /// @dev Emits a {MerkleRootSet} event.
     /// @param merkleRoot The merkle root to be set.
     function setMerkleRoot(bytes32 merkleRoot) public {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
 
-        uint256 _nonce = nonce;
+        uint96 _nonce = nonce;
         rootMap[_nonce] = merkleRoot;
         ++nonce;
 
         emit MerkleRootSet(_nonce, merkleRoot);
-    }
-
-    /// @notice Sets the new treasury wallet.
-    /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
-    /// @dev Emits a {TreasuryWalletSet} event.
-    /// @param newTreasuryWallet The treasury wallet to be set.
-    function setTreasuryWallet(address newTreasuryWallet) external {
-        ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
-
-        treasuryWallet = newTreasuryWallet;
-
-        emit TreasuryWalletSet(newTreasuryWallet);
     }
 
     /// @notice Sets the new payout wallet.
@@ -200,6 +188,18 @@ contract ERC20MerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCont
         emit PayoutWalletSet(newPayoutWallet);
     }
 
+    /// @notice Sets the new treasury wallet.
+    /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
+    /// @dev Emits a {TreasuryWalletSet} event.
+    /// @param newTreasuryWallet The treasury wallet to be set.
+    function setTreasuryWallet(address newTreasuryWallet) external {
+        ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
+
+        treasuryWallet = newTreasuryWallet;
+
+        emit TreasuryWalletSet(newTreasuryWallet);
+    }
+
     /// @dev Reverts with {InvalidClaimAmount} if it is claiming a zero amount.
     /// @dev Reverts with {Paused} if contract is paused.
     /// @dev Reverts with {MerkleRootNotExists} if the merkle root does not exist.
@@ -209,7 +209,7 @@ contract ERC20MerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCont
     /// @param amount The amount of reward token to be claimed.
     /// @param nonce_ The nonce of the root.PayoutClaimed
     /// @param proof The Merkle proof of the user based on the merkle root
-    function _claim(address recipient, uint256 amount, uint256 nonce_, bytes32[] calldata proof) private returns (bytes32 root_) {
+    function _claim(address recipient, uint256 amount, uint96 nonce_, bytes32[] calldata proof) private returns (bytes32 root_) {
         if (amount == 0) {
             revert InvalidClaimAmount(amount);
         }
@@ -234,13 +234,12 @@ contract ERC20MerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCont
     }
 
     /// @notice Executes the payout for a given recipient address (anyone can call this function).
-
     /// @dev Emits a {PayoutClaimed} event.
     /// @param recipient The recipient for this claim.
     /// @param amount The amount of reward token to be claimed.
     /// @param nonce_ The nonce of the root.PayoutClaimed
     /// @param proof The Merkle proof of the user based on the merkle root
-    function claimPayout(address recipient, uint256 amount, uint256 nonce_, bytes32[] calldata proof) external {
+    function claimPayout(address recipient, uint256 amount, uint96 nonce_, bytes32[] calldata proof) external {
         bytes32 _root = _claim(recipient, amount, nonce_, proof);
 
         address _payoutWallet = payoutWallet;
@@ -252,18 +251,13 @@ contract ERC20MerkleClaim is ContractOwnership, PauseBase, ForwarderRegistryCont
         emit PayoutClaimed(nonce_, _root, _payoutWallet, recipient, netAmount, feeAmount);
     }
 
-    /// @notice Executes the payout for a given recipient address (anyone can call this function).
-    /// @dev Reverts with {InvalidClaimAmount} if it is claiming a zero amount.
-    /// @dev Reverts with {Paused} if contract is paused.
-    /// @dev Reverts with {MerkleRootNotExists} if the merkle root does not exist.
-    /// @dev Reverts with {InvalidProof} if the merkle proof has failed the verification
-    /// @dev Reverts with {AlreadyClaimed} if this specific payout has already been claimed.
+    /// @notice Executes the payout for a given recipient address (anyone can call this function) and stake the payout right away.
     /// @dev Emits a {PayoutClaimed} event.
     /// @param recipient The recipient for this claim.
     /// @param amount The amount of reward token to be claimed.
     /// @param nonce_ The nonce of the root.PayoutClaimed
     /// @param proof The Merkle proof of the user based on the merkle root
-    function claimPayoutAndStake(address recipient, uint256 amount, uint256 nonce_, bytes32[] calldata proof) external {
+    function claimPayoutAndStake(address recipient, uint256 amount, uint96 nonce_, bytes32[] calldata proof) external {
         bytes32 _root = _claim(recipient, amount, nonce_, proof);
 
         address _payoutWallet = payoutWallet;

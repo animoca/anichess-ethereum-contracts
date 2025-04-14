@@ -72,7 +72,7 @@ describe('ERC20MerkleClaim', function () {
     ];
 
     this.leaves = this.claimData.map(({recipient, amount, nonce}) =>
-      ethers.solidityPacked(['address', 'uint256', 'uint256'], [recipient, amount, nonce]),
+      ethers.solidityPacked(['address', 'uint256', 'uint96'], [recipient, amount, nonce]),
     );
     this.tree = new MerkleTree(this.leaves, keccak256, {hashLeaves: true, sortPairs: true});
     this.root = this.tree.getHexRoot();
