@@ -1,6 +1,6 @@
 {
   "name": "@animoca/anichess-ethereum-contracts",
-  "version": "3.0.0-beta.1",
+  "version": "3.1.0",
   "description": "Solidity contracts for the Anichess project.",
   "author": "Animoca Brands",
   "license": "MIT",
@@ -27,7 +27,7 @@
     "flatten": "hardhat flatten-all --show-stack-traces",
     "test": "hardhat test --show-stack-traces",
     "test-p": "hardhat test --parallel --show-stack-traces",
-    "coverage": "cross-env COVERAGE=true hardhat coverage --show-stack-traces",
+    "coverage": "hardhat coverage --show-stack-traces",
     "docgen:sol": "hardhat docgen --show-stack-traces",
     "docgen": "run-s docgen:sol",
     "clean:vscode": "rm -rf \".vscode/extensions.json\" \".vscode/launch.json\" \".vscode/settings.json\"",
@@ -43,6 +43,7 @@
     "prepack": "run-s clean:artifacts:hard compile clean"
   },
   "devDependencies": {
+    "@animoca/anichess-ethereum-contracts-2.3.2": "npm:@animoca/anichess-ethereum-contracts@2.3.2",
     "@animoca/ethereum-contract-helpers": "^1.0.5",
     "@animoca/ethereum-contracts": "=4.2.0-beta.2",
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
@@ -58,7 +59,10 @@
     "hardhat": "^2.22.19",
     "hardhat-deploy": "^1.0.2",
     "hardhat-deploy-ethers": "^0.4.2",
+    "keccak256": "^1.0.6",
+    "merkletreejs": "^0.5.1",
     "mocha": "^11.1.0",
+    "npm-run-all": "^4.1.5",
     "prettier": "^3.5.3",
     "prettier-plugin-solidity": "^1.4.2",
     "solhint": "^5.0.5",
