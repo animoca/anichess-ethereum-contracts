@@ -27,7 +27,7 @@
     "flatten": "hardhat flatten-all --show-stack-traces",
     "test": "hardhat test --show-stack-traces",
     "test-p": "hardhat test --parallel --show-stack-traces",
-    "coverage": "hardhat coverage --show-stack-traces",
+    "coverage": "cross-env COVERAGE=true hardhat coverage --show-stack-traces",
     "docgen:sol": "hardhat docgen --show-stack-traces",
     "docgen": "run-s docgen:sol",
     "clean:vscode": "rm -rf \".vscode/extensions.json\" \".vscode/launch.json\" \".vscode/settings.json\"",
