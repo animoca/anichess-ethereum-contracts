@@ -33,8 +33,8 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
 
     /// @notice Emitted when a new merkle root is set.
     /// @param root The new merkle root.
-    /// @param nonce The nonce used for setting the root.
-    event MerkleRootSet(bytes32 indexed root, uint256 indexed nonce);
+    /// @param nonce The nonce assigned to the root.
+    event MerkleRootSet(bytes32 indexed root, uint16 indexed nonce);
 
     /// @notice Emitted when a new payout wallet is set.
     /// @param newPayoutWallet The new payout wallet.
@@ -78,11 +78,11 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
     /// @param nonce The nonce of the root.
     error InvalidProof(address recipient, uint256 amount, uint16 nonce);
 
-    /// @notice Throws when the merkle root does not exist.
+    /// @notice Thrown when the merkle root does not exist.
     /// @param root The root.
     error MerkleRootNotExists(bytes32 root);
 
-    /// @notice Throws when the claim amount is zero.
+    /// @notice Thrown when the claim amount is zero.
     /// @param amount The amount of the claim.
     error InvalidClaimAmount(uint256 amount);
 
@@ -122,7 +122,7 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
     }
 
     /// @notice Sets the new payout wallet.
-    /// @dev Reverts with {InvalidPayoutWallet} if the payout wallet is zero address.
+    /// @dev Reverts with {InvalidPayoutWallet} if the new payout wallet is zero address.
     /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
     /// @dev Emits a {PayoutWalletSet} event.
     /// @param newPayoutWallet The payout wallet to be set.
