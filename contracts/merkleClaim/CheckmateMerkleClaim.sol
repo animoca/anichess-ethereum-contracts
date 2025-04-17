@@ -86,6 +86,12 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
     /// @param amount The amount of the claim.
     error InvalidClaimAmount(uint256 amount);
 
+    /// @notice Thrown when checkmate token transfer failed.
+    /// @param payoutWallet The wallet sending out the checkmate token.
+    /// @param recipient The recipient of the claim.
+    /// @param amount The amount of the claim.
+    error TransferFailed(address payoutWallet, address recipient, uint256 amount);
+
     constructor(address checkmateTokenContract_, address stakingContract_, address payoutWallet_) ContractOwnership(msg.sender) {
         if (checkmateTokenContract_ == address(0)) {
             revert InvalidCheckmateTokenContract();
@@ -173,7 +179,10 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
         claimed[leaf] = true;
 
         address _payoutWallet = payoutWallet;
-        IERC20SafeTransfers(CHECKMATE_TOKEN_CONTRACT).safeTransferFrom(_payoutWallet, STAKING_CONTRACT, amount, abi.encode(recipient));
+        bool success = IERC20SafeTransfers(CHECKMATE_TOKEN_CONTRACT).safeTransferFrom(_payoutWallet, STAKING_CONTRACT, amount, abi.encode(recipient));
+        if (!success) {
+            revert TransferFailed(_payoutWallet, recipient, amount);
+        }
         emit PayoutClaimed(root, _payoutWallet, recipient, amount);
     }
 }

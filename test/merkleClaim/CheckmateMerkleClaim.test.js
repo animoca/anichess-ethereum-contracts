@@ -223,6 +223,21 @@ describe('CheckmateMerkleClaim', function () {
         .withArgs(recipient, amount, this.root);
     });
 
+    it('Reverts with {TransferFailed} if checkmate token transfer fails', async function () {
+      const checkmateTokenContract = await deployContract('ERC20SafeTransfersAlwaysFailedMock');
+      const contract = await deployContract('CheckmateMerkleClaim', checkmateTokenContract, this.stakingContract, payoutWallet);
+
+      await contract.setMerkleRoot(this.root);
+
+      const recipient = this.merkleClaimDataArr[0].recipient;
+      const amount = this.merkleClaimDataArr[0].amount;
+      const proof = this.merkleClaimDataArr[0].proof;
+
+      await expect(contract.connect(other).claimAndStake(recipient, amount, this.root, proof))
+        .to.revertedWithCustomError(contract, 'TransferFailed')
+        .withArgs(payoutWallet, recipient, amount);
+    });
+
     context('when successful', function () {
       it('sets claimed to true', async function () {
         await this.contract.setMerkleRoot(this.root);
