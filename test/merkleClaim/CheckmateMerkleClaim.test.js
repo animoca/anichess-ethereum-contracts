@@ -14,23 +14,8 @@ describe('CheckmateMerkleClaim', function () {
   const fixture = async function () {
     this.forwarderRegistryAddress = await getForwarderRegistryAddress();
     this.checkmateTokenContract = await deployContract('ERC20MintBurn', 'CheckmateMock', 'CMOCK', 18, this.forwarderRegistryAddress);
-    this.points = await deployContract('Points', this.forwarderRegistryAddress);
     this.stakingDepositReasonCode = '0x0000000000000000000000000000000000000000000000000000000000000001';
-
-    const claimContractAddress = ethers.getCreateAddress({
-      from: deployer.address,
-      nonce: (await deployer.getNonce()) + 1,
-    });
-
-    this.stakingContract = await deployContract(
-      'ERC20StakingPointsRewardsLimitedLinearPool',
-      claimContractAddress,
-      this.checkmateTokenContract,
-      this.points,
-      this.stakingDepositReasonCode,
-      this.forwarderRegistryAddress,
-    );
-
+    this.stakingContract = await deployContract('ERC20ReceiverMock');
     this.contract = await deployContract('CheckmateMerkleClaim', this.checkmateTokenContract, this.stakingContract, payoutWallet);
 
     this.claimData = [
@@ -261,9 +246,7 @@ describe('CheckmateMerkleClaim', function () {
 
         await expect(this.contract.connect(other).claimAndStake(recipient, amount, this.root, proof))
           .to.emit(this.contract, 'PayoutClaimed')
-          .withArgs(this.root, payoutWallet.address, recipient, amount)
-          .to.emit(this.stakingContract, 'Staked')
-          .withArgs(recipient, amount, amount);
+          .withArgs(this.root, payoutWallet.address, recipient, amount);
       });
     });
   });

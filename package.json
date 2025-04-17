@@ -43,7 +43,6 @@
     "prepack": "run-s clean:artifacts:hard compile clean"
   },
   "devDependencies": {
-    "@animoca/anichess-ethereum-contracts-2.3.2": "npm:@animoca/anichess-ethereum-contracts@2.3.2",
     "@animoca/ethereum-contract-helpers": "^1.0.5",
     "@animoca/ethereum-contracts": "=4.2.0-beta.2",
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
