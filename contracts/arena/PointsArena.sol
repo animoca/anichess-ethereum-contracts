@@ -147,13 +147,17 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
 
         if (result == MatchResult.Draw) {
             uint256 refund = reward_ / 2;
-            POINTS.deposit(player1, refund, REFUND_REASON_CODE);
-            POINTS.deposit(player2, refund, REFUND_REASON_CODE);
+            if (refund > 0) {
+                POINTS.deposit(player1, refund, REFUND_REASON_CODE);
+                POINTS.deposit(player2, refund, REFUND_REASON_CODE);
+            }
             emit PayoutDelivered(player1, matchId, refund);
             emit PayoutDelivered(player2, matchId, refund);
         } else {
             address winner = result == MatchResult.Player1Won ? player1 : player2;
-            POINTS.deposit(winner, reward_, REWARD_REASON_CODE);
+            if (reward_ > 0) {
+                POINTS.deposit(winner, reward_, REWARD_REASON_CODE);
+            }
             emit PayoutDelivered(winner, matchId, reward_);
         }
     }

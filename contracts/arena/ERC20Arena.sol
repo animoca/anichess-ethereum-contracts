@@ -147,13 +147,17 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, PayoutWallet, ForwarderRegistry
 
         if (result == MatchResult.Draw) {
             uint256 refund = reward_ / 2;
-            ERC20.transfer(player1, refund);
-            ERC20.transfer(player2, refund);
+            if (refund > 0) {
+                ERC20.transfer(player1, refund);
+                ERC20.transfer(player2, refund);
+            }
             emit PayoutDelivered(player1, matchId, refund);
             emit PayoutDelivered(player2, matchId, refund);
         } else {
             address winner = result == MatchResult.Player1Won ? player1 : player2;
-            ERC20.transfer(winner, reward_);
+            if (reward_ > 0) {
+                ERC20.transfer(winner, reward_);
+            }
             emit PayoutDelivered(winner, matchId, reward_);
         }
     }

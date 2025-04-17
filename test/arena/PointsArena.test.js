@@ -17,6 +17,8 @@ describe('PointsArena', function () {
     PLAYER2_WON: 2,
   };
 
+  const COMMISSION_RATE_PRECISION = 10000;
+
   function formatUuid(uuid) {
     const abiCoder = new ethers.AbiCoder();
     const value = '0x' + uuid.replace(/-/g, '');
@@ -161,6 +163,10 @@ describe('PointsArena', function () {
         this.reward = 1;
       });
 
+      it('should set the correct commission rate', async function () {
+        expect(await this.contract.commissionRate()).to.equal(this.rate);
+      });
+
       it('should set the correct commission', async function () {
         expect(await this.contract.commission()).to.equal(this.commission);
       });
@@ -178,6 +184,10 @@ describe('PointsArena', function () {
       beforeEach(async function () {
         this.rate = 0;
         this.tx = await this.contract.setCommissionRate(this.rate);
+      });
+
+      it('should set the correct commission rate', async function () {
+        expect(await this.contract.commissionRate()).to.equal(this.rate);
       });
 
       it('should set the correct commission', async function () {
@@ -371,6 +381,8 @@ describe('PointsArena', function () {
       context('when commission = 0', function () {
         beforeEach(async function () {
           await this.contract.setCommissionRate(0);
+          expect(await this.contract.commissionRate()).to.equal(0);
+
           this.reward = this.entryFee * 2;
 
           this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON, this.signature);
@@ -392,6 +404,38 @@ describe('PointsArena', function () {
         });
 
         it('should emit a PayoutDelivered event', async function () {
+          await expect(this.tx).to.emit(this.contract, 'PayoutDelivered').withArgs(user.address, this.matchId, this.reward);
+        });
+      });
+
+      context('when commission rate is 100%', function () {
+        beforeEach(async function () {
+          await this.contract.setCommissionRate(COMMISSION_RATE_PRECISION);
+          expect(await this.contract.commissionRate()).to.equal(COMMISSION_RATE_PRECISION);
+
+          this.reward = 0;
+          this.commission = this.entryFee * 2;
+          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON, this.signature);
+        });
+
+        it('should remove the users from the session', async function () {
+          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
+          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
+        });
+
+        it('should emit a MatchResolved event', async function () {
+          await expect(this.tx)
+            .to.emit(this.contract, 'MatchCompleted')
+            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON);
+        });
+
+        it('should emit Deposited event to payout wallet for commission', async function () {
+          await expect(this.tx)
+            .to.emit(this.points, 'Deposited')
+            .withArgs(this.contract.getAddress(), COMMISSION_REASON_CODE, payoutWallet.address, this.commission);
+        });
+
+        it('should emit a PayoutDelivered event with zero amount', async function () {
           await expect(this.tx).to.emit(this.contract, 'PayoutDelivered').withArgs(user.address, this.matchId, this.reward);
         });
       });
@@ -441,6 +485,8 @@ describe('PointsArena', function () {
       context('when commission = 0', function () {
         beforeEach(async function () {
           await this.contract.setCommissionRate(0);
+          expect(await this.contract.commissionRate()).to.equal(0);
+
           this.reward = this.entryFee * 2;
 
           this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER2_WON, this.signature);
@@ -464,6 +510,38 @@ describe('PointsArena', function () {
         });
 
         it('should emit a PayoutDelivered event', async function () {
+          await expect(this.tx).to.emit(this.contract, 'PayoutDelivered').withArgs(user2.address, this.matchId, this.reward);
+        });
+      });
+
+      context('when commission rate is 100%', function () {
+        beforeEach(async function () {
+          await this.contract.setCommissionRate(COMMISSION_RATE_PRECISION);
+          expect(await this.contract.commissionRate()).to.equal(COMMISSION_RATE_PRECISION);
+
+          this.reward = 0;
+          this.commission = this.entryFee * 2;
+          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER2_WON, this.signature);
+        });
+
+        it('should remove the users from the session', async function () {
+          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
+          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
+        });
+
+        it('should emit a MatchResolved event', async function () {
+          await expect(this.tx)
+            .to.emit(this.contract, 'MatchCompleted')
+            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER2_WON);
+        });
+
+        it('should emit Deposited event to payout wallet for commission', async function () {
+          await expect(this.tx)
+            .to.emit(this.points, 'Deposited')
+            .withArgs(this.contract.getAddress(), COMMISSION_REASON_CODE, payoutWallet.address, this.commission);
+        });
+
+        it('should emit a PayoutDelivered event with zero amount', async function () {
           await expect(this.tx).to.emit(this.contract, 'PayoutDelivered').withArgs(user2.address, this.matchId, this.reward);
         });
       });
@@ -499,7 +577,7 @@ describe('PointsArena', function () {
 
         it('should emit Deposited events to payout wallet for commission, and users for refund', async function () {
           await expect(this.tx)
-            .and.to.emit(this.points, 'Deposited')
+            .to.emit(this.points, 'Deposited')
             .withArgs(this.contract.getAddress(), COMMISSION_REASON_CODE, payoutWallet.address, this.commission)
             .and.to.emit(this.points, 'Deposited')
             .withArgs(this.contract.getAddress(), REFUND_REASON_CODE, user.address, this.refund)
@@ -519,6 +597,7 @@ describe('PointsArena', function () {
       context('when commission = 0', function () {
         beforeEach(async function () {
           await this.contract.setCommissionRate(0);
+          expect(await this.contract.commissionRate()).to.equal(0);
 
           this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.DRAW, this.signature);
         });
@@ -536,7 +615,7 @@ describe('PointsArena', function () {
 
         it('should emit Deposited events to payout wallet for commission, and users for refund', async function () {
           await expect(this.tx)
-            .and.to.emit(this.points, 'Deposited')
+            .to.emit(this.points, 'Deposited')
             .withArgs(this.contract.getAddress(), REFUND_REASON_CODE, user.address, this.entryFee)
             .and.to.emit(this.points, 'Deposited')
             .withArgs(this.contract.getAddress(), REFUND_REASON_CODE, user2.address, this.entryFee);
@@ -548,6 +627,42 @@ describe('PointsArena', function () {
             .withArgs(user.address, this.matchId, this.entryFee)
             .and.to.emit(this.contract, 'PayoutDelivered')
             .withArgs(user2.address, this.matchId, this.entryFee);
+        });
+      });
+
+      context('when commission rate is 100%', function () {
+        beforeEach(async function () {
+          await this.contract.setCommissionRate(COMMISSION_RATE_PRECISION);
+          expect(await this.contract.commissionRate()).to.equal(COMMISSION_RATE_PRECISION);
+
+          this.reward = 0;
+          this.commission = this.entryFee * 2;
+          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.DRAW, this.signature);
+        });
+
+        it('should remove the users from the session', async function () {
+          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
+          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
+        });
+
+        it('should emit a MatchResolved event', async function () {
+          await expect(this.tx)
+            .to.emit(this.contract, 'MatchCompleted')
+            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.DRAW);
+        });
+
+        it('should emit Deposited event to payout wallet for commission', async function () {
+          await expect(this.tx)
+            .to.emit(this.points, 'Deposited')
+            .withArgs(this.contract.getAddress(), COMMISSION_REASON_CODE, payoutWallet.address, this.commission);
+        });
+
+        it('should emit PayoutDelivered events for refund with zero amount', async function () {
+          await expect(this.tx)
+            .to.emit(this.contract, 'PayoutDelivered')
+            .withArgs(user.address, this.matchId, this.reward)
+            .and.to.emit(this.contract, 'PayoutDelivered')
+            .withArgs(user2.address, this.matchId, this.reward);
         });
       });
     });
