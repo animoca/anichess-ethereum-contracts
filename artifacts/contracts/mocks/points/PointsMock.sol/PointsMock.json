@@ -1,0 +1,65 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "PointsMock",
+  "sourceName": "contracts/mocks/points/PointsMock.sol",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "reasonCode",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "holder",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Deposited",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "holder",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "depositReasonCode",
+          "type": "bytes32"
+        }
+      ],
+      "name": "deposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600f57600080fd5b5061012c8061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806326b3293f14602d575b600080fd5b603c603836600460aa565b603e565b005b8273ffffffffffffffffffffffffffffffffffffffff16813373ffffffffffffffffffffffffffffffffffffffff167f81226022599698f02239ac5895ce7a96962ba5fe72f8f7610d1cc2cb0405f39185604051609d91815260200190565b60405180910390a4505050565b60008060006060848603121560be57600080fd5b833573ffffffffffffffffffffffffffffffffffffffff8116811460e157600080fd5b9560208501359550604090940135939250505056fea26469706673582212209f00959c3503eee27db719101f579d786a4e106a8be16d3d8670722e54948f7064736f6c634300081c0033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b506004361060285760003560e01c806326b3293f14602d575b600080fd5b603c603836600460aa565b603e565b005b8273ffffffffffffffffffffffffffffffffffffffff16813373ffffffffffffffffffffffffffffffffffffffff167f81226022599698f02239ac5895ce7a96962ba5fe72f8f7610d1cc2cb0405f39185604051609d91815260200190565b60405180910390a4505050565b60008060006060848603121560be57600080fd5b833573ffffffffffffffffffffffffffffffffffffffff8116811460e157600080fd5b9560208501359550604090940135939250505056fea26469706673582212209f00959c3503eee27db719101f579d786a4e106a8be16d3d8670722e54948f7064736f6c634300081c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

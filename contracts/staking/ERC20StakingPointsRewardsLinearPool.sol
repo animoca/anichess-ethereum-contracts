@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {LinearPool} from "@animoca/ethereum-contracts/contracts/staking/linear/LinearPool.sol";
 import {ERC20StakingLinearPool} from "@animoca/ethereum-contracts/contracts/staking/linear/stake/ERC20StakingLinearPool.sol";
 import {LinearPool_PointsRewards} from "./reward/LinearPool_PointsRewards.sol";
-import {ERC20Receiver} from "@animoca/ethereum-contracts/contracts/token/ERC20/ERC20Receiver.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {IPoints} from "./../points/interface/IPoints.sol";
