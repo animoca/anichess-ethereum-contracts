@@ -7,58 +7,47 @@ import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/Co
 import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
 
 /// @title ArenaBase
-/// @notice An abstract contract to register game sessions and verify match result for arena-style game modes.
+/// @notice An abstract contract to admit players and complete matches for arena games.
 /// @dev Intended to be inherited by concrete arena contracts that handle admission payments and reward distribution logic.
 abstract contract ArenaBase is EIP712, ContractOwnership {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
 
     enum MatchResult {
-        Draw,
         Player1Won,
-        Player2Won
+        Player2Won,
+        Draw
     }
 
-    bytes32 public constant COMPLETE_MATCH_TYPEHASH =
-        keccak256("CompleteMatch(uint256 matchId,address player1,address player2,uint256 player1SessionId,uint256 player2SessionId,uint8 result)");
+    bytes32 public constant COMPLETE_MATCH_TYPEHASH = keccak256("CompleteMatch(uint256 matchId,address player1,address player2,uint8 result)");
 
     /// @notice The address of the message signer.
     address public messageSigner;
 
-    /// @notice The mapping of session ids to accounts.
-    mapping(uint256 sessionId => address account) public sessions;
+    /// @notice The mapping to indicate if an account is admitted.
+    mapping(address account => bool admitted) public admitted;
 
     /// @notice An event emitted when the message signer is set.
     /// @param signer The address of the message signer.
     event MessageSignerSet(address signer);
 
-    /// @notice An event emitted when a new game session is admitted.
+    /// @notice An event emitted when a player is admitted.
     /// @param account The account who paid the entry fee.
-    /// @param sessionId The session id.
-    event Admission(address indexed account, uint256 indexed sessionId);
+    event Admission(address indexed account);
 
     /// @notice An event emitted when a match is completed.
     /// @param matchId The match id.
     /// @param player1 The first player account.
     /// @param player2 The second player account.
-    /// @param player1SessionId The session id of the first player.
-    /// @param player2SessionId The session id of the second player.
     /// @param result The result of the match, either Draw, Player1Won or Player2Won.
-    event MatchCompleted(
-        uint256 indexed matchId,
-        address indexed player1,
-        address indexed player2,
-        uint256 player1SessionId,
-        uint256 player2SessionId,
-        MatchResult result
-    );
+    event MatchCompleted(uint256 indexed matchId, address indexed player1, address indexed player2, MatchResult result);
 
-    /// @notice Thrown when the session id is already admitted.
-    /// @param sessionId The session id.
-    error AlreadyAdmitted(uint256 sessionId);
+    /// @notice Thrown when the account is already admitted during the admission process.
+    /// @param account The player account.
+    error AlreadyAdmitted(address account);
 
-    /// @notice Thrown when the session id is not found in the sessions mapping.
-    /// @param sessionId The invalid session id.
-    error SessionNotExists(uint256 sessionId);
+    /// @notice Thrown when the account is not admitted during the match completion process.
+    /// @param account The player account.
+    error PlayerNotAdmitted(address account);
 
     /// @notice Thrown when the signature is invalid for the match completion.
     error InvalidSignature();
@@ -81,55 +70,44 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
         emit MessageSignerSet(signer);
     }
 
-    /// @notice An internal helper function to admit a new game session.
-    /// @dev Reverts with {AlreadyAdmitted} if the session id is already admitted.
+    /// @notice An internal helper function to admit a new game play.
+    /// @dev Reverts with {AlreadyAdmitted} if the account is already admitted.
     /// @dev Emits an {Admission} event.
-    /// @param sessionId The session id to admit.
     /// @param account The account who paid the entry fee.
-    function _admit(uint256 sessionId, address account) internal {
-        if (sessions[sessionId] != address(0)) {
-            revert AlreadyAdmitted(sessionId);
+    function _admit(address account) internal {
+        if (admitted[account] == true) {
+            revert AlreadyAdmitted(account);
         }
 
-        sessions[sessionId] = account;
-        emit Admission(account, sessionId);
+        admitted[account] = true;
+        emit Admission(account);
     }
 
     /// @notice An internal helper function to complete a match.
-    /// @dev Reverts with {SessionNotExists} if the winner or opponent session id is not found in the sessions mapping.
+    /// @dev Reverts with {PlayerNotAdmitted} if either player is not admitted.
     /// @dev Reverts with {InvalidSignature} if the signature is invalid.
     /// @dev Emits a {MatchCompleted} event.
     /// @param matchId The match id.
-    /// @param player1SessionId The session id of the first player.
-    /// @param player2SessionId The session id of the second player.
-    /// @param result The result of the match, either Draw, Player1Won or Player2Won.
+    /// @param player1 The first player account.
+    /// @param player2 The second player account.
+    /// @param result The result of the match, either Player1Won, Player2Won or Draw.
     /// @param signature The signature of the match completion.
-    function _completeMatch(
-        uint256 matchId,
-        uint256 player1SessionId,
-        uint256 player2SessionId,
-        MatchResult result,
-        bytes calldata signature
-    ) internal returns (address player1, address player2) {
-        player1 = sessions[player1SessionId];
-        if (player1 == address(0)) {
-            revert SessionNotExists(player1SessionId);
+    function _completeMatch(uint256 matchId, address player1, address player2, MatchResult result, bytes calldata signature) internal {
+        if (!admitted[player1]) {
+            revert PlayerNotAdmitted(player1);
         }
-        player2 = sessions[player2SessionId];
-        if (player2 == address(0)) {
-            revert SessionNotExists(player2SessionId);
+        if (!admitted[player2]) {
+            revert PlayerNotAdmitted(player2);
         }
 
-        bytes32 digest = _hashTypedDataV4(
-            keccak256(abi.encode(COMPLETE_MATCH_TYPEHASH, matchId, player1, player2, player1SessionId, player2SessionId, result))
-        );
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(COMPLETE_MATCH_TYPEHASH, matchId, player1, player2, result)));
         bool isValid = SignatureChecker.isValidSignatureNow(messageSigner, digest, signature);
         if (!isValid) {
             revert InvalidSignature();
         }
 
-        delete sessions[player1SessionId];
-        delete sessions[player2SessionId];
-        emit MatchCompleted(matchId, player1, player2, player1SessionId, player2SessionId, result);
+        admitted[player1] = false;
+        admitted[player2] = false;
+        emit MatchCompleted(matchId, player1, player2, result);
     }
 }

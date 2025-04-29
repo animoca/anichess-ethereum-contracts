@@ -12,9 +12,9 @@ describe('PointsArena', function () {
   const COMMISSION_REASON_CODE = ethers.encodeBytes32String('ARENA_COMMISSION');
 
   const MATCH_RESULT = {
-    DRAW: 0,
-    PLAYER1_WON: 1,
-    PLAYER2_WON: 2,
+    PLAYER1_WON: 0,
+    PLAYER2_WON: 1,
+    DRAW: 2,
   };
 
   const COMMISSION_RATE_PRECISION = 10000;
@@ -155,6 +155,12 @@ describe('PointsArena', function () {
         .withArgs(user.address);
     });
 
+    it('should revert if the commission rate is equal to 100%', async function () {
+      await expect(this.contract.setCommissionRate(COMMISSION_RATE_PRECISION))
+        .to.be.revertedWithCustomError(this.contract, 'InvalidCommissionRate')
+        .withArgs(COMMISSION_RATE_PRECISION);
+    });
+
     context('when successful setting a positive commission rate', function () {
       beforeEach(async function () {
         this.rate = 9999; // 99.99%
@@ -204,41 +210,34 @@ describe('PointsArena', function () {
     });
   });
 
-  describe('admit(uint256 sessionId)', function () {
-    beforeEach(function () {
-      this.sessionId = formatUuid('441707e9-0d24-4b30-be1c-a0661b2920ee');
-      this.sessionId2 = formatUuid('8584eb9e-a823-48c9-8ba9-2cfd8e8c2275');
-    });
-
+  describe('admit()', function () {
     it('should revert if the user does not have enough balance', async function () {
-      await expect(this.contract.connect(userWithoutAllocation).admit(this.sessionId))
+      await expect(this.contract.connect(userWithoutAllocation).admit())
         .to.be.revertedWithCustomError(this.points, 'InsufficientBalance')
         .withArgs(userWithoutAllocation, this.entryFee);
     });
 
-    context('when trying to pay the same session again', function () {
+    context('when trying to pay again before completing the match', function () {
       beforeEach(async function () {
-        await this.contract.connect(user).admit(this.sessionId);
+        await this.contract.connect(user).admit();
       });
 
-      it('should revert if the user already has the session', async function () {
-        await expect(this.contract.connect(user).admit(this.sessionId))
-          .to.be.revertedWithCustomError(this.contract, 'AlreadyAdmitted')
-          .withArgs(this.sessionId);
+      it('should revert if the user already in game', async function () {
+        await expect(this.contract.connect(user).admit()).to.be.revertedWithCustomError(this.contract, 'AlreadyAdmitted').withArgs(user.address);
       });
     });
 
     context('when successful', function () {
       beforeEach(async function () {
-        this.tx = await this.contract.connect(user).admit(this.sessionId);
+        this.tx = await this.contract.connect(user).admit();
       });
 
-      it('should update session id', async function () {
-        expect(await this.contract.sessions(this.sessionId)).to.equal(user.address);
+      it('should set user as admitted', async function () {
+        expect(await this.contract.admitted(user.address)).to.be.true;
       });
 
       it('should emit an Admission event', async function () {
-        await expect(this.tx).to.emit(this.contract, 'Admission').withArgs(user.address, this.sessionId);
+        await expect(this.tx).to.emit(this.contract, 'Admission').withArgs(user.address);
       });
 
       it('should emit a Consumed event', async function () {
@@ -248,18 +247,15 @@ describe('PointsArena', function () {
   });
 
   describe(`completeMatch(
-        uint256 matchId,
-        uint256 player1SessionId,
-        uint256 player2SessionId,
-        MatchResult result,
-        bytes calldata signature
+      uint256 matchId,
+      address player1,
+      address player2,
+      MatchResult result,
+      bytes calldata signature
     )`, function () {
     beforeEach(async function () {
-      this.sessionId = formatUuid('441707e9-0d24-4b30-be1c-a0661b2920ee');
-      this.sessionId2 = formatUuid('8584eb9e-a823-48c9-8ba9-2cfd8e8c2275');
-
-      await this.contract.connect(user).admit(this.sessionId);
-      await this.contract.connect(user2).admit(this.sessionId2);
+      await this.contract.connect(user).admit();
+      await this.contract.connect(user2).admit();
 
       this.eip712Domain = {
         name: this.name,
@@ -272,8 +268,6 @@ describe('PointsArena', function () {
           {name: 'matchId', type: 'uint256'},
           {name: 'player1', type: 'address'},
           {name: 'player2', type: 'address'},
-          {name: 'player1SessionId', type: 'uint256'},
-          {name: 'player2SessionId', type: 'uint256'},
           {name: 'result', type: 'uint8'},
         ],
       };
@@ -286,41 +280,33 @@ describe('PointsArena', function () {
         matchId: this.matchId,
         player1: user.address,
         player2: user2.address,
-        player1SessionId: this.sessionId,
-        player2SessionId: this.sessionId2,
         result: 3,
       });
-      await expect(this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, 3, signature)).to.be.revertedWithoutReason();
+      await expect(this.contract.completeMatch(this.matchId, user.address, user2.address, 3, signature)).to.be.revertedWithoutReason();
     });
 
-    it('should revert if the player1 session id does not exist', async function () {
-      const nonRegisteredSessionId = formatUuid('00000000-0000-0000-0000-000000000000');
+    it('should revert if the player1 is not admitted', async function () {
       const signature = await messageSigner.signTypedData(this.eip712Domain, this.eip712Types, {
         matchId: this.matchId,
         player1: user.address,
         player2: user2.address,
-        player1SessionId: nonRegisteredSessionId,
-        player2SessionId: this.sessionId2,
         result: MATCH_RESULT.PLAYER1_WON,
       });
-      await expect(this.contract.completeMatch(this.matchId, nonRegisteredSessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON, signature))
-        .to.be.revertedWithCustomError(this.contract, 'SessionNotExists')
-        .withArgs(nonRegisteredSessionId);
+      await expect(this.contract.completeMatch(this.matchId, userWithoutAllocation.address, user2.address, MATCH_RESULT.PLAYER1_WON, signature))
+        .to.be.revertedWithCustomError(this.contract, 'PlayerNotAdmitted')
+        .withArgs(userWithoutAllocation.address);
     });
 
-    it('should revert if the player2 session id does not exist', async function () {
-      const nonRegisteredSessionId = formatUuid('00000000-0000-0000-0000-000000000001');
+    it('should revert if the player2 is not admitted', async function () {
       const signature = await messageSigner.signTypedData(this.eip712Domain, this.eip712Types, {
         matchId: this.matchId,
         player1: user.address,
         player2: user2.address,
-        player1SessionId: this.sessionId,
-        player2SessionId: nonRegisteredSessionId,
         result: MATCH_RESULT.PLAYER2_WON,
       });
-      await expect(this.contract.completeMatch(this.matchId, this.sessionId, nonRegisteredSessionId, MATCH_RESULT.PLAYER2_WON, signature))
-        .to.be.revertedWithCustomError(this.contract, 'SessionNotExists')
-        .withArgs(nonRegisteredSessionId);
+      await expect(this.contract.completeMatch(this.matchId, user.address, userWithoutAllocation.address, MATCH_RESULT.PLAYER2_WON, signature))
+        .to.be.revertedWithCustomError(this.contract, 'PlayerNotAdmitted')
+        .withArgs(userWithoutAllocation.address);
     });
 
     it('should revert if signature is invalid', async function () {
@@ -328,12 +314,10 @@ describe('PointsArena', function () {
         matchId: this.matchId,
         player1: user.address,
         player2: user.address, // same as player1
-        player1SessionId: this.sessionId,
-        player2SessionId: this.sessionId2,
         result: MATCH_RESULT.PLAYER1_WON,
       });
       await expect(
-        this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON, signature)
+        this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON, signature)
       ).to.be.revertedWithCustomError(this.contract, 'InvalidSignature');
     });
 
@@ -343,26 +327,24 @@ describe('PointsArena', function () {
           matchId: this.matchId,
           player1: user.address,
           player2: user2.address,
-          player1SessionId: this.sessionId,
-          player2SessionId: this.sessionId2,
           result: MATCH_RESULT.PLAYER1_WON,
         });
       });
 
       context('when commission > 0', function () {
         beforeEach(async function () {
-          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON, this.signature);
+          this.tx = await this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON, this.signature);
         });
 
-        it('should remove the users from the session', async function () {
-          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
-          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
+        it('should remove the users from the storage', async function () {
+          expect(await this.contract.admitted(user.address)).to.be.false;
+          expect(await this.contract.admitted(user2.address)).to.be.false;
         });
 
         it('should emit a MatchResolved event', async function () {
           await expect(this.tx)
             .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON);
+            .withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON);
         });
 
         it('should emit Deposited events with correct amount', async function () {
@@ -385,18 +367,18 @@ describe('PointsArena', function () {
 
           this.reward = this.entryFee * 2;
 
-          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON, this.signature);
+          this.tx = await this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON, this.signature);
         });
 
-        it('should remove the users from the session', async function () {
-          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
-          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
+        it('should remove the users from the storage', async function () {
+          expect(await this.contract.admitted(user.address)).to.be.false;
+          expect(await this.contract.admitted(user2.address)).to.be.false;
         });
 
         it('should emit a MatchResolved event', async function () {
           await expect(this.tx)
             .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON);
+            .withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON);
         });
 
         it('should emit a Deposited event to the player1 without deducting commission fee', async function () {
@@ -404,38 +386,6 @@ describe('PointsArena', function () {
         });
 
         it('should emit a PayoutDelivered event', async function () {
-          await expect(this.tx).to.emit(this.contract, 'PayoutDelivered').withArgs(user.address, this.matchId, this.reward);
-        });
-      });
-
-      context('when commission rate is 100%', function () {
-        beforeEach(async function () {
-          await this.contract.setCommissionRate(COMMISSION_RATE_PRECISION);
-          expect(await this.contract.commissionRate()).to.equal(COMMISSION_RATE_PRECISION);
-
-          this.reward = 0;
-          this.commission = this.entryFee * 2;
-          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON, this.signature);
-        });
-
-        it('should remove the users from the session', async function () {
-          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
-          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
-        });
-
-        it('should emit a MatchResolved event', async function () {
-          await expect(this.tx)
-            .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER1_WON);
-        });
-
-        it('should emit Deposited event to payout wallet for commission', async function () {
-          await expect(this.tx)
-            .to.emit(this.points, 'Deposited')
-            .withArgs(this.contract.getAddress(), COMMISSION_REASON_CODE, payoutWallet.address, this.commission);
-        });
-
-        it('should emit a PayoutDelivered event with zero amount', async function () {
           await expect(this.tx).to.emit(this.contract, 'PayoutDelivered').withArgs(user.address, this.matchId, this.reward);
         });
       });
@@ -447,26 +397,24 @@ describe('PointsArena', function () {
           matchId: this.matchId,
           player1: user.address,
           player2: user2.address,
-          player1SessionId: this.sessionId,
-          player2SessionId: this.sessionId2,
           result: MATCH_RESULT.PLAYER2_WON,
         });
       });
 
       context('when commission > 0', function () {
         beforeEach(async function () {
-          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER2_WON, this.signature);
+          this.tx = await this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER2_WON, this.signature);
         });
 
-        it('should remove the users from the session', async function () {
-          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
-          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
+        it('should remove the users from the storage', async function () {
+          expect(await this.contract.admitted(user.address)).to.be.false;
+          expect(await this.contract.admitted(user2.address)).to.be.false;
         });
 
         it('should emit a MatchResolved event', async function () {
           await expect(this.tx)
             .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER2_WON);
+            .withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER2_WON);
         });
 
         it('should emit Deposited events with correct amount', async function () {
@@ -489,18 +437,18 @@ describe('PointsArena', function () {
 
           this.reward = this.entryFee * 2;
 
-          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER2_WON, this.signature);
+          this.tx = await this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER2_WON, this.signature);
         });
 
-        it('should remove the users from the session', async function () {
-          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
-          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
+        it('should remove the users from the storage', async function () {
+          expect(await this.contract.admitted(user.address)).to.be.false;
+          expect(await this.contract.admitted(user2.address)).to.be.false;
         });
 
         it('should emit a MatchResolved event', async function () {
           await expect(this.tx)
             .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER2_WON);
+            .withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER2_WON);
         });
 
         it('should emit a Deposited event to the player2 without deducting commission fee', async function () {
@@ -513,38 +461,6 @@ describe('PointsArena', function () {
           await expect(this.tx).to.emit(this.contract, 'PayoutDelivered').withArgs(user2.address, this.matchId, this.reward);
         });
       });
-
-      context('when commission rate is 100%', function () {
-        beforeEach(async function () {
-          await this.contract.setCommissionRate(COMMISSION_RATE_PRECISION);
-          expect(await this.contract.commissionRate()).to.equal(COMMISSION_RATE_PRECISION);
-
-          this.reward = 0;
-          this.commission = this.entryFee * 2;
-          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER2_WON, this.signature);
-        });
-
-        it('should remove the users from the session', async function () {
-          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
-          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
-        });
-
-        it('should emit a MatchResolved event', async function () {
-          await expect(this.tx)
-            .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.PLAYER2_WON);
-        });
-
-        it('should emit Deposited event to payout wallet for commission', async function () {
-          await expect(this.tx)
-            .to.emit(this.points, 'Deposited')
-            .withArgs(this.contract.getAddress(), COMMISSION_REASON_CODE, payoutWallet.address, this.commission);
-        });
-
-        it('should emit a PayoutDelivered event with zero amount', async function () {
-          await expect(this.tx).to.emit(this.contract, 'PayoutDelivered').withArgs(user2.address, this.matchId, this.reward);
-        });
-      });
     });
 
     context('when successful with Draw', function () {
@@ -553,26 +469,22 @@ describe('PointsArena', function () {
           matchId: this.matchId,
           player1: user.address,
           player2: user2.address,
-          player1SessionId: this.sessionId,
-          player2SessionId: this.sessionId2,
           result: MATCH_RESULT.DRAW,
         });
       });
 
       context('when commission > 0', function () {
         beforeEach(async function () {
-          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.DRAW, this.signature);
+          this.tx = await this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.DRAW, this.signature);
         });
 
-        it('should remove the users from the session', async function () {
-          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
-          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
+        it('should remove the users from the storage', async function () {
+          expect(await this.contract.admitted(user.address)).to.be.false;
+          expect(await this.contract.admitted(user2.address)).to.be.false;
         });
 
         it('should emit a MatchResolved event', async function () {
-          await expect(this.tx)
-            .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.DRAW);
+          await expect(this.tx).to.emit(this.contract, 'MatchCompleted').withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.DRAW);
         });
 
         it('should emit Deposited events to payout wallet for commission, and users for refund', async function () {
@@ -599,18 +511,16 @@ describe('PointsArena', function () {
           await this.contract.setCommissionRate(0);
           expect(await this.contract.commissionRate()).to.equal(0);
 
-          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.DRAW, this.signature);
+          this.tx = await this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.DRAW, this.signature);
         });
 
-        it('should remove the users from the session', async function () {
-          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
-          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
+        it('should remove the users from the storage', async function () {
+          expect(await this.contract.admitted(user.address)).to.be.false;
+          expect(await this.contract.admitted(user2.address)).to.be.false;
         });
 
         it('should emit a MatchResolved event', async function () {
-          await expect(this.tx)
-            .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.DRAW);
+          await expect(this.tx).to.emit(this.contract, 'MatchCompleted').withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.DRAW);
         });
 
         it('should emit Deposited events to payout wallet for commission, and users for refund', async function () {
@@ -627,42 +537,6 @@ describe('PointsArena', function () {
             .withArgs(user.address, this.matchId, this.entryFee)
             .and.to.emit(this.contract, 'PayoutDelivered')
             .withArgs(user2.address, this.matchId, this.entryFee);
-        });
-      });
-
-      context('when commission rate is 100%', function () {
-        beforeEach(async function () {
-          await this.contract.setCommissionRate(COMMISSION_RATE_PRECISION);
-          expect(await this.contract.commissionRate()).to.equal(COMMISSION_RATE_PRECISION);
-
-          this.reward = 0;
-          this.commission = this.entryFee * 2;
-          this.tx = await this.contract.completeMatch(this.matchId, this.sessionId, this.sessionId2, MATCH_RESULT.DRAW, this.signature);
-        });
-
-        it('should remove the users from the session', async function () {
-          expect(await this.contract.sessions(this.sessionId)).to.equal(ethers.ZeroAddress);
-          expect(await this.contract.sessions(this.sessionId2)).to.equal(ethers.ZeroAddress);
-        });
-
-        it('should emit a MatchResolved event', async function () {
-          await expect(this.tx)
-            .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, this.sessionId, this.sessionId2, MATCH_RESULT.DRAW);
-        });
-
-        it('should emit Deposited event to payout wallet for commission', async function () {
-          await expect(this.tx)
-            .to.emit(this.points, 'Deposited')
-            .withArgs(this.contract.getAddress(), COMMISSION_REASON_CODE, payoutWallet.address, this.commission);
-        });
-
-        it('should emit PayoutDelivered events for refund with zero amount', async function () {
-          await expect(this.tx)
-            .to.emit(this.contract, 'PayoutDelivered')
-            .withArgs(user.address, this.matchId, this.reward)
-            .and.to.emit(this.contract, 'PayoutDelivered')
-            .withArgs(user2.address, this.matchId, this.reward);
         });
       });
     });

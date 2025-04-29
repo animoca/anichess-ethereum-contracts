@@ -12,8 +12,9 @@ import {ArenaBase} from "./base/ArenaBase.sol";
 import {Points} from "../points/Points.sol";
 
 /// @title PointsArena
-/// @notice A contract to register game sessions and distribute rewards for arena-style game modes with M8Points payments.
+/// @notice A contract to register players, complete matches, and distribute rewards in an arena game by using M8Points.
 /// @notice The winner of a match will receive a reward that is twice the entry fee, minus a commission.
+/// @notice In case of a draw, both players will receive back half of the entry fee, minus a commission.
 /// @notice The commission rate can be set by the contract owner.
 contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
@@ -34,7 +35,7 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
     /// @notice The M8Points contract.
     Points public immutable POINTS;
 
-    /// @notice The entry fee for each session.
+    /// @notice The entry fee for each game.
     uint256 public immutable ENTRY_FEE;
 
     /// @notice The commission rate, expressed as a fraction of 10000.
@@ -61,10 +62,14 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
     /// @notice Thrown when the entry fee is zero.
     error ZeroPrice();
 
+    /// @notice Thrown when the commission rate is greater than or equal to the precision.
+    /// @param rate The commission rate.
+    error InvalidCommissionRate(uint256 rate);
+
     /// @notice Constructor.
     /// @dev Reverts with {ZeroPrice} if the entry fee is zero.
     /// @dev Emits a {CommissionRateSet} event.
-    /// @param entryFee The entry fee for each session.
+    /// @param entryFee The entry fee for each game.
     /// @param commissionRate_ The initial commission rate.
     /// @param messageSigner The address of the message signer.
     /// @param payoutWallet The address of the payout wallet.
@@ -110,34 +115,28 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
         _setCommissionRate(newCommissionRate);
     }
 
-    /// @notice Admits an account to a game session and consumes the entry fee.
-    /// @dev Reverts with {AlreadyAdmitted} if the account is already admitted to the session.
+    /// @notice Admits an account to a game play and consumes the entry fee.
+    /// @dev Reverts with {AlreadyAdmitted} if the account is already admitted.
     /// @dev Emits an {Admission} event.
-    /// @param sessionId The session id.
-    function admit(uint256 sessionId) external {
+    function admit() external {
         address account = _msgSender();
-        _admit(sessionId, account);
+        _admit(account);
         POINTS.consume(account, ENTRY_FEE, CONSUME_REASON_CODE);
     }
 
-    /// @notice Completes a match, delivers the rewards to the winner, and the commission to the payout wallet.
-    /// @dev Reverts with {SessionIdNotExists} if the winner or opponent session id is not found in the sessions mapping.
+    /// @notice Completes a match, delivers the rewards to the winner, refunds for a draw, and pays the commission to the payout wallet.
+    /// @dev Reverts with {PlayerNotAdmitted} if either player is not admitted.
     /// @dev Reverts with {InvalidSignature} if the signature is invalid.
     /// @dev Emits a {MatchCompleted} event.
-    /// @dev Emits a {PayoutDelivered} event.
+    /// @dev Emits a {PayoutDelivered} event for the winner if the match is not a draw.
+    /// @dev Emits {PayoutDelivered} events for both players if the match is a draw.
     /// @param matchId The match id.
-    /// @param player1SessionId The session id of the winner, or the session id of the player in case of a draw.
-    /// @param player2SessionId The session id of the opponent.
-    /// @param result The result of the match, either Draw, Player1Won or Player2Won.
+    /// @param player1 The first player account.
+    /// @param player2 The second player account.
+    /// @param result The result of the match, either Player1Won, Player2Won or Draw.
     /// @param signature The signature of the match completion.
-    function completeMatch(
-        uint256 matchId,
-        uint256 player1SessionId,
-        uint256 player2SessionId,
-        MatchResult result,
-        bytes calldata signature
-    ) external {
-        (address player1, address player2) = _completeMatch(matchId, player1SessionId, player2SessionId, result, signature);
+    function completeMatch(uint256 matchId, address player1, address player2, MatchResult result, bytes calldata signature) external {
+        _completeMatch(matchId, player1, player2, result, signature);
 
         uint256 commission_ = commission;
         uint256 reward_ = reward;
@@ -147,17 +146,13 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
 
         if (result == MatchResult.Draw) {
             uint256 refund = reward_ / 2;
-            if (refund > 0) {
-                POINTS.deposit(player1, refund, REFUND_REASON_CODE);
-                POINTS.deposit(player2, refund, REFUND_REASON_CODE);
-            }
+            POINTS.deposit(player1, refund, REFUND_REASON_CODE);
+            POINTS.deposit(player2, refund, REFUND_REASON_CODE);
             emit PayoutDelivered(player1, matchId, refund);
             emit PayoutDelivered(player2, matchId, refund);
         } else {
             address winner = result == MatchResult.Player1Won ? player1 : player2;
-            if (reward_ > 0) {
-                POINTS.deposit(winner, reward_, REWARD_REASON_CODE);
-            }
+            POINTS.deposit(winner, reward_, REWARD_REASON_CODE);
             emit PayoutDelivered(winner, matchId, reward_);
         }
     }
@@ -171,7 +166,9 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
         uint256 commission_;
 
         if (newCommissionRate > 0) {
-            commission_ = (reward_ * newCommissionRate) / _COMMISSION_RATE_PRECISION;
+            uint256 precision = _COMMISSION_RATE_PRECISION;
+            if (newCommissionRate >= precision) revert InvalidCommissionRate(newCommissionRate);
+            commission_ = (reward_ * newCommissionRate) / precision;
             reward_ = reward_ - commission_;
         }
 
