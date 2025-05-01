@@ -12,7 +12,7 @@ import {ERC20Receiver} from "@animoca/ethereum-contracts/contracts/token/ERC20/E
 import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
 import {PayoutWallet} from "@animoca/ethereum-contracts/contracts/payment/PayoutWallet.sol";
 import {PayoutWalletStorage} from "@animoca/ethereum-contracts/contracts/payment/libraries/PayoutWalletStorage.sol";
-import {TokenRecovery} from "@animoca/ethereum-contracts/contracts/security/TokenRecovery.sol";
+import {TokenRecovery, TokenRecoveryBase} from "@animoca/ethereum-contracts/contracts/security/TokenRecovery.sol";
 import {ArenaBase} from "./base/ArenaBase.sol";
 
 /// @title ERC20Arena
@@ -28,7 +28,7 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
     /// @notice The ERC20 token contract.
     IERC20 public immutable ERC20;
 
-    /// @notice The entry fee for each game.
+    /// @notice The entry fee for each game per account.
     uint256 public immutable ENTRY_FEE;
 
     /// @notice The commission rate, expressed as a fraction of 10000.
@@ -39,6 +39,9 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
 
     /// @notice The reward amount.
     uint256 public reward;
+
+    /// @notice The total amount of entry fees locked in the contract.
+    uint256 public feeLocked;
 
     uint256 internal constant _COMMISSION_RATE_PRECISION = 10000;
 
@@ -66,6 +69,11 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
     /// @notice Thrown when the entry fee is not equal to the payment amount.
     /// @param amount The payment amount.
     error InvalidPaymentAmount(uint256 amount);
+
+    /// @notice Thrown when trying to recover more payment token than accidentally sent to this contract.
+    /// @param recoverableAmount The amount that can be recovered.
+    /// @param amount The amount that is trying to be recovered.
+    error Unrecoverable(uint256 recoverableAmount, uint256 amount);
 
     /// @notice Constructor.
     /// @dev Reverts with {ZeroPrice} if the entry fee is zero.
@@ -96,6 +104,7 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
     /// @notice Sets the commission rate commission rate and update related values.
     /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
     /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
+    /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param newCommissionRate The new commission rate.
     function setCommissionRate(uint256 newCommissionRate) external {
@@ -122,6 +131,7 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
         }
 
         _admit(from);
+        feeLocked += amount;
         return this.onERC20Received.selector;
     }
 
@@ -141,9 +151,9 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
 
         uint256 commission_ = commission;
         uint256 reward_ = reward;
+        feeLocked -= (commission_ + reward_);
         if (commission_ > 0) {
-            address payoutWallet = PayoutWalletStorage.layout().payoutWallet();
-            ERC20.safeTransfer(payoutWallet, commission_);
+            ERC20.safeTransfer(PayoutWalletStorage.layout().payoutWallet(), commission_);
         }
 
         if (result == MatchResult.Draw) {
@@ -159,8 +169,27 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
         }
     }
 
+    /// @inheritdoc TokenRecoveryBase
+    /// @notice Token deposited to this contract through onERC20Received cannot be extracted via this function.
+    /// @dev Reverts with {Unrecoverable} if the payment token amount to extract is greater than those accidentally sent to this contract.
+    function recoverERC20s(address[] calldata accounts, IERC20[] calldata tokens, uint256[] calldata amounts) public virtual override {
+        uint256 recoverableAmount = ERC20.balanceOf(address(this)) - feeLocked;
+        uint256 amount;
+        address paymentToken = address(ERC20);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (address(tokens[i]) == paymentToken) {
+                amount += amounts[i];
+            }
+        }
+        if (amount > recoverableAmount) {
+            revert Unrecoverable(recoverableAmount, amount);
+        }
+        super.recoverERC20s(accounts, tokens, amounts);
+    }
+
     /// @notice Internal helper to set the commission rate commission rate and update related values.
     /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
+    /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param newCommissionRate The new commission rate.
     function _setCommissionRate(uint256 newCommissionRate) internal {

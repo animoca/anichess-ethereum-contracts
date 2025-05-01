@@ -8,6 +8,7 @@ import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contract
 import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
 import {PayoutWallet} from "@animoca/ethereum-contracts/contracts/payment/PayoutWallet.sol";
 import {PayoutWalletStorage} from "@animoca/ethereum-contracts/contracts/payment/libraries/PayoutWalletStorage.sol";
+import {TokenRecovery} from "@animoca/ethereum-contracts/contracts/security/TokenRecovery.sol";
 import {ArenaBase} from "./base/ArenaBase.sol";
 import {Points} from "../points/Points.sol";
 
@@ -16,7 +17,7 @@ import {Points} from "../points/Points.sol";
 /// @notice The winner of a match will receive a reward that is twice the entry fee, minus a commission.
 /// @notice In case of a draw, both players will receive back half of the entry fee, minus a commission.
 /// @notice The commission rate can be set by the contract owner.
-contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
+contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistryContext {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using PayoutWalletStorage for PayoutWalletStorage.Layout;
 
@@ -35,7 +36,7 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
     /// @notice The M8Points contract.
     Points public immutable POINTS;
 
-    /// @notice The entry fee for each game.
+    /// @notice The entry fee for each game per account.
     uint256 public immutable ENTRY_FEE;
 
     /// @notice The commission rate, expressed as a fraction of 10000.
@@ -108,6 +109,7 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
     /// @notice Sets the commission rate commission rate and update related values.
     /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
     /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
+    /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param newCommissionRate The new commission rate.
     function setCommissionRate(uint256 newCommissionRate) external {
@@ -159,6 +161,7 @@ contract PointsArena is ArenaBase, PayoutWallet, ForwarderRegistryContext {
 
     /// @notice Internal helper to set the commission rate commission rate and update related values.
     /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
+    /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param newCommissionRate The new commission rate.
     function _setCommissionRate(uint256 newCommissionRate) internal {

@@ -7,7 +7,7 @@ import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/Co
 import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
 
 /// @title ArenaBase
-/// @notice An abstract contract to admit players and complete matches for arena games.
+/// @notice An abstract contract to admit players and verify match results for arena games.
 /// @dev Intended to be inherited by concrete arena contracts that handle admission payments and reward distribution logic.
 abstract contract ArenaBase is EIP712, ContractOwnership {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
@@ -83,7 +83,7 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
         emit Admission(account);
     }
 
-    /// @notice An internal helper function to complete a match.
+    /// @notice An internal helper function to verify a match result and complete the match.
     /// @dev Reverts with {PlayerNotAdmitted} if either player is not admitted.
     /// @dev Reverts with {InvalidSignature} if the signature is invalid.
     /// @dev Emits a {MatchCompleted} event.
