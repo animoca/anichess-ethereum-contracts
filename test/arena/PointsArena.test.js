@@ -38,10 +38,10 @@ describe('PointsArena', function () {
     this.version = '1.0';
 
     this.entryFee = 150;
-    this.commissionRate = 500; // 5%
-    this.commission = 15;
-    this.reward = 285;
-    this.refund = 142;
+    this.commissionRate = 600; // 6%
+    this.commission = 18;
+    this.reward = 282;
+    this.refund = 141;
 
     this.contract = await deployContract(
       'PointsArenaMock',
@@ -161,12 +161,16 @@ describe('PointsArena', function () {
         .withArgs(COMMISSION_RATE_PRECISION);
     });
 
+    it('should revert if the reward cannot be evenly divided by 2', async function () {
+      await expect(this.contract.setCommissionRate(500)).to.be.revertedWithCustomError(this.contract, 'InvalidCommissionRate').withArgs(500);
+    });
+
     context('when successful setting a positive commission rate', function () {
       beforeEach(async function () {
-        this.rate = 9999; // 99.99%
+        this.rate = 9899; // 98.99%
         this.tx = await this.contract.setCommissionRate(this.rate);
-        this.commission = 299;
-        this.reward = 1;
+        this.commission = 296;
+        this.reward = 4;
       });
 
       it('should set the correct commission rate', async function () {

@@ -77,6 +77,8 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
 
     /// @notice Constructor.
     /// @dev Reverts with {ZeroPrice} if the entry fee is zero.
+    /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
+    /// @dev Reverts with {InvalidCommissionRate} if the `reward` is not even.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param entryFee The entry fee for each game.
     /// @param commissionRate_ The initial commission rate.
@@ -105,6 +107,7 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
     /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
     /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
     /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
+    /// @dev Reverts with {InvalidCommissionRate} if the `reward` is not even.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param newCommissionRate The new commission rate.
     function setCommissionRate(uint256 newCommissionRate) external {
@@ -190,6 +193,7 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
     /// @notice Internal helper to set the commission rate commission rate and update related values.
     /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
     /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
+    /// @dev Reverts with {InvalidCommissionRate} if the `reward` is not even.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param newCommissionRate The new commission rate.
     function _setCommissionRate(uint256 newCommissionRate) internal {
@@ -201,6 +205,7 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
             if (newCommissionRate >= precision) revert InvalidCommissionRate(newCommissionRate);
             commission_ = (reward_ * newCommissionRate) / precision;
             reward_ = reward_ - commission_;
+            if (reward_ % 2 != 0) revert InvalidCommissionRate(newCommissionRate);
         }
 
         commissionRate = newCommissionRate;

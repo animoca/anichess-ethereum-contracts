@@ -69,6 +69,22 @@ describe('ERC20Arena', function () {
       ).to.be.revertedWithCustomError(this.contract, 'ZeroPrice');
     });
 
+    it('should revert if the reward cannot be evenly divided by 2', async function () {
+      await expect(
+        deployContract(
+          'ERC20ArenaMock',
+          ethers.parseEther('0.000000000000001'),
+          9899,
+          messageSigner,
+          payoutWallet,
+          this.erc20,
+          this.forwarderRegistryAddress
+        )
+      )
+        .to.be.revertedWithCustomError(this.contract, 'InvalidCommissionRate')
+        .withArgs(9899);
+    });
+
     context('when successful', function () {
       it('should set the ERC20 address', async function () {
         expect(await this.contract.ERC20()).to.equal(await this.erc20.getAddress());
