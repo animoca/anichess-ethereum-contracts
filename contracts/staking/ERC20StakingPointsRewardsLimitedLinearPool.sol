@@ -7,8 +7,6 @@ import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/i
 import {IPoints} from "./../points/interface/IPoints.sol";
 
 contract ERC20StakingPointsRewardsLimitedLinearPool is ERC20StakingPointsRewardsLinearPool {
-    address public immutable CLAIM_CONTRACT;
-
     error InvalidTransferOperator(address operator);
     error OnlyReceiverInterface();
 
@@ -18,9 +16,7 @@ contract ERC20StakingPointsRewardsLimitedLinearPool is ERC20StakingPointsRewards
         IPoints pointsContract,
         bytes32 depositReasonCode,
         IForwarderRegistry forwarderRegistry
-    ) ERC20StakingPointsRewardsLinearPool(stakingToken, pointsContract, depositReasonCode, forwarderRegistry) {
-        CLAIM_CONTRACT = claimContract;
-    }
+    ) ERC20StakingPointsRewardsLinearPool(claimContract, stakingToken, pointsContract, depositReasonCode, forwarderRegistry) {}
 
     function onERC20Received(address operator, address, uint256 value, bytes calldata data) external virtual override returns (bytes4) {
         require(msg.sender == address(STAKING_TOKEN), InvalidToken());

@@ -9,12 +9,29 @@ import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/i
 import {IPoints} from "./../points/interface/IPoints.sol";
 
 contract ERC20StakingPointsRewardsLinearPool is ERC20StakingLinearPool, LinearPool_PointsRewards {
+    address public immutable CLAIM_CONTRACT;
+
     constructor(
+        address claimContract,
         IERC20 stakingToken,
         IPoints pointsContract,
         bytes32 depositReasonCode,
         IForwarderRegistry forwarderRegistry
-    ) ERC20StakingLinearPool(stakingToken, forwarderRegistry) LinearPool_PointsRewards(pointsContract, depositReasonCode) {}
+    ) ERC20StakingLinearPool(stakingToken, forwarderRegistry) LinearPool_PointsRewards(pointsContract, depositReasonCode) {
+        CLAIM_CONTRACT = claimContract;
+    }
+
+    function onERC20Received(address operator, address from, uint256 value, bytes calldata data) external virtual override returns (bytes4) {
+        require(msg.sender == address(STAKING_TOKEN), InvalidToken());
+        bool requiresTransfer = false;
+        if (operator == CLAIM_CONTRACT) {
+            address staker = abi.decode(data, (address));
+            _stake(staker, abi.encode(requiresTransfer, abi.encode(value)));
+        } else {
+            _stake(from, abi.encode(requiresTransfer, abi.encode(value)));
+        }
+        return this.onERC20Received.selector;
+    }
 
     function _computeClaim(
         address staker,

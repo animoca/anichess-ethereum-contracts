@@ -6,19 +6,28 @@ const {time} = require('@nomicfoundation/hardhat-network-helpers');
 const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
 
 describe('ERC20StakingPointsRewardsLinearPool', function () {
-  let deployer, rewarder, alice;
+  let deployer, rewarder, alice, bob;
 
   before(async function () {
-    [deployer, rewarder, alice] = await ethers.getSigners();
+    [deployer, rewarder, alice, bob] = await ethers.getSigners();
   });
 
   const fixture = async function () {
-    this.stakingToken = await deployContract('ERC20FixedSupply', '', '', 18, [alice.address], [1000n], await getForwarderRegistryAddress());
+    this.stakingToken = await deployContract(
+      'ERC20FixedSupply',
+      '',
+      '',
+      18,
+      [alice.address, bob.address],
+      [1000n, 1000n],
+      await getForwarderRegistryAddress(),
+    );
     this.rewardToken = await deployContract('PointsMock');
 
     this.depositReasonCode = ethers.encodeBytes32String('DEPOSIT');
     this.contract = await deployContract(
       'ERC20StakingPointsRewardsLinearPool',
+      alice.getAddress(),
       await this.stakingToken.getAddress(),
       await this.rewardToken.getAddress(),
       this.depositReasonCode,
@@ -27,10 +36,64 @@ describe('ERC20StakingPointsRewardsLinearPool', function () {
     this.rewarderRole = await this.contract.REWARDER_ROLE();
     await this.contract.connect(deployer).grantRole(this.rewarderRole, rewarder.address);
     await this.stakingToken.connect(alice).approve(await this.contract.getAddress(), ethers.MaxUint256);
+    await this.stakingToken.connect(bob).approve(await this.contract.getAddress(), ethers.MaxUint256);
   };
 
   beforeEach(async function () {
     await loadFixture(fixture, this);
+  });
+
+  describe('onERC20Received(address,address,uint256,bytes)', function () {
+    it('reverts if called by another address than the staking token contract', async function () {
+      await expect(this.contract.onERC20Received(alice.address, alice.address, 1n, '0x')).to.be.revertedWithCustomError(
+        this.contract,
+        'InvalidToken',
+      );
+    });
+
+    context('when successful (from Claim Contract)', function () {
+      const amount = 100n;
+
+      beforeEach(async function () {
+        const stakerData = ethers.AbiCoder.defaultAbiCoder().encode(['address'], [alice.address]);
+        this.receipt = await this.stakingToken.connect(alice).safeTransfer(await this.contract.getAddress(), amount, stakerData);
+      });
+
+      it('transfers the stake amount to the pool', async function () {
+        await expect(this.receipt)
+          .to.emit(this.stakingToken, 'Transfer')
+          .withArgs(alice.address, await this.contract.getAddress(), amount);
+      });
+
+      it('emits a Staked event', async function () {
+        const requiresTransfer = false;
+        const stakeData = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [amount]);
+        const modifiedStakeData = ethers.AbiCoder.defaultAbiCoder().encode(['bool', 'bytes'], [requiresTransfer, stakeData]);
+        await expect(this.receipt).to.emit(this.contract, 'Staked').withArgs(alice.address, modifiedStakeData, amount);
+      });
+    });
+
+    context('when successful (from others)', function () {
+      const amount = 100n;
+
+      beforeEach(async function () {
+        const stakerData = ethers.AbiCoder.defaultAbiCoder().encode(['address'], [bob.address]);
+        this.receipt = await this.stakingToken.connect(bob).safeTransfer(await this.contract.getAddress(), amount, stakerData);
+      });
+
+      it('transfers the stake amount to the pool', async function () {
+        await expect(this.receipt)
+          .to.emit(this.stakingToken, 'Transfer')
+          .withArgs(bob.address, await this.contract.getAddress(), amount);
+      });
+
+      it('emits a Staked event', async function () {
+        const requiresTransfer = false;
+        const stakeData = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [amount]);
+        const modifiedStakeData = ethers.AbiCoder.defaultAbiCoder().encode(['bool', 'bytes'], [requiresTransfer, stakeData]);
+        await expect(this.receipt).to.emit(this.contract, 'Staked').withArgs(bob.address, modifiedStakeData, amount);
+      });
+    });
   });
 
   describe('claim()', function () {

@@ -4,7 +4,7 @@ const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/de
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
 const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
 
-describe('ERC20StakingPointsRewardsLinearPool', function () {
+describe('ERC20StakingPointsRewardsLimitedLinearPool', function () {
   let deployer, rewarder, alice;
 
   before(async function () {
