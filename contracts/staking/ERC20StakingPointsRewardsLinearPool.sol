@@ -8,6 +8,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {IPoints} from "./../points/interface/IPoints.sol";
 
+/// @title ERC20StakingPointsRewardsLinearPool
+/// @notice This contract is used to stake ERC20 tokens and obtain Points rewards.
+/// @notice Staking can be done by the user or via a claim contract.
 contract ERC20StakingPointsRewardsLinearPool is ERC20StakingLinearPool, LinearPool_PointsRewards {
     address public immutable CLAIM_CONTRACT;
 
