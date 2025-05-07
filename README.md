@@ -1,7 +1,9 @@
 # Anichess Ethereum Contracts
 
-Solidity contracts for the Anichess project.
+[![NPM Package](https://img.shields.io/npm/v/@animoca/anichess-ethereum-contracts.svg)](https://www.npmjs.org/package/@animoca/anichess-ethereum-contracts)
+[![Coverage Status](https://codecov.io/gh/animoca/anichess-ethereum-contracts/graph/badge.svg)](https://codecov.io/gh/animoca/anichess-ethereum-contracts)
 
+Solidity contracts for the Anichess project.
 
 ## Installation
 
