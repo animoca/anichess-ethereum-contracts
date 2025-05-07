@@ -161,7 +161,7 @@ describe('PointsArena', function () {
         .withArgs(COMMISSION_RATE_PRECISION);
     });
 
-    it('should revert if the reward cannot be evenly divided by 2', async function () {
+    it('should revert if the commission cannot be evenly divided by 2', async function () {
       await expect(this.contract.setCommissionRate(500)).to.be.revertedWithCustomError(this.contract, 'InvalidCommissionRate').withArgs(500);
     });
 

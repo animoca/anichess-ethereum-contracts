@@ -69,7 +69,7 @@ describe('ERC20Arena', function () {
       ).to.be.revertedWithCustomError(this.contract, 'ZeroPrice');
     });
 
-    it('should revert if the reward cannot be evenly divided by 2', async function () {
+    it('should revert if the commission cannot be evenly divided by 2', async function () {
       await expect(
         deployContract(
           'ERC20ArenaMock',

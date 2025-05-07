@@ -165,7 +165,7 @@ contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistr
     /// @notice Internal helper to set the commission rate commission rate and update related values.
     /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
     /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
-    /// @dev Reverts with {InvalidCommissionRate} if the `reward` is not even.
+    /// @dev Reverts with {InvalidCommissionRate} if the `commission` is not even.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param newCommissionRate The new commission rate.
     function _setCommissionRate(uint256 newCommissionRate) internal {
@@ -176,8 +176,8 @@ contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistr
             uint256 precision = _COMMISSION_RATE_PRECISION;
             if (newCommissionRate >= precision) revert InvalidCommissionRate(newCommissionRate);
             commission_ = (reward_ * newCommissionRate) / precision;
+            if (commission_ % 2 != 0) revert InvalidCommissionRate(newCommissionRate);
             reward_ = reward_ - commission_;
-            if (reward_ % 2 != 0) revert InvalidCommissionRate(newCommissionRate);
         }
 
         commissionRate = newCommissionRate;
