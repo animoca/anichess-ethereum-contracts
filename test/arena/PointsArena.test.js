@@ -1,6 +1,5 @@
 const {ethers} = require('hardhat');
 const {expect} = require('chai');
-const {beforeEach} = require('mocha');
 const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
 const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
@@ -32,7 +31,7 @@ describe('PointsArena', function () {
   const fixture = async function () {
     this.forwarderRegistryAddress = await getForwarderRegistryAddress();
 
-    this.points = await deployContract('Points', this.forwarderRegistryAddress);
+    this.points = await deployContract('PointsSpenderMock');
 
     this.name = 'Arena';
     this.version = '1.0';
@@ -54,17 +53,10 @@ describe('PointsArena', function () {
       REWARD_REASON_CODE,
       REFUND_REASON_CODE,
       COMMISSION_REASON_CODE,
-      this.forwarderRegistryAddress
+      this.forwarderRegistryAddress,
     );
 
-    await this.points.grantRole(this.points.ADMIN_ROLE(), pointsAdmin.address);
-    await this.points.connect(pointsAdmin).addConsumeReasonCodes([CONSUME_REASON_CODE]);
-
-    await this.points.grantRole(this.points.SPENDER_ROLE(), this.contract.getAddress());
-    await this.points.grantRole(this.points.DEPOSITOR_ROLE(), this.contract.getAddress());
-
     const POINTS_DEPOSIT_REASON_CODE = ethers.encodeBytes32String('POINTS_DEPOSIT');
-    await this.points.grantRole(this.points.DEPOSITOR_ROLE(), pointsDepositor.address);
     await this.points.connect(pointsDepositor).deposit(user.address, this.entryFee, POINTS_DEPOSIT_REASON_CODE);
     await this.points.connect(pointsDepositor).deposit(user2.address, this.entryFee, POINTS_DEPOSIT_REASON_CODE);
   };
@@ -87,8 +79,8 @@ describe('PointsArena', function () {
           REWARD_REASON_CODE,
           REFUND_REASON_CODE,
           COMMISSION_REASON_CODE,
-          this.forwarderRegistryAddress
-        )
+          this.forwarderRegistryAddress,
+        ),
       ).to.be.revertedWithCustomError(this.contract, 'ZeroPrice');
     });
 
@@ -321,7 +313,7 @@ describe('PointsArena', function () {
         result: MATCH_RESULT.PLAYER1_WON,
       });
       await expect(
-        this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON, signature)
+        this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON, signature),
       ).to.be.revertedWithCustomError(this.contract, 'InvalidSignature');
     });
 

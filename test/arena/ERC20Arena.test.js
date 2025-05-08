@@ -1,6 +1,5 @@
 const {ethers} = require('hardhat');
 const {expect} = require('chai');
-const {beforeEach} = require('mocha');
 const {BN} = require('bn.js');
 const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
@@ -35,7 +34,7 @@ describe('ERC20Arena', function () {
       18,
       [user.address, user2.address],
       [ethers.parseEther('10'), ethers.parseEther('10')],
-      this.forwarderRegistryAddress
+      this.forwarderRegistryAddress,
     );
 
     this.name = 'Arena';
@@ -54,7 +53,7 @@ describe('ERC20Arena', function () {
       messageSigner,
       payoutWallet,
       this.erc20,
-      this.forwarderRegistryAddress
+      this.forwarderRegistryAddress,
     );
   };
 
@@ -65,7 +64,7 @@ describe('ERC20Arena', function () {
   describe('constructor', function () {
     it('should revert if the price is zero', async function () {
       await expect(
-        deployContract('ERC20ArenaMock', 0, this.commissionRate, messageSigner, payoutWallet, this.erc20, this.forwarderRegistryAddress)
+        deployContract('ERC20ArenaMock', 0, this.commissionRate, messageSigner, payoutWallet, this.erc20, this.forwarderRegistryAddress),
       ).to.be.revertedWithCustomError(this.contract, 'ZeroPrice');
     });
 
@@ -78,8 +77,8 @@ describe('ERC20Arena', function () {
           messageSigner,
           payoutWallet,
           this.erc20,
-          this.forwarderRegistryAddress
-        )
+          this.forwarderRegistryAddress,
+        ),
       )
         .to.be.revertedWithCustomError(this.contract, 'InvalidCommissionRate')
         .withArgs(9899);
@@ -196,7 +195,7 @@ describe('ERC20Arena', function () {
         18,
         [user.address],
         [ethers.parseEther('10')],
-        this.forwarderRegistryAddress
+        this.forwarderRegistryAddress,
       );
 
       await expect(anotherToken.connect(user).safeTransfer(this.contract, this.entryFee, '0x'))
@@ -213,7 +212,7 @@ describe('ERC20Arena', function () {
     it('should revert if the amount to transfer is not equal to the price', async function () {
       await expect(this.erc20.connect(user).safeTransfer(this.contract, ethers.parseEther('0.009'), '0x')).to.be.revertedWithCustomError(
         this.contract,
-        'InvalidPaymentAmount'
+        'InvalidPaymentAmount',
       );
     });
 
@@ -279,7 +278,7 @@ describe('ERC20Arena', function () {
           18,
           [user.address],
           [ethers.parseEther('10')],
-          this.forwarderRegistryAddress
+          this.forwarderRegistryAddress,
         );
         await this.erc20.connect(user).safeTransfer(this.contract.getAddress(), this.entryFee, '0x');
         await this.erc20.connect(user).transfer(this.contract.getAddress(), ethers.parseEther('5'));
@@ -287,7 +286,7 @@ describe('ERC20Arena', function () {
         this.receipt = await this.contract.recoverERC20s(
           [user.address, user.address, user.address],
           [this.erc20.getAddress(), this.erc20.getAddress(), this.anotherToken.getAddress()],
-          [3, 2, 5]
+          [3, 2, 5],
         );
       });
 
@@ -376,7 +375,7 @@ describe('ERC20Arena', function () {
         result: MATCH_RESULT.PLAYER1_WON,
       });
       await expect(
-        this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON, signature)
+        this.contract.completeMatch(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON, signature),
       ).to.be.revertedWithCustomError(this.contract, 'InvalidSignature');
     });
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.22;
+pragma solidity 0.8.28;
 
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
@@ -10,7 +10,7 @@ import {PayoutWallet} from "@animoca/ethereum-contracts/contracts/payment/Payout
 import {PayoutWalletStorage} from "@animoca/ethereum-contracts/contracts/payment/libraries/PayoutWalletStorage.sol";
 import {TokenRecovery} from "@animoca/ethereum-contracts/contracts/security/TokenRecovery.sol";
 import {ArenaBase} from "./base/ArenaBase.sol";
-import {Points} from "../points/Points.sol";
+import {IPointsSpender} from "../points/interface/IPointsSpender.sol";
 
 /// @title PointsArena
 /// @notice A contract to register players, complete matches, and distribute rewards in an arena game by using M8Points.
@@ -34,7 +34,7 @@ contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistr
     bytes32 public immutable COMMISSION_REASON_CODE;
 
     /// @notice The M8Points contract.
-    Points public immutable POINTS;
+    IPointsSpender public immutable POINTS;
 
     /// @notice The entry fee for each game per account.
     uint256 public immutable ENTRY_FEE;
@@ -100,7 +100,7 @@ contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistr
         ENTRY_FEE = entryFee;
         _setCommissionRate(commissionRate_);
 
-        POINTS = Points(points);
+        POINTS = IPointsSpender(points);
 
         CONSUME_REASON_CODE = consumeReasonCode;
         REWARD_REASON_CODE = rewardReasonCode;
