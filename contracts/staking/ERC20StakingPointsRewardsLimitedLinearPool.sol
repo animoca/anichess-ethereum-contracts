@@ -6,9 +6,10 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {IPoints} from "./../points/interface/IPoints.sol";
 
+/// @title ERC20StakingPointsRewardsLimitedLinearPool
+/// @notice This contract is used to stake ERC20 tokens and obtain Points rewards.
+/// @notice Staking can only be done via a claim contract and the `stake` function is not available.
 contract ERC20StakingPointsRewardsLimitedLinearPool is ERC20StakingPointsRewardsLinearPool {
-    address public immutable CLAIM_CONTRACT;
-
     error InvalidTransferOperator(address operator);
     error OnlyReceiverInterface();
 
@@ -18,9 +19,7 @@ contract ERC20StakingPointsRewardsLimitedLinearPool is ERC20StakingPointsRewards
         IPoints pointsContract,
         bytes32 depositReasonCode,
         IForwarderRegistry forwarderRegistry
-    ) ERC20StakingPointsRewardsLinearPool(stakingToken, pointsContract, depositReasonCode, forwarderRegistry) {
-        CLAIM_CONTRACT = claimContract;
-    }
+    ) ERC20StakingPointsRewardsLinearPool(claimContract, stakingToken, pointsContract, depositReasonCode, forwarderRegistry) {}
 
     function onERC20Received(address operator, address, uint256 value, bytes calldata data) external virtual override returns (bytes4) {
         require(msg.sender == address(STAKING_TOKEN), InvalidToken());
@@ -30,6 +29,7 @@ contract ERC20StakingPointsRewardsLimitedLinearPool is ERC20StakingPointsRewards
         return this.onERC20Received.selector;
     }
 
+    /// @dev Reverts with {OnlyReceiverInterface}.
     function stake(bytes calldata) public payable virtual override {
         revert OnlyReceiverInterface();
     }

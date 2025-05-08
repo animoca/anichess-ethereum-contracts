@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {IPoints} from "./../../points/interface/IPoints.sol";
 
+/// @title LinearPool_PointsRewards
+/// @notice This contract is used to handle the points rewards for linear pools.
 // solhint-disable-next-line contract-name-capwords
 abstract contract LinearPool_PointsRewards {
     IPoints public immutable POINTS_CONTRACT;
