@@ -34,10 +34,12 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
     /// @notice The commission rate, expressed as a fraction of 10000.
     uint256 public commissionRate;
 
-    /// @notice The commission amount.
+    /// @notice The commission amount applied to each match.
     uint256 public commission;
 
-    /// @notice The reward amount.
+    /// @notice The total reward to be distributed after deducting the commission.
+    /// @notice If the match has a winner, the full reward goes to the winner.
+    /// @notice If the match ends in a draw, the reward is split equally between both players.
     uint256 public reward;
 
     /// @notice The total amount of entry fees locked in the contract.
@@ -78,7 +80,7 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
     /// @notice Constructor.
     /// @dev Reverts with {ZeroPrice} if the entry fee is zero.
     /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
-    /// @dev Reverts with {InvalidCommissionRate} if the `reward` is not even.
+    /// @dev Reverts with {InvalidCommissionRate} if the `commission` is not even.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param entryFee The entry fee for each game.
     /// @param commissionRate_ The initial commission rate.
@@ -103,11 +105,10 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
         ERC20 = IERC20(erc20);
     }
 
-    /// @notice Sets the commission rate commission rate and update related values.
-    /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
+    /// @notice Sets the commission rate, commission and reward.
     /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
     /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
-    /// @dev Reverts with {InvalidCommissionRate} if the `reward` is not even.
+    /// @dev Reverts with {InvalidCommissionRate} if the `commission` is not even.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param newCommissionRate The new commission rate.
     function setCommissionRate(uint256 newCommissionRate) external {
@@ -138,12 +139,11 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
         return this.onERC20Received.selector;
     }
 
-    /// @notice Completes a match, delivers the rewards to the winner, refunds for a draw, and pays the commission to the payout wallet.
+    /// @notice Completes a match, sends commission to the payout wallet, and distributes rewards to the winner, or both players if it's a draw.
     /// @dev Reverts with {PlayerNotAdmitted} if either player is not admitted.
     /// @dev Reverts with {InvalidSignature} if the signature is invalid.
     /// @dev Emits a {MatchCompleted} event.
-    /// @dev Emits a {PayoutDelivered} event for the winner if the match is not a draw.
-    /// @dev Emits {PayoutDelivered} events for both players if the match is a draw.
+    /// @dev Emits a {PayoutDelivered} event for winner account, or two {PayoutDelivered} events for both players in case of a draw.
     /// @param matchId The match id.
     /// @param player1 The first player account.
     /// @param player2 The second player account.
@@ -190,8 +190,7 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
         super.recoverERC20s(accounts, tokens, amounts);
     }
 
-    /// @notice Internal helper to set the commission rate commission rate and update related values.
-    /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
+    /// @notice Internal helper to set the commission rate, commission and reward.
     /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
     /// @dev Reverts with {InvalidCommissionRate} if the `commission` is not even.
     /// @dev Emits a {CommissionRateSet} event.

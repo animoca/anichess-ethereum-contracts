@@ -21,16 +21,16 @@ contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistr
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using PayoutWalletStorage for PayoutWalletStorage.Layout;
 
-    /// @notice The reason code for consuming the entry fee.
+    /// @notice The reason code to consume M8Points for the entry fee.
     bytes32 public immutable CONSUME_REASON_CODE;
 
-    /// @notice The reason code for the reward deposit.
+    /// @notice The reason code to deposit M8Points as a reward for the winner.
     bytes32 public immutable REWARD_REASON_CODE;
 
-    /// @notice The reason code for the refund deposit, when a match ends in a draw.
+    /// @notice The reason code to deposit M8Points as a refund for both players in case of a draw.
     bytes32 public immutable REFUND_REASON_CODE;
 
-    /// @notice The reason code for the commission deposit.
+    /// @notice The reason code to deposit M8Points as a commission to the payout wallet.
     bytes32 public immutable COMMISSION_REASON_CODE;
 
     /// @notice The M8Points contract.
@@ -42,10 +42,12 @@ contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistr
     /// @notice The commission rate, expressed as a fraction of 10000.
     uint256 public commissionRate;
 
-    /// @notice The commission amount.
+    /// @notice The commission amount applied to each match.
     uint256 public commission;
 
-    /// @notice The reward amount.
+    /// @notice The total reward to be distributed after deducting the commission.
+    /// @notice If the match has a winner, the full reward goes to the winner.
+    /// @notice If the match ends in a draw, the reward is split equally between both players.
     uint256 public reward;
 
     uint256 internal constant _COMMISSION_RATE_PRECISION = 10000;
@@ -70,7 +72,7 @@ contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistr
     /// @notice Constructor.
     /// @dev Reverts with {ZeroPrice} if the entry fee is zero.
     /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
-    /// @dev Reverts with {InvalidCommissionRate} if the `reward` is not even.
+    /// @dev Reverts with {InvalidCommissionRate} if the `commission` is not even.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param entryFee The entry fee for each game.
     /// @param commissionRate_ The initial commission rate.
@@ -108,11 +110,10 @@ contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistr
         COMMISSION_REASON_CODE = commissionReasonCode;
     }
 
-    /// @notice Sets the commission rate commission rate and update related values.
-    /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
+    /// @notice Sets the commission rate, commission and reward.
     /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
     /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
-    /// @dev Reverts with {InvalidCommissionRate} if the `reward` is not even.
+    /// @dev Reverts with {InvalidCommissionRate} if the `commission` is not even.
     /// @dev Emits a {CommissionRateSet} event.
     /// @param newCommissionRate The new commission rate.
     function setCommissionRate(uint256 newCommissionRate) external {
@@ -129,12 +130,11 @@ contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistr
         POINTS.consume(account, ENTRY_FEE, CONSUME_REASON_CODE);
     }
 
-    /// @notice Completes a match, delivers the rewards to the winner, refunds for a draw, and pays the commission to the payout wallet.
+    /// @notice Completes a match, sends commission to the payout wallet, and distributes rewards to the winner, or both players if it's a draw.
     /// @dev Reverts with {PlayerNotAdmitted} if either player is not admitted.
     /// @dev Reverts with {InvalidSignature} if the signature is invalid.
     /// @dev Emits a {MatchCompleted} event.
-    /// @dev Emits a {PayoutDelivered} event for the winner if the match is not a draw.
-    /// @dev Emits {PayoutDelivered} events for both players if the match is a draw.
+    /// @dev Emits a {PayoutDelivered} event for winner account, or two {PayoutDelivered} events for both players in case of a draw.
     /// @param matchId The match id.
     /// @param player1 The first player account.
     /// @param player2 The second player account.
@@ -162,8 +162,7 @@ contract PointsArena is ArenaBase, TokenRecovery, PayoutWallet, ForwarderRegistr
         }
     }
 
-    /// @notice Internal helper to set the commission rate commission rate and update related values.
-    /// @dev Calculates and sets the `commission` and `reward` based on the new commission rate.
+    /// @notice Internal helper to set the commission rate, commission and reward.
     /// @dev Reverts with {InvalidCommissionRate} if the commission rate is greater than or equal to the precision.
     /// @dev Reverts with {InvalidCommissionRate} if the `commission` is not even.
     /// @dev Emits a {CommissionRateSet} event.

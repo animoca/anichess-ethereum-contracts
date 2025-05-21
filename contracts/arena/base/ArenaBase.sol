@@ -20,7 +20,7 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
 
     bytes32 public constant COMPLETE_MATCH_TYPEHASH = keccak256("CompleteMatch(uint256 matchId,address player1,address player2,uint8 result)");
 
-    /// @notice The address of the message signer.
+    /// @notice The message signer to sign signature for match completion.
     address public messageSigner;
 
     /// @notice The mapping to indicate if an account is admitted.
