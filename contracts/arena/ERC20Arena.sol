@@ -139,6 +139,17 @@ contract ERC20Arena is ArenaBase, ERC20Receiver, TokenRecovery, PayoutWallet, Fo
         return this.onERC20Received.selector;
     }
 
+    /// @notice Admits an account to a game play and consumes the entry fee.
+    /// @notice Requires the caller to approve the contract to spend the entry fee.
+    /// @dev Reverts with {AlreadyAdmitted} if the account is already admitted.
+    /// @dev Emits an {Admission} event.
+    function admit() external {
+        address account = _msgSender();
+        _admit(account);
+        feeLocked += ENTRY_FEE;
+        ERC20.safeTransferFrom(account, address(this), ENTRY_FEE);
+    }
+
     /// @notice Completes a match, sends commission to the payout wallet, and distributes rewards to the winner, or both players if it's a draw.
     /// @dev Reverts with {PlayerNotAdmitted} if either player is not admitted.
     /// @dev Reverts with {InvalidSignature} if the signature is invalid.

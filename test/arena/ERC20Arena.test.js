@@ -255,6 +255,61 @@ describe('ERC20Arena', function () {
     });
   });
 
+  describe('admit()', function () {
+    it("reverts if the user doesn't approve the contract to spend the entry fee", async function () {
+      await expect(this.contract.connect(user).admit())
+        .to.be.revertedWithCustomError(this.erc20, 'ERC20InsufficientAllowance')
+        .withArgs(user.address, this.contract.getAddress(), 0, this.entryFee);
+    });
+
+    it('reverts if the user does not have enough balance', async function () {
+      await this.erc20.connect(userWithoutAllocation).approve(this.contract.getAddress(), this.entryFee);
+      await expect(this.contract.connect(userWithoutAllocation).admit())
+        .to.be.revertedWithCustomError(this.erc20, 'ERC20InsufficientBalance')
+        .withArgs(userWithoutAllocation, 0, this.entryFee);
+    });
+
+    context('when trying to admit again before completing the match', function () {
+      beforeEach(async function () {
+        await this.erc20.connect(user).approve(this.contract.getAddress(), this.entryFee);
+        await this.contract.connect(user).admit();
+      });
+
+      it('should revert if the user already in game', async function () {
+        await expect(this.erc20.connect(user).safeTransfer(this.contract, this.entryFee, '0x'))
+          .to.be.revertedWithCustomError(this.contract, 'AlreadyAdmitted')
+          .withArgs(user.address);
+      });
+    });
+
+    context('when successful', function () {
+      beforeEach(async function () {
+        await this.erc20.connect(user).approve(this.contract.getAddress(), this.entryFee);
+        this.tx = await this.contract.connect(user).admit();
+      });
+
+      it('should transfer the price to the contract', async function () {
+        expect(await this.erc20.balanceOf(this.contract)).to.equal(this.entryFee);
+      });
+
+      it('should set user as admitted', async function () {
+        expect(await this.contract.admitted(user.address)).to.be.true;
+      });
+
+      it('should increase the feeLocked amount', async function () {
+        expect(await this.contract.feeLocked()).to.equal(this.entryFee);
+      });
+
+      it('should emit an Admission event', async function () {
+        await expect(this.tx).to.emit(this.contract, 'Admission').withArgs(user.address);
+      });
+
+      it('should emit a Transfer event', async function () {
+        await expect(this.tx).to.emit(this.erc20, 'Transfer').withArgs(user.address, this.contract, this.entryFee);
+      });
+    });
+  });
+
   describe('recoverERC20s(address[] calldata accounts, IERC20[] calldata tokens, uint256[] calldata amounts)', function () {
     it('reverts if not called by the contract owner', async function () {
       await expect(this.contract.connect(user).recoverERC20s([], [], []))
