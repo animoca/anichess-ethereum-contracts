@@ -18,13 +18,16 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
         Draw
     }
 
-    bytes32 public constant COMPLETE_MATCH_TYPEHASH = keccak256("CompleteMatch(uint256 matchId,address player1,address player2,uint8 result)");
+    bytes32 public constant COMPLETE_MATCH_TYPEHASH =
+        keccak256(
+            "CompleteMatch(uint256 matchId,address player1,address player2,uint256 player1AdmissionTime,uint256 player2AdmissionTime,uint8 result)"
+        );
 
     /// @notice The message signer to sign signature for match completion.
     address public messageSigner;
 
-    /// @notice The mapping to indicate if an account is admitted.
-    mapping(address account => bool admitted) public admitted;
+    /// @notice The mapping of admitted players with their admission time.
+    mapping(address account => uint256 admissionTime) public admitted;
 
     /// @notice An event emitted when the message signer is set.
     /// @param signer The address of the message signer.
@@ -38,8 +41,17 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
     /// @param matchId The match id.
     /// @param player1 The first player account.
     /// @param player2 The second player account.
+    /// @param player1AdmissionTime The admission time of the first player.
+    /// @param player2AdmissionTime The admission time of the second player.
     /// @param result The result of the match, either Draw, Player1Won or Player2Won.
-    event MatchCompleted(uint256 indexed matchId, address indexed player1, address indexed player2, MatchResult result);
+    event MatchCompleted(
+        uint256 indexed matchId,
+        address indexed player1,
+        address indexed player2,
+        uint256 player1AdmissionTime,
+        uint256 player2AdmissionTime,
+        MatchResult result
+    );
 
     /// @notice Thrown when the account is already admitted during the admission process.
     /// @param account The player account.
@@ -75,11 +87,11 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
     /// @dev Emits an {Admission} event.
     /// @param account The account who paid the entry fee.
     function _admit(address account) internal {
-        if (admitted[account] == true) {
+        if (admitted[account] != 0) {
             revert AlreadyAdmitted(account);
         }
 
-        admitted[account] = true;
+        admitted[account] = block.timestamp;
         emit Admission(account);
     }
 
@@ -93,21 +105,25 @@ abstract contract ArenaBase is EIP712, ContractOwnership {
     /// @param result The result of the match, either Player1Won, Player2Won or Draw.
     /// @param signature The signature of the match completion.
     function _completeMatch(uint256 matchId, address player1, address player2, MatchResult result, bytes calldata signature) internal {
-        if (!admitted[player1]) {
+        uint256 player1AdmissionTime = admitted[player1];
+        if (player1AdmissionTime == 0) {
             revert PlayerNotAdmitted(player1);
         }
-        if (!admitted[player2]) {
+        uint256 player2AdmissionTime = admitted[player2];
+        if (player2AdmissionTime == 0) {
             revert PlayerNotAdmitted(player2);
         }
 
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(COMPLETE_MATCH_TYPEHASH, matchId, player1, player2, result)));
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(abi.encode(COMPLETE_MATCH_TYPEHASH, matchId, player1, player2, player1AdmissionTime, player2AdmissionTime, result))
+        );
         bool isValid = SignatureChecker.isValidSignatureNow(messageSigner, digest, signature);
         if (!isValid) {
             revert InvalidSignature();
         }
 
-        admitted[player1] = false;
-        admitted[player2] = false;
-        emit MatchCompleted(matchId, player1, player2, result);
+        delete admitted[player1];
+        delete admitted[player2];
+        emit MatchCompleted(matchId, player1, player2, player1AdmissionTime, player2AdmissionTime, result);
     }
 }

@@ -231,6 +231,7 @@ describe('ERC20Arena', function () {
     context('when successful', function () {
       beforeEach(async function () {
         this.tx = await this.erc20.connect(user).safeTransfer(this.contract, this.entryFee, '0x');
+        this.admissionTime = (await ethers.provider.getBlock('latest')).timestamp;
       });
 
       it('should transfer the price to the contract', async function () {
@@ -238,7 +239,7 @@ describe('ERC20Arena', function () {
       });
 
       it('should set user as admitted', async function () {
-        expect(await this.contract.admitted(user.address)).to.be.true;
+        expect(await this.contract.admitted(user.address)).to.equal(this.admissionTime);
       });
 
       it('should increase the feeLocked amount', async function () {
@@ -286,6 +287,7 @@ describe('ERC20Arena', function () {
       beforeEach(async function () {
         await this.erc20.connect(user).approve(this.contract.getAddress(), this.entryFee);
         this.tx = await this.contract.connect(user).admit();
+        this.admissionTime = (await ethers.provider.getBlock('latest')).timestamp;
       });
 
       it('should transfer the price to the contract', async function () {
@@ -293,7 +295,7 @@ describe('ERC20Arena', function () {
       });
 
       it('should set user as admitted', async function () {
-        expect(await this.contract.admitted(user.address)).to.be.true;
+        expect(await this.contract.admitted(user.address)).to.equal(this.admissionTime);
       });
 
       it('should increase the feeLocked amount', async function () {
@@ -367,7 +369,11 @@ describe('ERC20Arena', function () {
     )`, function () {
     beforeEach(async function () {
       await this.erc20.connect(user).safeTransfer(this.contract, this.entryFee, '0x');
+      this.player1AdmissionTime = (await ethers.provider.getBlock('latest')).timestamp;
+
       await this.erc20.connect(user2).safeTransfer(this.contract, this.entryFee, '0x');
+      this.player2AdmissionTime = (await ethers.provider.getBlock('latest')).timestamp;
+
       expect(await this.contract.feeLocked()).to.equal(new BN(this.entryFee).mul(new BN(2)).toString());
 
       this.eip712Domain = {
@@ -381,6 +387,8 @@ describe('ERC20Arena', function () {
           {name: 'matchId', type: 'uint256'},
           {name: 'player1', type: 'address'},
           {name: 'player2', type: 'address'},
+          {name: 'player1AdmissionTime', type: 'uint256'},
+          {name: 'player2AdmissionTime', type: 'uint256'},
           {name: 'result', type: 'uint8'},
         ],
       };
@@ -393,6 +401,8 @@ describe('ERC20Arena', function () {
         matchId: this.matchId,
         player1: user.address,
         player2: user2.address,
+        player1AdmissionTime: this.player1AdmissionTime,
+        player2AdmissionTime: this.player2AdmissionTime,
         result: 3,
       });
       await expect(this.contract.completeMatch(this.matchId, user.address, user2.address, 3, signature)).to.be.revertedWithoutReason();
@@ -403,6 +413,8 @@ describe('ERC20Arena', function () {
         matchId: this.matchId,
         player1: userWithoutAllocation.address,
         player2: user2.address,
+        player1AdmissionTime: this.player1AdmissionTime,
+        player2AdmissionTime: this.player2AdmissionTime,
         result: MATCH_RESULT.PLAYER1_WON,
       });
       await expect(this.contract.completeMatch(this.matchId, userWithoutAllocation.address, user2.address, MATCH_RESULT.PLAYER1_WON, signature))
@@ -415,6 +427,8 @@ describe('ERC20Arena', function () {
         matchId: this.matchId,
         player1: user.address,
         player2: userWithoutAllocation.address,
+        player1AdmissionTime: this.player1AdmissionTime,
+        player2AdmissionTime: this.player2AdmissionTime,
         result: MATCH_RESULT.PLAYER2_WON,
       });
       await expect(this.contract.completeMatch(this.matchId, user2.address, userWithoutAllocation.address, MATCH_RESULT.PLAYER2_WON, signature))
@@ -427,6 +441,8 @@ describe('ERC20Arena', function () {
         matchId: this.matchId,
         player1: user.address,
         player2: user.address, // same as player1
+        player1AdmissionTime: this.player1AdmissionTime,
+        player2AdmissionTime: this.player2AdmissionTime,
         result: MATCH_RESULT.PLAYER1_WON,
       });
       await expect(
@@ -440,6 +456,8 @@ describe('ERC20Arena', function () {
           matchId: this.matchId,
           player1: user.address,
           player2: user2.address,
+          player1AdmissionTime: this.player1AdmissionTime,
+          player2AdmissionTime: this.player2AdmissionTime,
           result: MATCH_RESULT.PLAYER1_WON,
         });
       });
@@ -450,8 +468,8 @@ describe('ERC20Arena', function () {
         });
 
         it('should remove the users from the storage', async function () {
-          expect(await this.contract.admitted(user.address)).to.be.false;
-          expect(await this.contract.admitted(user2.address)).to.be.false;
+          expect(await this.contract.admitted(user.address)).to.equal(0);
+          expect(await this.contract.admitted(user2.address)).to.equal(0);
         });
 
         it('should decrease the feeLocked amount', async function () {
@@ -461,7 +479,7 @@ describe('ERC20Arena', function () {
         it('should emit a MatchResolved event', async function () {
           await expect(this.tx)
             .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON);
+            .withArgs(this.matchId, user.address, user2.address, this.player1AdmissionTime, this.player2AdmissionTime, MATCH_RESULT.PLAYER1_WON);
         });
 
         it('should emit Transfer events with correct amount', async function () {
@@ -487,8 +505,8 @@ describe('ERC20Arena', function () {
         });
 
         it('should remove the users from the storage', async function () {
-          expect(await this.contract.admitted(user.address)).to.be.false;
-          expect(await this.contract.admitted(user2.address)).to.be.false;
+          expect(await this.contract.admitted(user.address)).to.equal(0);
+          expect(await this.contract.admitted(user2.address)).to.equal(0);
         });
 
         it('should decrease the feeLocked amount', async function () {
@@ -498,7 +516,7 @@ describe('ERC20Arena', function () {
         it('should emit a MatchResolved event', async function () {
           await expect(this.tx)
             .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER1_WON);
+            .withArgs(this.matchId, user.address, user2.address, this.player1AdmissionTime, this.player2AdmissionTime, MATCH_RESULT.PLAYER1_WON);
         });
 
         it('should emit a Transfer event to the player1 without deducting commission fee', async function () {
@@ -517,6 +535,8 @@ describe('ERC20Arena', function () {
           matchId: this.matchId,
           player1: user.address,
           player2: user2.address,
+          player1AdmissionTime: this.player1AdmissionTime,
+          player2AdmissionTime: this.player2AdmissionTime,
           result: MATCH_RESULT.PLAYER2_WON,
         });
       });
@@ -527,8 +547,8 @@ describe('ERC20Arena', function () {
         });
 
         it('should remove the users from the storage', async function () {
-          expect(await this.contract.admitted(user.address)).to.be.false;
-          expect(await this.contract.admitted(user2.address)).to.be.false;
+          expect(await this.contract.admitted(user.address)).to.equal(0);
+          expect(await this.contract.admitted(user2.address)).to.equal(0);
         });
 
         it('should decrease the feeLocked amount', async function () {
@@ -538,7 +558,7 @@ describe('ERC20Arena', function () {
         it('should emit a MatchResolved event', async function () {
           await expect(this.tx)
             .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER2_WON);
+            .withArgs(this.matchId, user.address, user2.address, this.player1AdmissionTime, this.player2AdmissionTime, MATCH_RESULT.PLAYER2_WON);
         });
 
         it('should emit Transfer events with correct amount', async function () {
@@ -564,8 +584,8 @@ describe('ERC20Arena', function () {
         });
 
         it('should remove the users from the storage', async function () {
-          expect(await this.contract.admitted(user.address)).to.be.false;
-          expect(await this.contract.admitted(user2.address)).to.be.false;
+          expect(await this.contract.admitted(user.address)).to.equal(0);
+          expect(await this.contract.admitted(user2.address)).to.equal(0);
         });
 
         it('should decrease the feeLocked amount', async function () {
@@ -575,7 +595,7 @@ describe('ERC20Arena', function () {
         it('should emit a MatchResolved event', async function () {
           await expect(this.tx)
             .to.emit(this.contract, 'MatchCompleted')
-            .withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.PLAYER2_WON);
+            .withArgs(this.matchId, user.address, user2.address, this.player1AdmissionTime, this.player2AdmissionTime, MATCH_RESULT.PLAYER2_WON);
         });
 
         it('should emit a Transfer event to the player2 without deducting commission fee', async function () {
@@ -594,6 +614,8 @@ describe('ERC20Arena', function () {
           matchId: this.matchId,
           player1: user.address,
           player2: user2.address,
+          player1AdmissionTime: this.player1AdmissionTime,
+          player2AdmissionTime: this.player2AdmissionTime,
           result: MATCH_RESULT.DRAW,
         });
       });
@@ -604,8 +626,8 @@ describe('ERC20Arena', function () {
         });
 
         it('should remove the users from the storage', async function () {
-          expect(await this.contract.admitted(user.address)).to.be.false;
-          expect(await this.contract.admitted(user2.address)).to.be.false;
+          expect(await this.contract.admitted(user.address)).to.equal(0);
+          expect(await this.contract.admitted(user2.address)).to.equal(0);
         });
 
         it('should decrease the feeLocked amount', async function () {
@@ -613,7 +635,9 @@ describe('ERC20Arena', function () {
         });
 
         it('should emit a MatchResolved event', async function () {
-          await expect(this.tx).to.emit(this.contract, 'MatchCompleted').withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.DRAW);
+          await expect(this.tx)
+            .to.emit(this.contract, 'MatchCompleted')
+            .withArgs(this.matchId, user.address, user2.address, this.player1AdmissionTime, this.player2AdmissionTime, MATCH_RESULT.DRAW);
         });
 
         it('should emit Transfer events to payout wallet for commission, and users for refund', async function () {
@@ -644,8 +668,8 @@ describe('ERC20Arena', function () {
         });
 
         it('should remove the users from the storage', async function () {
-          expect(await this.contract.admitted(user.address)).to.be.false;
-          expect(await this.contract.admitted(user2.address)).to.be.false;
+          expect(await this.contract.admitted(user.address)).to.equal(0);
+          expect(await this.contract.admitted(user2.address)).to.equal(0);
         });
 
         it('should decrease the feeLocked amount', async function () {
@@ -653,7 +677,9 @@ describe('ERC20Arena', function () {
         });
 
         it('should emit a MatchResolved event', async function () {
-          await expect(this.tx).to.emit(this.contract, 'MatchCompleted').withArgs(this.matchId, user.address, user2.address, MATCH_RESULT.DRAW);
+          await expect(this.tx)
+            .to.emit(this.contract, 'MatchCompleted')
+            .withArgs(this.matchId, user.address, user2.address, this.player1AdmissionTime, this.player2AdmissionTime, MATCH_RESULT.DRAW);
         });
 
         it('should emit Transfer events to payout wallet for commission, and users for refund', async function () {
