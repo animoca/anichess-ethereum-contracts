@@ -104,6 +104,18 @@
         },
         {
           "indexed": false,
+          "internalType": "uint256",
+          "name": "player1AdmissionTime",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "player2AdmissionTime",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
           "internalType": "enum ArenaBase.MatchResult",
           "name": "result",
           "type": "uint8"
@@ -168,9 +180,9 @@
       "name": "admitted",
       "outputs": [
         {
-          "internalType": "bool",
-          "name": "admitted",
-          "type": "bool"
+          "internalType": "uint256",
+          "name": "admissionTime",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
