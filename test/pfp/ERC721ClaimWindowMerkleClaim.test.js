@@ -2,14 +2,11 @@ const {ethers} = require('hardhat');
 const {expect} = require('chai');
 const {MerkleTree} = require('merkletreejs');
 const keccak256 = require('keccak256');
-const {deployContract, deployContractFromPath} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
+const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
-const {
-  getOperatorFilterRegistryAddress,
-  getForwarderRegistryAddress,
-  getTokenMetadataResolverWithBaseURIAddress,
-} = require('@animoca/ethereum-contracts/test/helpers/registries');
+const {getOperatorFilterRegistryAddress, getTokenMetadataResolverWithBaseURIAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
 const helpers = require('@nomicfoundation/hardhat-network-helpers');
+const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
 
 describe('ERC721ClaimWindowMerkleClaim', function () {
   before(async function () {
@@ -17,14 +14,9 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
   });
 
   const fixture = async function () {
-    const forwarderRegistry = await deployContractFromPath(
-      'ForwarderRegistry',
-      'node_modules/@animoca/ethereum-contracts/artifacts/contracts/metatx/ForwarderRegistry.sol',
-    );
-    const forwarderRegistryAddress = await forwarderRegistry.getAddress();
-
     const metadataResolverAddress = await getTokenMetadataResolverWithBaseURIAddress();
     const operatorFilterRegistryAddress = await getOperatorFilterRegistryAddress();
+    const forwarderRegistryAddress = await getForwarderRegistryAddress();
 
     this.rewardContract = await deployContract(
       'ERC721Full',
@@ -39,7 +31,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
     this.tokenId = 1;
     this.mintSupply = 3;
 
-    this.contract = await deployContract('ERC721ClaimWindowMerkleClaim', this.mintSupply, rewardsContractAddress, forwarderRegistryAddress);
+    this.contract = await deployContract('ERC721ClaimWindowMerkleClaimMock', this.mintSupply, rewardsContractAddress, forwarderRegistryAddress);
 
     this.epochId = ethers.encodeBytes32String('test-epoch-id');
     this.whitelist = [claimer1.address, claimer2.address, claimer3.address, claimer4.address];
@@ -405,36 +397,10 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
 
   context('support meta-transactions', function () {
     it('mock: _msgData()', async function () {
-      // Arrange
-      const forwarderRegistryAddress = await getForwarderRegistryAddress();
-      const rewardsContractAddress = await this.contract.getAddress();
-
-      this.contract = await deployContract(
-        'ERC721ClaimWindowMerkleClaimMock',
-        this.tokenId,
-        this.mintSupply,
-        rewardsContractAddress,
-        forwarderRegistryAddress,
-      );
       expect(await this.contract.connect(claimer1).__msgData()).to.be.exist;
     });
 
     it('mock: _msgSender()', async function () {
-      // Arrange
-      const forwarderRegistryAddress = await getForwarderRegistryAddress();
-      const rewardsContractAddress = await this.contract.getAddress();
-
-      this.contract = await deployContract(
-        'ERC721ClaimWindowMerkleClaimMock',
-        this.tokenId,
-        this.mintSupply,
-        rewardsContractAddress,
-        forwarderRegistryAddress,
-      );
-
-      // Act
-
-      // Assert
       expect(await this.contract.connect(claimer1).__msgSender()).to.be.exist;
     });
   });

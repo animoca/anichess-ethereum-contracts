@@ -7,7 +7,6 @@ import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/i
 
 contract ERC721ClaimWindowMerkleClaimMock is ERC721ClaimWindowMerkleClaim {
     constructor(
-        uint256 tokenId,
         uint256 mintSupply,
         ERC721Full rewardContract,
         IForwarderRegistry _forwarderRegistry
