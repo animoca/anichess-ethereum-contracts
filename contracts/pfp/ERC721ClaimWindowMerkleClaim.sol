@@ -19,7 +19,7 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using MerkleProof for bytes32[];
 
-    /// @notice The return values of _canClaim() function.
+    /// @notice The return values of canClaim() function.
     enum ClaimError {
         NoError,
         EpochIdNotExists,
@@ -45,10 +45,10 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     uint256 public noOfTokensClaimed;
 
     /// @notice Mapping from the epoch ID to the claim window.
-    mapping(bytes32 => ClaimWindow) public claimWindows;
+    mapping(bytes32 epochId => ClaimWindow) public claimWindows;
 
-    /// @notice Mapping from merkle leaf to the claim state.
-    mapping(bytes32 => bool) public claimed;
+    /// @notice Mapping from receipient address to the claim state.
+    mapping(address recipient => bool claimed) public claimed;
 
     /// @notice Event emitted when a claim window is set.
     /// @param epochId The unique epoch ID associated with the specified claim window.
@@ -61,7 +61,7 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     /// @param epochId The unique epoch ID associated with the claim window.
     /// @param recipient The recipient of the reward.
     /// @param tokenId The claimed tokenId.
-    event RewardClaimed(bytes32 indexed epochId, address indexed recipient, uint256 tokenId);
+    event RewardClaimed(bytes32 indexed epochId, address indexed recipient, uint256 indexed tokenId);
 
     /// @notice Error thrown when the reward has already been claimed.
     error AlreadyClaimed(bytes32 epochId, address recipient);
@@ -147,9 +147,8 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
      * @param recipient The recipient of the reward.
      */
     function claim(bytes32 epochId, bytes32[] calldata proof, address recipient) external {
-        ClaimWindow storage claimWindow = claimWindows[epochId];
-        bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
-        ClaimError canClaimResult = _canClaim(claimWindow, leaf);
+        ClaimError canClaimResult = canClaim(epochId, recipient);
+
         if (canClaimResult == ClaimError.EpochIdNotExists) {
             revert EpochIdNotExists(epochId);
         } else if (canClaimResult == ClaimError.OutOfClaimWindow) {
@@ -160,25 +159,16 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
             revert ExceededMintSupply();
         }
 
-        if (!proof.verify(claimWindow.merkleRoot, leaf)) {
+        bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
+        if (!proof.verify(claimWindows[epochId].merkleRoot, leaf)) {
             revert InvalidProof(epochId, recipient);
         }
 
-        uint256 updatedNoOfTokensClaimed = noOfTokensClaimed + 1;
-        noOfTokensClaimed = updatedNoOfTokensClaimed;
-        claimed[leaf] = true;
-        REWARD_CONTRACT.safeMint(recipient, updatedNoOfTokensClaimed, "");
+        uint256 tokenId = ++noOfTokensClaimed;
+        claimed[recipient] = true;
+        REWARD_CONTRACT.safeMint(recipient, tokenId, "");
 
-        emit RewardClaimed(epochId, recipient, updatedNoOfTokensClaimed);
-    }
-
-    /**
-     * @notice Returns ClaimError.
-     */
-    function canClaim(bytes32 epochId, address recipient) external view returns (ClaimError) {
-        ClaimWindow storage claimWindow = claimWindows[epochId];
-        bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
-        return _canClaim(claimWindow, leaf);
+        emit RewardClaimed(epochId, recipient, tokenId);
     }
 
     /**
@@ -189,14 +179,15 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
      * 4) Returns ClaimError.ExceededMintSupply if number of token claimed equals to total supply, and
      * 5) Returns ClaimError.NoError otherwise.
      */
-    function _canClaim(ClaimWindow storage claimWindow, bytes32 leaf) internal view returns (ClaimError) {
+    function canClaim(bytes32 epochId, address recipient) public view returns (ClaimError) {
+        ClaimWindow storage claimWindow = claimWindows[epochId];
         if (claimWindow.merkleRoot == bytes32(0)) {
             return ClaimError.EpochIdNotExists;
         }
         if (block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime) {
             return ClaimError.OutOfClaimWindow;
         }
-        if (claimed[leaf]) {
+        if (claimed[recipient]) {
             return ClaimError.AlreadyClaimed;
         }
         if (noOfTokensClaimed == MINT_SUPPLY) {

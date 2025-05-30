@@ -264,11 +264,11 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
         const endTime = (await helpers.time.latest()) + 100; // unit: seconds
         await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
         const merkleClaimData = this.merkleClaimDataArr[0];
-        const {recipient, epochId, proof, leaf} = merkleClaimData;
+        const {recipient, epochId, proof} = merkleClaimData;
 
-        const claimStatusBefore = await this.contract.claimed(leaf);
+        const claimStatusBefore = await this.contract.claimed(recipient);
         await this.contract.connect(claimer1).claim(epochId, proof, recipient);
-        const claimStatusAfter = await this.contract.claimed(leaf);
+        const claimStatusAfter = await this.contract.claimed(recipient);
         expect(claimStatusBefore).to.equal(false);
         expect(claimStatusAfter).to.equal(true);
       });
