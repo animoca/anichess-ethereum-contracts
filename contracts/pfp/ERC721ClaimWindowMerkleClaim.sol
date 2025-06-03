@@ -55,7 +55,7 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
     /// @param merkleRoot The merkle root in the claim window.
     /// @param startTime The start time of the claim window.
     /// @param endTime The end time of the claim window.
-    event EpochMerkleRootSet(bytes32 indexed epochId, bytes32 indexed merkleRoot, uint256 startTime, uint256 endTime);
+    event EpochMerkleRootSet(bytes32 indexed epochId, bytes32 indexed merkleRoot, uint256 startTime, uint256 indexed endTime);
 
     /// @notice Event emitted when a reward is claimed.
     /// @param epochId The unique epoch ID associated with the claim window.

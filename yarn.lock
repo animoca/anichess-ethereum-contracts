@@ -21,7 +21,7 @@
 
 "@animoca/ethereum-contracts@=4.2.1":
   version "4.2.1"
-  resolved "https://registry.yarnpkg.com/@animoca/ethereum-contracts/-/ethereum-contracts-4.2.1.tgz#c1c0fda555cf05c6ef07981294de61905ccb7e5c"
+  resolved "https://registry.npmjs.org/@animoca/ethereum-contracts/-/ethereum-contracts-4.2.1.tgz#c1c0fda555cf05c6ef07981294de61905ccb7e5c"
   integrity sha512-jpUTxe7DfXLeS/CncKqcGAqyItxz16E+BKrD3xOXArXiobc9dIMAX0/DrMi15xlTh3OIbun6z/6F8MA3TxxWFA==
 
 "@babel/code-frame@^7.0.0":
