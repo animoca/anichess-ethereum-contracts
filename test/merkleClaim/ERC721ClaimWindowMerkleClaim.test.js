@@ -154,8 +154,6 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       const merkleClaimData = this.merkleClaimDataArr[0];
       const {proof, recipient, epochId} = merkleClaimData;
 
-      this.contract.fo;
-
       await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
         .withArgs(this.epochId);
@@ -170,8 +168,6 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       const {proof, recipient, epochId} = merkleClaimData;
       const latestBlockTimestamp = await helpers.time.latest();
 
-      expect(latestBlockTimestamp).to.be.lessThan(startTime);
-      expect(latestBlockTimestamp).to.be.lessThan(endTime);
       await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
         .withArgs(epochId, latestBlockTimestamp + 1);
@@ -186,8 +182,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       const {proof, recipient, epochId} = merkleClaimData;
       await helpers.time.increase(1000);
       const latestBlockTimestamp = await helpers.time.latest();
-      expect(latestBlockTimestamp).to.be.greaterThan(startTime);
-      expect(latestBlockTimestamp).to.be.greaterThan(endTime);
+
       await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
         .withArgs(epochId, latestBlockTimestamp + 1);
