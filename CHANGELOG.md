@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.2.0
+
+### New features
+
+- ERC721ClaimWindowMerkleClaim contract
+
 ## 3.0.0
 
 ### Breaking changes
