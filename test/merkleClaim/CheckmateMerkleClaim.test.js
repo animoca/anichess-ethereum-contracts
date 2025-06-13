@@ -79,22 +79,22 @@ describe('CheckmateMerkleClaim', function () {
     it('reverts if the checkmate token contract address is 0', async function () {
       await expect(deployContract('CheckmateMerkleClaim', ethers.ZeroAddress, this.stakingContract, payoutWallet)).to.be.revertedWithCustomError(
         this.contract,
-        'InvalidCheckmateTokenContract',
+        'InvalidCheckmateTokenAddress',
       );
     });
 
     it('reverts if the staking contract address is 0', async function () {
       await expect(
         deployContract('CheckmateMerkleClaim', this.checkmateTokenContract, ethers.ZeroAddress, payoutWallet),
-      ).to.be.revertedWithCustomError(this.contract, 'InvalidStakingContract');
+      ).to.be.revertedWithCustomError(this.contract, 'InvalidStakingPoolAddress');
     });
 
     context('when successful', function () {
       it('sets the checkmate token contract', async function () {
-        expect(await this.contract.CHECKMATE_TOKEN_CONTRACT()).to.equal(await this.checkmateTokenContract.getAddress());
+        expect(await this.contract.CHECKMATE_TOKEN()).to.equal(await this.checkmateTokenContract.getAddress());
       });
       it('sets the staking contract', async function () {
-        expect(await this.contract.STAKING_CONTRACT()).to.equal(await this.stakingContract.getAddress());
+        expect(await this.contract.STAKING_POOL()).to.equal(await this.stakingContract.getAddress());
       });
       it('sets the payout wallet', async function () {
         expect(await this.contract.payoutWallet()).to.equal(payoutWallet.address);

@@ -14,10 +14,10 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
     using PauseStorage for PauseStorage.Layout;
 
     /// @notice a reference to checkmate token contract
-    address public immutable CHECKMATE_TOKEN_CONTRACT;
+    IERC20SafeTransfers public immutable CHECKMATE_TOKEN;
 
-    /// @notice a reference to staking contract
-    address public immutable STAKING_CONTRACT;
+    /// @notice a reference to staking pool contract
+    address public immutable STAKING_POOL;
 
     /// @notice Store the merkle root to nonce mapping
     mapping(bytes32 root => uint16 nonce) public rootToNonceMap;
@@ -40,10 +40,6 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
     /// @param newPayoutWallet The new payout wallet.
     event PayoutWalletSet(address indexed newPayoutWallet);
 
-    /// @notice Emitted when a new treasury wallet is set.
-    /// @param newTreasuryWallet The new treasury wallet.
-    event TreasuryWalletSet(address indexed newTreasuryWallet);
-
     /// @notice Emitted when a payout is claimed.
     /// @param root The merkle root on which the claim was made.
     /// @param payoutWallet The wallet sending out the checkmate token.
@@ -51,20 +47,20 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
     /// @param amount The amount of checkmate token is claimed.
     event PayoutClaimed(bytes32 indexed root, address indexed payoutWallet, address indexed recipient, uint256 amount);
 
-    /// @notice Thrown when the given forwarder registry address is zero address.
+    /// @notice Thrown when the given forwarder registry address is zero.
     error InvalidForwarderRegistry();
 
     /// @notice Thrown when the given root is zero.
     error InvalidRoot();
 
-    /// @notice Thrown when the given payout wallet address is zero address.
+    /// @notice Thrown when the given payout wallet address is zero.
     error InvalidPayoutWallet();
 
-    /// @notice Thrown when the checkmate token contract address is invalid.
-    error InvalidCheckmateTokenContract();
+    /// @notice Thrown when the checkmate token contract address is zero.
+    error InvalidCheckmateTokenAddress();
 
-    /// @notice Thrown when the staking contract address is invalid.
-    error InvalidStakingContract();
+    /// @notice Thrown when the staking pool address is zero.
+    error InvalidStakingPoolAddress();
 
     /// @notice Thrown when trying to claim the same leaf more than once.
     /// @param recipient The recipient of the claim.
@@ -92,19 +88,19 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
     /// @param amount The amount of the claim.
     error TransferFailed(address payoutWallet, address recipient, uint256 amount);
 
-    constructor(address checkmateTokenContract_, address stakingContract_, address payoutWallet_) ContractOwnership(msg.sender) {
-        if (checkmateTokenContract_ == address(0)) {
-            revert InvalidCheckmateTokenContract();
+    constructor(IERC20SafeTransfers checkmateToken_, address stakingPool_, address payoutWallet_) ContractOwnership(msg.sender) {
+        if (address(checkmateToken_) == address(0)) {
+            revert InvalidCheckmateTokenAddress();
         }
-        if (stakingContract_ == address(0)) {
-            revert InvalidStakingContract();
+        if (stakingPool_ == address(0)) {
+            revert InvalidStakingPoolAddress();
         }
         if (payoutWallet_ == address(0)) {
             revert InvalidPayoutWallet();
         }
 
-        CHECKMATE_TOKEN_CONTRACT = checkmateTokenContract_;
-        STAKING_CONTRACT = stakingContract_;
+        CHECKMATE_TOKEN = checkmateToken_;
+        STAKING_POOL = stakingPool_;
         payoutWallet = payoutWallet_;
     }
 
@@ -121,8 +117,8 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
 
         uint16 _nonce = nonce + 1;
-        rootToNonceMap[merkleRoot] = _nonce;
         nonce = _nonce;
+        rootToNonceMap[merkleRoot] = _nonce;
 
         emit MerkleRootSet(merkleRoot, _nonce);
     }
@@ -179,7 +175,7 @@ contract CheckmateMerkleClaim is ContractOwnership, PauseBase {
         claimed[leaf] = true;
 
         address _payoutWallet = payoutWallet;
-        bool success = IERC20SafeTransfers(CHECKMATE_TOKEN_CONTRACT).safeTransferFrom(_payoutWallet, STAKING_CONTRACT, amount, abi.encode(recipient));
+        bool success = CHECKMATE_TOKEN.safeTransferFrom(_payoutWallet, STAKING_POOL, amount, abi.encode(recipient));
         if (!success) {
             revert TransferFailed(_payoutWallet, recipient, amount);
         }
