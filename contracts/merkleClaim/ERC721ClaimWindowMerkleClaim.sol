@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {ERC721Full} from "@animoca/ethereum-contracts/contracts/token/ERC721/preset/ERC721Full.sol";
+import {IERC721Mintable} from "@animoca/ethereum-contracts/contracts/token/ERC721/interfaces/IERC721Mintable.sol";
 import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
 import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
@@ -35,8 +35,8 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
         uint256 endTime;
     }
 
-    /// @notice The ERC721Full reward contract.
-    ERC721Full public immutable REWARD_CONTRACT;
+    /// @notice The IERC721Mintable reward contract.
+    IERC721Mintable public immutable REWARD_CONTRACT;
 
     /// @notice The max number of tokens to be minted.
     uint256 public immutable MINT_SUPPLY;
@@ -86,12 +86,12 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
 
     /**
      * @notice Constructor for the ERC721ClaimWindowMerkleClaim contract.
-     * @param rewardContract The ERC721Mintable reward contract interface.
+     * @param rewardContract The IERC721Mintable reward contract.
      * @param _forwarderRegistry The forwarder registry contract.
      */
     constructor(
         uint256 mintSupply,
-        ERC721Full rewardContract,
+        IERC721Mintable rewardContract,
         IForwarderRegistry _forwarderRegistry
     ) ForwarderRegistryContext(_forwarderRegistry) ContractOwnership(msg.sender) {
         MINT_SUPPLY = mintSupply;
