@@ -169,7 +169,7 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
         uint256 tokenId = tokensClaimed + 1;
         noOfTokensClaimed = tokenId;
         claimed[recipient] = true;
-        REWARD_CONTRACT.safeMint(recipient, tokenId, "");
+        REWARD_CONTRACT.mint(recipient, tokenId);
 
         emit RewardClaimed(epochId, recipient, tokenId);
     }
