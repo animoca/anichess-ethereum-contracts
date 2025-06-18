@@ -162,7 +162,7 @@ contract ERC721ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwner
         }
 
         bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient));
-        if (!proof.verify(claimWindow.merkleRoot, leaf)) {
+        if (!proof.verifyCalldata(claimWindow.merkleRoot, leaf)) {
             revert InvalidProof(epochId, recipient);
         }
 
