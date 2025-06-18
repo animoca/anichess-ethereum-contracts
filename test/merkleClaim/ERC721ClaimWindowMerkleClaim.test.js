@@ -122,10 +122,10 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
     });
 
     context('when successful', function () {
-      it('sets the epoch merkle root', async function () {
-        const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
-        const endTime = startTime + 100; // unit: seconds
+      const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
+      const endTime = startTime + 100; // unit: seconds
 
+      it('sets the epoch merkle root', async function () {
         const claimWindowBefore = await this.contract.claimWindows(this.epochId);
         await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
         const claimWindowAfter = await this.contract.claimWindows(this.epochId);
@@ -139,9 +139,6 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       });
 
       it('emits a EpochMerkleRootSet event', async function () {
-        const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
-        const endTime = startTime + 100; // unit: seconds
-
         await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
           .to.emit(this.contract, 'EpochMerkleRootSet')
           .withArgs(this.epochId, this.root, startTime, endTime);
@@ -240,13 +237,17 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       ).to.revertedWithCustomError(this.contract, 'ExceededMintSupply');
     });
     context('when successful', function () {
-      it('should update the noOfTokensClaimed', async function () {
-        const startTime = await helpers.time.latest(); // unit: seconds
-        const endTime = (await helpers.time.latest()) + 100; // unit: seconds
-        await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-        const merkleClaimData = this.merkleClaimDataArr[0];
-        const {recipient, epochId, proof} = merkleClaimData;
+      let startTime, endTime, recipient, epochId, proof;
 
+      beforeEach(async function () {
+        startTime = BigInt(await helpers.time.latest()); // unit: seconds
+        endTime = startTime + 100n; // unit: seconds
+        ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
+
+        await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
+      });
+
+      it('should update the noOfTokensClaimed', async function () {
         const noOfTokensClaimedBefore = await this.contract.noOfTokensClaimed();
         await this.contract.connect(claimer1).claim(epochId, proof, recipient);
         const noOfTokensClaimedAfter = await this.contract.noOfTokensClaimed();
@@ -254,26 +255,17 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
         expect(noOfTokensClaimedBefore).to.equal(0);
         expect(noOfTokensClaimedAfter).to.equal(1);
       });
-      it('should update the claimStatus', async function () {
-        const startTime = await helpers.time.latest(); // unit: seconds
-        const endTime = (await helpers.time.latest()) + 100; // unit: seconds
-        await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-        const merkleClaimData = this.merkleClaimDataArr[0];
-        const {recipient, epochId, proof} = merkleClaimData;
 
+      it('should update the claimStatus', async function () {
         const claimStatusBefore = await this.contract.claimed(recipient);
         await this.contract.connect(claimer1).claim(epochId, proof, recipient);
         const claimStatusAfter = await this.contract.claimed(recipient);
+
         expect(claimStatusBefore).to.equal(false);
         expect(claimStatusAfter).to.equal(true);
       });
-      it('should update the recipient balance', async function () {
-        const startTime = await helpers.time.latest(); // unit: seconds
-        const endTime = (await helpers.time.latest()) + 100; // unit: seconds
-        await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-        const merkleClaimData = this.merkleClaimDataArr[0];
-        const {recipient, epochId, proof} = merkleClaimData;
 
+      it('should update the recipient balance', async function () {
         const balanceBefore = await this.rewardContract.balanceOf(recipient);
         await this.contract.connect(claimer1).claim(epochId, proof, recipient);
         const balanceAfter = await this.rewardContract.balanceOf(recipient);
@@ -281,13 +273,8 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
         expect(balanceBefore).to.equal(0);
         expect(balanceAfter).to.equal(1);
       });
-      it('should update the owner of token', async function () {
-        const startTime = await helpers.time.latest(); // unit: seconds
-        const endTime = (await helpers.time.latest()) + 100; // unit: seconds
-        await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-        const merkleClaimData = this.merkleClaimDataArr[0];
-        const {recipient, epochId, proof} = merkleClaimData;
 
+      it('should update the owner of token', async function () {
         await expect(this.rewardContract.ownerOf(this.tokenId))
           .revertedWithCustomError(this.rewardContract, 'ERC721NonExistingToken')
           .withArgs(this.tokenId);
@@ -297,17 +284,8 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
         const ownerAfter = await this.rewardContract.ownerOf(this.tokenId);
         expect(ownerAfter).to.equal(recipient);
       });
+
       it('emits a RewardClaimed event', async function () {
-        // Arrange
-        const startTime = await helpers.time.latest(); // unit: seconds
-        const endTime = (await helpers.time.latest()) + 100; // unit: seconds
-        await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-        const merkleClaimData = this.merkleClaimDataArr[0];
-        const {recipient, epochId, proof} = merkleClaimData;
-
-        // Act
-
-        // Assert
         await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
           .to.emit(this.contract, 'RewardClaimed')
           .withArgs(this.epochId, recipient, this.tokenId);
