@@ -54,26 +54,31 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
   });
 
   describe('constructor', function () {
-    it('set the mint supply', async function () {
+    it('sets the mint supply', async function () {
       expect(await this.contract.MINT_SUPPLY()).to.equal(this.mintSupply);
     });
 
     it('sets the rewards contract', async function () {
-      expect(await this.contract.REWARD_CONTRACT()).to.equal(await this.rewardContract.getAddress());
+      expect(await this.contract.REWARD_CONTRACT()).to.equal(this.rewardContract);
     });
   });
 
   describe('setEpochMerkleRoot(bytes32 epochId, bytes32 merkleRoot, uint256 startTime, uint256 endTime)', function () {
+    let startTime, endTime, currentBlockTime;
+
+    beforeEach(async function () {
+      currentBlockTime = BigInt(await helpers.time.latest()); // unit: seconds
+      startTime = currentBlockTime + 100n; // unit: seconds
+      endTime = startTime + 100n; // unit: seconds
+    });
+
     it('reverts with "NotContractOwner" if the caller is not the owner', async function () {
-      await expect(this.contract.connect(other).setEpochMerkleRoot(this.epochId, this.root, 0, 0))
+      await expect(this.contract.connect(other).setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
         .to.revertedWithCustomError(this.contract, 'NotContractOwner')
         .withArgs(other.address);
     });
 
     it('reverts with "EpochIdAlreadyExists" if the epoch has already started', async function () {
-      const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
-      const endTime = startTime + 100; // unit: seconds
-
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
 
       await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
@@ -82,49 +87,37 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
     });
 
     it('reverts with "InvalidClaimWindow" if the start time is equals to the end time', async function () {
-      const currentBlockTime = await helpers.time.latest();
-      const startTime = currentBlockTime; // unit: seconds
-      const endTime = startTime; // unit: seconds
+      endTime = startTime; // unit: seconds
 
       await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
         .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
-        .withArgs(startTime, endTime, currentBlockTime + 1);
+        .withArgs(startTime, endTime, currentBlockTime + 1n);
     });
 
     it('reverts with "InvalidClaimWindow" if the start time is greater than the end time', async function () {
-      const currentBlockTime = await helpers.time.latest();
-      const startTime = currentBlockTime + 100; // unit: seconds
-      const endTime = currentBlockTime; // unit: seconds
-
-      await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
+      await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, endTime, startTime))
         .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
-        .withArgs(startTime, endTime, currentBlockTime + 1);
+        .withArgs(endTime, startTime, currentBlockTime + 1n);
     });
 
     it(`reverts with "InvalidClaimWindow" if the end time is equals to the current time`, async function () {
-      const currentBlockTime = await helpers.time.latest();
-      const startTime = currentBlockTime - 1; // unit: seconds
-      const endTime = currentBlockTime; // unit: seconds
+      endTime = await helpers.time.latest(); // unit: seconds
 
       await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
         .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
-        .withArgs(startTime, endTime, currentBlockTime + 1);
+        .withArgs(startTime, endTime, currentBlockTime + 1n);
     });
 
     it('reverts with "InvalidClaimWindow" if the end time is less than the current time', async function () {
-      const currentBlockTime = await helpers.time.latest();
-      const startTime = currentBlockTime - 2; // unit: seconds
-      const endTime = currentBlockTime - 1; // unit: seconds
+      startTime = currentBlockTime - 2n; // unit: seconds
+      endTime = currentBlockTime - 1n; // unit: seconds
 
       await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
         .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
-        .withArgs(startTime, endTime, currentBlockTime + 1);
+        .withArgs(startTime, endTime, currentBlockTime + 1n);
     });
 
     context('when successful', function () {
-      const startTime = Math.floor(new Date().getTime() / 1000); // unit: seconds
-      const endTime = startTime + 100; // unit: seconds
-
       it('sets the epoch merkle root', async function () {
         const claimWindowBefore = await this.contract.claimWindows(this.epochId);
         await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
@@ -147,52 +140,46 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
   });
 
   describe('claim(bytes32 epochId, bytes32[] calldata proof, address recipient)', function () {
-    it('reverts with "EpochIdNotExists" if the epoch has not been set', async function () {
-      const merkleClaimData = this.merkleClaimDataArr[0];
-      const {proof, recipient, epochId} = merkleClaimData;
+    let startTime, endTime, recipient, epochId, proof;
 
-      await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
+    beforeEach(async function () {
+      startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
+      endTime = startTime + 100n; // unit: seconds
+      ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
+
+      await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
+    });
+
+    it('reverts with "EpochIdNotExists" if the epoch has not been set', async function () {
+      const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
+
+      await expect(this.contract.connect(claimer1).claim(invalidEpochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
-        .withArgs(this.epochId);
+        .withArgs(invalidEpochId);
     });
 
     it('reverts with "OutOfClaimWindow" if the epoch has not started', async function () {
-      const startTime = (await helpers.time.latest()) + 100; // unit: seconds
-      const endTime = startTime + 1; // unit: seconds
-      await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-
-      const merkleClaimData = this.merkleClaimDataArr[0];
-      const {proof, recipient, epochId} = merkleClaimData;
-      const latestBlockTimestamp = await helpers.time.latest();
+      const currentBlockTimestamp = await helpers.time.latest();
 
       await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
-        .withArgs(epochId, latestBlockTimestamp + 1);
+        .withArgs(epochId, currentBlockTimestamp + 1);
     });
 
     it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
-      const startTime = (await helpers.time.latest()) - 100; // unit: seconds
-      const endTime = (await helpers.time.latest()) + 100; // unit: seconds
-      await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
-
-      const merkleClaimData = this.merkleClaimDataArr[0];
-      const {proof, recipient, epochId} = merkleClaimData;
       await helpers.time.increase(1000);
-      const latestBlockTimestamp = await helpers.time.latest();
+
+      const currentBlockTimestamp = await helpers.time.latest();
 
       await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
-        .withArgs(epochId, latestBlockTimestamp + 1);
+        .withArgs(epochId, currentBlockTimestamp + 1);
     });
 
     it('reverts with "InvalidProof" if the proof can not be verified', async function () {
-      const startTime = await helpers.time.latest(); // unit: seconds
-      const endTime = (await helpers.time.latest()) + 100; // unit: seconds
-      await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
+      await helpers.time.increase(110);
 
-      const merkleClaimData = this.merkleClaimDataArr[0];
-      const {recipient, epochId} = merkleClaimData;
-      const invalidProof = this.merkleClaimDataArr[1].proof;
+      const invalidProof = ['0x1234567890123456789012345678901234567890123456789012345678901234'];
 
       await expect(this.contract.connect(claimer1).claim(epochId, invalidProof, recipient))
         .to.revertedWithCustomError(this.contract, 'InvalidProof')
@@ -200,23 +187,17 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
     });
 
     it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {
-      const startTime = await helpers.time.latest(); // unit: seconds
-      const endTime = (await helpers.time.latest()) + 100; // unit: seconds
-      await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
+      await helpers.time.increase(110);
 
-      const merkleClaimData = this.merkleClaimDataArr[0];
-      const {recipient, epochId, proof} = merkleClaimData;
       await this.contract.connect(claimer1).claim(epochId, proof, recipient);
 
-      await expect(this.contract.connect(claimer1).claim(this.epochId, proof, recipient))
+      await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
         .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
         .withArgs(this.epochId, recipient);
     });
 
     it('reverts with "ExceededMintSupply" if the mint supply has been exceeded', async function () {
-      const startTime = await helpers.time.latest(); // unit: seconds
-      const endTime = (await helpers.time.latest()) + 100; // unit: seconds
-      await this.contract.setEpochMerkleRoot(this.epochId, this.root, BigInt(startTime), BigInt(endTime));
+      await helpers.time.increase(110);
 
       await this.contract
         .connect(claimer1)
@@ -236,15 +217,10 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
           .claim(this.merkleClaimDataArr[3].epochId, this.merkleClaimDataArr[3].proof, this.merkleClaimDataArr[3].recipient),
       ).to.revertedWithCustomError(this.contract, 'ExceededMintSupply');
     });
+
     context('when successful', function () {
-      let startTime, endTime, recipient, epochId, proof;
-
       beforeEach(async function () {
-        startTime = BigInt(await helpers.time.latest()); // unit: seconds
-        endTime = startTime + 100n; // unit: seconds
-        ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
-
-        await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
+        await helpers.time.increase(110);
       });
 
       it('should update the noOfTokensClaimed', async function () {
@@ -294,75 +270,69 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
   });
 
   describe('canClaim(bytes32 epochId, address recipient)', function () {
-    describe('without setting merkle root', function () {
-      it('returns ClaimError.EpochIdNotExists(1) if merkle root of the claim window has not been set', async function () {
-        const canClaim = await this.contract.canClaim(this.epochId, claimer1);
-        expect(canClaim).to.equal(1);
-      });
+    let startTime, endTime, recipient, epochId, proof;
+
+    beforeEach(async function () {
+      startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
+      endTime = startTime + 100n; // unit: seconds
+      ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
+
+      await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
     });
 
-    describe('with setting merkle root', function () {
-      let startTime, endTime;
+    it('returns ClaimError.EpochIdNotExists(1) if merkle root of the claim window has not been set', async function () {
+      const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
+      const canClaim = await this.contract.canClaim(invalidEpochId, claimer1);
+      expect(canClaim).to.equal(1);
+    });
 
-      beforeEach(async function () {
-        startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
-        endTime = startTime + 100n; // unit: seconds
-        await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
-      });
+    it('returns ClaimError.OutOfClaimWindow(2) if block time is earlier than start time of claim window', async function () {
+      const canClaim = await this.contract.canClaim(epochId, claimer1);
+      expect(canClaim).to.equal(2);
+    });
 
-      it('returns ClaimError.OutOfClaimWindow(2) if block time is earlier than start time of claim window', async function () {
-        const {epochId} = this.merkleClaimDataArr[0];
+    it('returns ClaimError.OutOfClaimWindow(2) if block time is after end time of claim window', async function () {
+      await helpers.time.increase(1000);
 
-        const canClaim = await this.contract.canClaim(epochId, claimer1);
-        expect(canClaim).to.equal(2);
-      });
+      const canClaim = await this.contract.canClaim(epochId, claimer1);
+      expect(canClaim).to.equal(2);
+    });
 
-      it('returns ClaimError.OutOfClaimWindow(2) if block time is after end time of claim window', async function () {
-        await helpers.time.increase(1000);
+    it('returns ClaimError.AlreadyClaimed(3) if already claimed', async function () {
+      await helpers.time.increase(110);
 
-        const {epochId} = this.merkleClaimDataArr[0];
-        const canClaim = await this.contract.canClaim(epochId, claimer1);
-        expect(canClaim).to.equal(2);
-      });
+      await this.contract.connect(claimer1).claim(epochId, proof, recipient);
 
-      it('returns ClaimError.AlreadyClaimed(3) if already claimed', async function () {
-        await helpers.time.increase(110);
+      const canClaim = await this.contract.canClaim(epochId, claimer1);
+      expect(canClaim).to.equal(3);
+    });
 
-        const {recipient, epochId, proof} = this.merkleClaimDataArr[0];
-        await this.contract.connect(claimer1).claim(epochId, proof, recipient);
+    it('returns ClaimError.ExceededMintSupply(4) if number of claimed tokens is equal to total supply', async function () {
+      await helpers.time.increase(110);
 
-        const canClaim = await this.contract.canClaim(epochId, claimer1);
-        expect(canClaim).to.equal(3);
-      });
+      let recipient, epochId, proof;
+      ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
+      await this.contract.connect(claimer1).claim(epochId, proof, recipient);
 
-      it('returns ClaimError.ExceededMintSupply(4) if number of claimed tokens is equal to total supply', async function () {
-        await helpers.time.increase(110);
+      ({recipient, epochId, proof} = this.merkleClaimDataArr[1]);
+      await this.contract.connect(claimer2).claim(epochId, proof, recipient);
 
-        let recipient, epochId, proof;
-        ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
-        await this.contract.connect(claimer1).claim(epochId, proof, recipient);
+      ({recipient, epochId, proof} = this.merkleClaimDataArr[2]);
+      await this.contract.connect(claimer3).claim(epochId, proof, recipient);
 
-        ({recipient, epochId, proof} = this.merkleClaimDataArr[1]);
-        await this.contract.connect(claimer2).claim(epochId, proof, recipient);
+      const canClaim = await this.contract.canClaim(epochId, claimer4);
+      expect(canClaim).to.equal(4);
+    });
 
-        ({recipient, epochId, proof} = this.merkleClaimDataArr[2]);
-        await this.contract.connect(claimer3).claim(epochId, proof, recipient);
-
-        const canClaim = await this.contract.canClaim(epochId, claimer4);
-        expect(canClaim).to.equal(4);
-      });
-
-      it(`returns ClaimError.NoError(0)
+    it(`returns ClaimError.NoError(0)
           if not yet claimed,
           and number of claimed tokens is less than total supply, 
           and merkle root of the claim window has been set, 
           and block time is within claim window`, async function () {
-        await helpers.time.increase(110);
+      await helpers.time.increase(110);
 
-        const {epochId} = this.merkleClaimDataArr[0];
-        const canClaim = await this.contract.canClaim(epochId, claimer1);
-        expect(canClaim).to.equal(0);
-      });
+      const canClaim = await this.contract.canClaim(epochId, claimer1);
+      expect(canClaim).to.equal(0);
     });
   });
 
