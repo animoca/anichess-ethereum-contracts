@@ -10,7 +10,7 @@ const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/
 
 describe('ERC721ClaimWindowMerkleClaim', function () {
   before(async function () {
-    [deployer, claimer1, claimer2, claimer3, claimer4, other] = await ethers.getSigners();
+    [deployer, claimer1, claimer2, other] = await ethers.getSigners();
   });
 
   const fixture = async function () {
@@ -29,12 +29,12 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
     const rewardsContractAddress = await this.rewardContract.getAddress();
 
     this.tokenId = 1;
-    this.mintSupply = 3;
+    this.mintSupply = 1;
 
     this.contract = await deployContract('ERC721ClaimWindowMerkleClaimMock', this.mintSupply, rewardsContractAddress, forwarderRegistryAddress);
 
     this.epochId = ethers.encodeBytes32String('test-epoch-id');
-    this.whitelist = [claimer1.address, claimer2.address, claimer3.address, claimer4.address];
+    this.whitelist = [claimer1.address, claimer2.address];
 
     this.leaves = this.whitelist.map((walletAddress) => ethers.solidityPacked(['bytes32', 'address'], [this.epochId, walletAddress]));
     this.tree = new MerkleTree(this.leaves, keccak256, {hashLeaves: true, sortPairs: true});
@@ -203,18 +203,10 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
         .connect(claimer1)
         .claim(this.merkleClaimDataArr[0].epochId, this.merkleClaimDataArr[0].proof, this.merkleClaimDataArr[0].recipient);
 
-      await this.contract
-        .connect(claimer1)
-        .claim(this.merkleClaimDataArr[1].epochId, this.merkleClaimDataArr[1].proof, this.merkleClaimDataArr[1].recipient);
-
-      await this.contract
-        .connect(claimer1)
-        .claim(this.merkleClaimDataArr[2].epochId, this.merkleClaimDataArr[2].proof, this.merkleClaimDataArr[2].recipient);
-
       await expect(
         this.contract
           .connect(claimer1)
-          .claim(this.merkleClaimDataArr[3].epochId, this.merkleClaimDataArr[3].proof, this.merkleClaimDataArr[3].recipient),
+          .claim(this.merkleClaimDataArr[1].epochId, this.merkleClaimDataArr[1].proof, this.merkleClaimDataArr[1].recipient),
       ).to.revertedWithCustomError(this.contract, 'ExceededMintSupply');
     });
 
@@ -314,13 +306,7 @@ describe('ERC721ClaimWindowMerkleClaim', function () {
       ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
       await this.contract.connect(claimer1).claim(epochId, proof, recipient);
 
-      ({recipient, epochId, proof} = this.merkleClaimDataArr[1]);
-      await this.contract.connect(claimer2).claim(epochId, proof, recipient);
-
-      ({recipient, epochId, proof} = this.merkleClaimDataArr[2]);
-      await this.contract.connect(claimer3).claim(epochId, proof, recipient);
-
-      const canClaim = await this.contract.canClaim(epochId, claimer4);
+      const canClaim = await this.contract.canClaim(epochId, claimer2);
       expect(canClaim).to.equal(4);
     });
 
