@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.2.2
+
+### Improvements
+ - Internal audit remediations
+   -  FIX: AB-SC-SOL-01 Use IERC721Mintable instead of ERC721Full
+   -  FIX: AB-SC-SOL-02 Use mint instead of safeMint
+   -  FIX: AB-SC-SOL-03 Use verifyCalldata instead of verify
+   -  FIX: AB-SC-TST-01 Factorize tests by using beforeEach
+
 ## 3.2.0
 
 ### New features
