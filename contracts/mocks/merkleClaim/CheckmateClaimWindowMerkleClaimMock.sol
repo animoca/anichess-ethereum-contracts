@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {CheckmateClaimWindowMerkleClaim} from "../../merkleClaim/CheckmateClaimWindowMerkleClaim.sol";
-import {IERC721Mintable} from "@animoca/ethereum-contracts/contracts/token/ERC721/interfaces/IERC721Mintable.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 
 contract CheckmateClaimWindowMerkleClaimMock is CheckmateClaimWindowMerkleClaim {

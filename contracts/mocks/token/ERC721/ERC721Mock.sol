@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IERC721} from "@animoca/ethereum-contracts/contracts/token/ERC721/interfaces/IERC721.sol";
-
 contract ERC721Mock {
-    mapping(uint256 => address) private _owners;
+    address public tokenOwner;
+
+    function setTokenOwner(address _tokenOwner) external {
+        tokenOwner = _tokenOwner;
+    }
 
     function ownerOf(uint256 tokenId) external view returns (address) {
-        return _owners[tokenId];
+        if (tokenId < 100) {
+            return tokenOwner;
+        }
+
+        return address(0);
     }
 }

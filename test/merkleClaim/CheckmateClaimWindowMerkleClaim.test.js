@@ -9,11 +9,12 @@ const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/
 
 describe('CheckmateClaimWindowMerkleClaim', function () {
   before(async function () {
-    [deployer, payoutWallet, claimer1, claimer2, claimer3, claimer4, other] = await ethers.getSigners();
+    [deployer, payoutWallet, newPayoutWallet, claimer1, claimer2, claimerWithNFT1, claimerWithNFT2, claimerWithNFT3, other] =
+      await ethers.getSigners();
   });
 
   const fixture = async function () {
-    const forwarderRegistryAddress = await getForwarderRegistryAddress();
+    this.forwarderRegistryAddress = await getForwarderRegistryAddress();
 
     this.nftContract = await deployContract('ERC721Mock');
     this.checkmateTokenContract = await deployContract('ERC20Mock');
@@ -25,7 +26,7 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
       this.nftContract,
       this.stakingPoolContract,
       payoutWallet,
-      forwarderRegistryAddress,
+      this.forwarderRegistryAddress,
     );
 
     this.epochId = ethers.encodeBytes32String('test-epoch-id');
@@ -41,14 +42,19 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
     ];
     this.whitelistWithNFT = [
       {
-        recipient: claimer1.address,
+        recipient: claimerWithNFT1.address,
         amount: 1,
         tokenIds: [1],
       },
       {
-        recipient: claimer2.address,
+        recipient: claimerWithNFT2.address,
         amount: 2,
-        tokenIds: [2, 3],
+        tokenIds: [100],
+      },
+      {
+        recipient: claimerWithNFT3.address,
+        amount: 3,
+        tokenIds: [],
       },
     ];
     this.whitelist = this.whitelistWithoutNFT.concat(this.whitelistWithNFT);
@@ -66,8 +72,9 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
     this.merkleClaimDataArr = this.leaves.map((leaf, index) => ({
       leaf: ethers.keccak256(leaf),
       proof: this.tree.getHexProof(keccak256(leaf, index)),
-      recipient: this.whitelist[index].reciipient,
+      recipient: this.whitelist[index].recipient,
       amount: this.whitelist[index].amount,
+      tokenIds: this.whitelist[index].tokenIds,
       epochId: this.epochId,
     }));
 
@@ -79,20 +86,74 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
   });
 
   describe('constructor', function () {
-    it('sets the checkmate token', async function () {
-      expect(await this.contract.CHECKMATE_TOKEN()).to.equal(this.checkmateTokenContract);
+    it('reverts with "InvalidCheckmateToken" if checkmate token is zero address', async function () {
+      await expect(
+        deployContract(
+          'CheckmateClaimWindowMerkleClaimMock',
+          ethers.ZeroAddress,
+          this.nftContract,
+          this.stakingPoolContract,
+          payoutWallet,
+          this.forwarderRegistryAddress,
+        ),
+      ).to.revertedWithCustomError(this.contract, 'InvalidCheckmateToken');
     });
 
-    it('sets the NFT', async function () {
-      expect(await this.contract.NFT()).to.equal(this.nftContract);
+    it('reverts with "InvalidNFT" if NFT is zero address', async function () {
+      await expect(
+        deployContract(
+          'CheckmateClaimWindowMerkleClaimMock',
+          this.checkmateTokenContract,
+          ethers.ZeroAddress,
+          this.stakingPoolContract,
+          payoutWallet,
+          this.forwarderRegistryAddress,
+        ),
+      ).to.revertedWithCustomError(this.contract, 'InvalidNFT');
     });
 
-    it('sets the staking pool', async function () {
-      expect(await this.contract.STAKING_POOL()).to.equal(this.stakingPoolContract);
+    it('reverts with "InvalidStakingPool" if staking pool is zero address', async function () {
+      await expect(
+        deployContract(
+          'CheckmateClaimWindowMerkleClaimMock',
+          this.checkmateTokenContract,
+          this.nftContract,
+          ethers.ZeroAddress,
+          payoutWallet,
+          this.forwarderRegistryAddress,
+        ),
+      ).to.revertedWithCustomError(this.contract, 'InvalidStakingPool');
     });
 
-    it('sets the payout wallet', async function () {
-      expect(await this.contract.payoutWallet()).to.equal(payoutWallet);
+    it('reverts with "InvalidPayoutWallet" if payout wallet is zero address', async function () {
+      await expect(
+        deployContract(
+          'CheckmateClaimWindowMerkleClaimMock',
+          this.checkmateTokenContract,
+          this.nftContract,
+          this.stakingPoolContract,
+          ethers.ZeroAddress,
+          this.forwarderRegistryAddress,
+        ),
+      ).to.revertedWithCustomError(this.contract, 'InvalidPayoutWallet');
+    });
+
+    context('when successful', function () {
+      it('sets the checkmate token', async function () {
+        expect(await this.contract.CHECKMATE_TOKEN()).to.equal(this.checkmateTokenContract);
+      });
+
+      it('sets the NFT', async function () {
+        expect(await this.contract.NFT()).to.equal(this.nftContract);
+      });
+
+      it('sets the staking pool', async function () {
+        expect(await this.contract.STAKING_POOL()).to.equal(this.stakingPoolContract);
+      });
+
+      it('sets the payout wallet', async function () {
+        expect(await this.contract.payoutWallet()).to.equal(payoutWallet);
+      });
     });
   });
 
@@ -172,270 +233,371 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
     });
   });
 
-  // describe('setPayoutWallet(address newPayoutWallet)', function () {
-  //   beforeEach(async function () {
-  //     currentBlockTime = BigInt(await helpers.time.latest()); // unit: seconds
-  //     startTime = currentBlockTime + 100n; // unit: seconds
-  //     endTime = startTime + 100n; // unit: seconds
-  //   });
+  describe('setPayoutWallet(address newPayoutWallet)', function () {
+    it('reverts with "NotContractOwner" if the caller is not the owner', async function () {
+      await expect(this.contract.connect(other).setPayoutWallet(other))
+        .to.revertedWithCustomError(this.contract, 'NotContractOwner')
+        .withArgs(other.address);
+    });
 
-  //   it('reverts with "NotContractOwner" if the caller is not the owner', async function () {
-  //     await expect(this.contract.connect(other).setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
-  //       .to.revertedWithCustomError(this.contract, 'NotContractOwner')
-  //       .withArgs(other.address);
-  //   });
+    context('when successful', function () {
+      it('sets the payout wallet', async function () {
+        await this.contract.setPayoutWallet(newPayoutWallet);
+        const payoutWallet = await this.contract.payoutWallet();
 
-  //   it('reverts with "EpochIdAlreadyExists" if the epoch has already started', async function () {
-  //     await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
+        expect(payoutWallet).to.equal(newPayoutWallet);
+      });
 
-  //     await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
-  //       .to.revertedWithCustomError(this.contract, 'EpochIdAlreadyExists')
-  //       .withArgs(this.epochId);
-  //   });
+      it('emits a PayoutWalletSet event', async function () {
+        await expect(this.contract.setPayoutWallet(newPayoutWallet)).to.emit(this.contract, 'PayoutWalletSet').withArgs(newPayoutWallet);
+      });
+    });
+  });
 
-  //   it('reverts with "InvalidClaimWindow" if the start time is equals to the end time', async function () {
-  //     endTime = startTime; // unit: seconds
+  describe('claimAndStake(bytes32 epochId, address recipient, uint256 amount, bytes32[] calldata proof)', function () {
+    let startTime, endTime, recipient, epochId, proof, leaf;
 
-  //     await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
-  //       .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
-  //       .withArgs(startTime, endTime, currentBlockTime + 1n);
-  //   });
+    beforeEach(async function () {
+      startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
+      endTime = startTime + 100n; // unit: seconds
+      ({epochId, recipient, amount, leaf, proof} = this.merkleClaimDataArr[0]);
 
-  //   it('reverts with "InvalidClaimWindow" if the start time is greater than the end time', async function () {
-  //     await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, endTime, startTime))
-  //       .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
-  //       .withArgs(endTime, startTime, currentBlockTime + 1n);
-  //   });
+      await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
+    });
 
-  //   it(`reverts with "InvalidClaimWindow" if the end time is equals to the current time`, async function () {
-  //     endTime = await helpers.time.latest(); // unit: seconds
+    it('reverts with "EpochIdNotExists" if the epoch has not been set', async function () {
+      const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
 
-  //     await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
-  //       .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
-  //       .withArgs(startTime, endTime, currentBlockTime + 1n);
-  //   });
+      await expect(this.contract.claimAndStake(invalidEpochId, recipient, amount, proof))
+        .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
+        .withArgs(invalidEpochId);
+    });
 
-  //   it('reverts with "InvalidClaimWindow" if the end time is less than the current time', async function () {
-  //     startTime = currentBlockTime - 2n; // unit: seconds
-  //     endTime = currentBlockTime - 1n; // unit: seconds
+    it('reverts with "OutOfClaimWindow" if the epoch has not started', async function () {
+      const currentBlockTimestamp = await helpers.time.latest();
 
-  //     await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
-  //       .to.revertedWithCustomError(this.contract, 'InvalidClaimWindow')
-  //       .withArgs(startTime, endTime, currentBlockTime + 1n);
-  //   });
+      await expect(this.contract.claimAndStake(epochId, recipient, amount, proof))
+        .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
+        .withArgs(epochId, currentBlockTimestamp + 1);
+    });
 
-  //   context('when successful', function () {
-  //     it('sets the epoch merkle root', async function () {
-  //       const claimWindowBefore = await this.contract.claimWindows(this.epochId);
-  //       await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
-  //       const claimWindowAfter = await this.contract.claimWindows(this.epochId);
+    it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
+      await helpers.time.increase(1000);
 
-  //       expect(claimWindowBefore.merkleRoot).to.equal(ethers.ZeroHash);
-  //       expect(claimWindowAfter.merkleRoot).to.equal(this.root);
-  //       expect(claimWindowBefore.startTime).to.equal(0);
-  //       expect(claimWindowAfter.startTime).to.equal(startTime);
-  //       expect(claimWindowBefore.endTime).to.equal(0);
-  //       expect(claimWindowAfter.endTime).to.equal(endTime);
-  //     });
+      const currentBlockTimestamp = await helpers.time.latest();
 
-  //     it('emits a EpochMerkleRootSet event', async function () {
-  //       await expect(this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime))
-  //         .to.emit(this.contract, 'EpochMerkleRootSet')
-  //         .withArgs(this.epochId, this.root, startTime, endTime);
-  //     });
-  //   });
-  // });
+      await expect(this.contract.claimAndStake(epochId, recipient, amount, proof))
+        .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
+        .withArgs(epochId, currentBlockTimestamp + 1);
+    });
 
-  // describe('claim(bytes32 epochId, bytes32[] calldata proof, address recipient)', function () {
-  //   let startTime, endTime, recipient, epochId, proof;
+    it('reverts with "InvalidProof" if the proof can not be verified', async function () {
+      await helpers.time.increase(110);
 
-  //   beforeEach(async function () {
-  //     startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
-  //     endTime = startTime + 100n; // unit: seconds
-  //     ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
+      const invalidProof = ['0x1234567890123456789012345678901234567890123456789012345678901234'];
 
-  //     await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
-  //   });
+      await expect(this.contract.claimAndStake(epochId, recipient, amount, invalidProof))
+        .to.revertedWithCustomError(this.contract, 'InvalidProof')
+        .withArgs(epochId, recipient, amount);
+    });
 
-  //   it('reverts with "EpochIdNotExists" if the epoch has not been set', async function () {
-  //     const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
+    it('reverts with "TransferFailed" if safeTransferFrom() returns false', async function () {
+      await helpers.time.increase(110);
+      await this.contract.setPayoutWallet(ethers.ZeroAddress);
 
-  //     await expect(this.contract.connect(claimer1).claim(invalidEpochId, proof, recipient))
-  //       .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
-  //       .withArgs(invalidEpochId);
-  //   });
+      await expect(this.contract.claimAndStake(epochId, recipient, amount, proof))
+        .to.revertedWithCustomError(this.contract, 'TransferFailed')
+        .withArgs(ethers.ZeroAddress, recipient, amount);
+    });
 
-  //   it('reverts with "OutOfClaimWindow" if the epoch has not started', async function () {
-  //     const currentBlockTimestamp = await helpers.time.latest();
+    it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {
+      await helpers.time.increase(110);
 
-  //     await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
-  //       .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
-  //       .withArgs(epochId, currentBlockTimestamp + 1);
-  //   });
+      await this.contract.claimAndStake(epochId, recipient, amount, proof);
 
-  //   it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
-  //     await helpers.time.increase(1000);
+      await expect(this.contract.claimAndStake(epochId, recipient, amount, proof))
+        .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
+        .withArgs(this.epochId, leaf);
+    });
 
-  //     const currentBlockTimestamp = await helpers.time.latest();
+    context('when successful', function () {
+      beforeEach(async function () {
+        await helpers.time.increase(110);
+      });
 
-  //     await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
-  //       .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
-  //       .withArgs(epochId, currentBlockTimestamp + 1);
-  //   });
+      it('should update the claimed state', async function () {
+        const claimedBefore = await this.contract.claimed(leaf);
+        await this.contract.claimAndStake(epochId, recipient, amount, proof);
+        const claimedAfter = await this.contract.claimed(leaf);
 
-  //   it('reverts with "InvalidProof" if the proof can not be verified', async function () {
-  //     await helpers.time.increase(110);
+        expect(claimedBefore).to.equal(false);
+        expect(claimedAfter).to.equal(true);
+      });
 
-  //     const invalidProof = ['0x1234567890123456789012345678901234567890123456789012345678901234'];
+      it('should have invoked safeTransferFrom() of checkmate token', async function () {
+        await expect(this.contract.claimAndStake(epochId, recipient, amount, proof))
+          .to.emit(this.checkmateTokenContract, 'TransferMock')
+          .withArgs(payoutWallet, this.stakingPoolContract, amount);
+      });
 
-  //     await expect(this.contract.connect(claimer1).claim(epochId, invalidProof, recipient))
-  //       .to.revertedWithCustomError(this.contract, 'InvalidProof')
-  //       .withArgs(epochId, recipient);
-  //   });
+      it('should have invoked onERC20Received() of staking pool', async function () {
+        await expect(this.contract.claimAndStake(epochId, recipient, amount, proof))
+          .to.emit(this.stakingPoolContract, 'ERC20ReceivedMock')
+          // .withArgs(this.checkmateTokenContract, payoutWallet, amount, new ethers.utils.AbiCoder().encode(['address'], [recipient]));
+          .withArgs(this.checkmateTokenContract, payoutWallet, amount, ethers.AbiCoder.defaultAbiCoder().encode(['address'], [recipient]));
+        // AbiCoder.defaultAbiCoder()
+      });
 
-  //   it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {
-  //     await helpers.time.increase(110);
+      it('emits a PayoutClaimed event', async function () {
+        await expect(this.contract.claimAndStake(epochId, recipient, amount, proof))
+          .to.emit(this.contract, 'PayoutClaimed')
+          .withArgs(epochId, recipient, amount);
+      });
+    });
+  });
 
-  //     await this.contract.connect(claimer1).claim(epochId, proof, recipient);
+  // eslint-disable-next-line max-len
+  describe('claimAndStakeWithNFT(bytes32 epochId, address recipient, uint256 amount, uint256[] calldata tokenIds, bytes32[] calldata proof)', function () {
+    let startTime, endTime, recipient, epochId, tokenIds, proof, leaf;
 
-  //     await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
-  //       .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
-  //       .withArgs(this.epochId, recipient);
-  //   });
+    beforeEach(async function () {
+      startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
+      endTime = startTime + 100n; // unit: seconds
+      ({epochId, recipient, amount, tokenIds, leaf, proof} = this.merkleClaimDataArr[2]);
 
-  //   it('reverts with "ExceededMintSupply" if the mint supply has been exceeded', async function () {
-  //     await helpers.time.increase(110);
+      await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
+      await this.nftContract.setTokenOwner(recipient);
+    });
 
-  //     await this.contract
-  //       .connect(claimer1)
-  //       .claim(this.merkleClaimDataArr[0].epochId, this.merkleClaimDataArr[0].proof, this.merkleClaimDataArr[0].recipient);
+    it('reverts with "EpochIdNotExists" if the epoch has not been set', async function () {
+      const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
 
-  //     await expect(
-  //       this.contract
-  //         .connect(claimer1)
-  //         .claim(this.merkleClaimDataArr[1].epochId, this.merkleClaimDataArr[1].proof, this.merkleClaimDataArr[1].recipient),
-  //     ).to.revertedWithCustomError(this.contract, 'ExceededMintSupply');
-  //   });
+      await expect(this.contract.claimAndStakeWithNFT(invalidEpochId, recipient, amount, tokenIds, proof))
+        .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
+        .withArgs(invalidEpochId);
+    });
 
-  //   context('when successful', function () {
-  //     beforeEach(async function () {
-  //       await helpers.time.increase(110);
-  //     });
+    it('reverts with "OutOfClaimWindow" if the epoch has not started', async function () {
+      const currentBlockTimestamp = await helpers.time.latest();
 
-  //     it('should update the noOfTokensClaimed', async function () {
-  //       const noOfTokensClaimedBefore = await this.contract.noOfTokensClaimed();
-  //       await this.contract.connect(claimer1).claim(epochId, proof, recipient);
-  //       const noOfTokensClaimedAfter = await this.contract.noOfTokensClaimed();
+      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
+        .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
+        .withArgs(epochId, currentBlockTimestamp + 1);
+    });
 
-  //       expect(noOfTokensClaimedBefore).to.equal(0);
-  //       expect(noOfTokensClaimedAfter).to.equal(1);
-  //     });
+    it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
+      await helpers.time.increase(1000);
 
-  //     it('should update the claimStatus', async function () {
-  //       const claimStatusBefore = await this.contract.claimed(recipient);
-  //       await this.contract.connect(claimer1).claim(epochId, proof, recipient);
-  //       const claimStatusAfter = await this.contract.claimed(recipient);
+      const currentBlockTimestamp = await helpers.time.latest();
 
-  //       expect(claimStatusBefore).to.equal(false);
-  //       expect(claimStatusAfter).to.equal(true);
-  //     });
+      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
+        .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
+        .withArgs(epochId, currentBlockTimestamp + 1);
+    });
 
-  //     it('should update the recipient balance', async function () {
-  //       const balanceBefore = await this.rewardContract.balanceOf(recipient);
-  //       await this.contract.connect(claimer1).claim(epochId, proof, recipient);
-  //       const balanceAfter = await this.rewardContract.balanceOf(recipient);
+    it('reverts with "InvalidProof" if the proof can not be verified', async function () {
+      await helpers.time.increase(110);
 
-  //       expect(balanceBefore).to.equal(0);
-  //       expect(balanceAfter).to.equal(1);
-  //     });
+      const invalidProof = ['0x1234567890123456789012345678901234567890123456789012345678901234'];
 
-  //     it('should update the owner of token', async function () {
-  //       await expect(this.rewardContract.ownerOf(this.tokenId))
-  //         .revertedWithCustomError(this.rewardContract, 'ERC721NonExistingToken')
-  //         .withArgs(this.tokenId);
+      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, invalidProof))
+        .to.revertedWithCustomError(this.contract, 'InvalidProofWithNFT')
+        .withArgs(epochId, recipient, amount, tokenIds);
+    });
 
-  //       await this.contract.connect(claimer1).claim(epochId, proof, recipient);
+    it('reverts with "TransferFailed" if safeTransferFrom() returns false', async function () {
+      await helpers.time.increase(110);
+      await this.contract.setPayoutWallet(ethers.ZeroAddress);
 
-  //       const ownerAfter = await this.rewardContract.ownerOf(this.tokenId);
-  //       expect(ownerAfter).to.equal(recipient);
-  //     });
+      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
+        .to.revertedWithCustomError(this.contract, 'TransferFailed')
+        .withArgs(ethers.ZeroAddress, recipient, amount);
+    });
 
-  //     it('emits a RewardClaimed event', async function () {
-  //       await expect(this.contract.connect(claimer1).claim(epochId, proof, recipient))
-  //         .to.emit(this.contract, 'RewardClaimed')
-  //         .withArgs(this.epochId, recipient, this.tokenId);
-  //     });
-  //   });
-  // });
+    it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {
+      await helpers.time.increase(110);
 
-  // describe('canClaim(bytes32 epochId, address recipient)', function () {
-  //   let startTime, endTime, recipient, epochId, proof;
+      await this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof);
 
-  //   beforeEach(async function () {
-  //     startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
-  //     endTime = startTime + 100n; // unit: seconds
-  //     ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
+      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
+        .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
+        .withArgs(this.epochId, leaf);
+    });
 
-  //     await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
-  //   });
+    it('reverts with "NotNFTOwner" if the recipient does not own one of the token Ids', async function () {
+      await helpers.time.increase(110);
 
-  //   it('returns ClaimError.EpochIdNotExists(1) if merkle root of the claim window has not been set', async function () {
-  //     const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
-  //     const canClaim = await this.contract.canClaim(invalidEpochId, claimer1);
-  //     expect(canClaim).to.equal(1);
-  //   });
+      ({epochId, recipient, amount, tokenIds, leaf, proof} = this.merkleClaimDataArr[3]);
 
-  //   it('returns ClaimError.OutOfClaimWindow(2) if block time is earlier than start time of claim window', async function () {
-  //     const canClaim = await this.contract.canClaim(epochId, claimer1);
-  //     expect(canClaim).to.equal(2);
-  //   });
+      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof)).to.revertedWithCustomError(
+        this.contract,
+        'NotNFTOwner',
+      );
+    });
 
-  //   it('returns ClaimError.OutOfClaimWindow(2) if block time is after end time of claim window', async function () {
-  //     await helpers.time.increase(1000);
+    it('reverts with "MissingTokenIds" if the given token ids is empty array', async function () {
+      await helpers.time.increase(110);
 
-  //     const canClaim = await this.contract.canClaim(epochId, claimer1);
-  //     expect(canClaim).to.equal(2);
-  //   });
+      ({epochId, recipient, amount, tokenIds, leaf, proof} = this.merkleClaimDataArr[4]);
 
-  //   it('returns ClaimError.AlreadyClaimed(3) if already claimed', async function () {
-  //     await helpers.time.increase(110);
+      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof)).to.revertedWithCustomError(
+        this.contract,
+        'MissingTokenIds',
+      );
+    });
 
-  //     await this.contract.connect(claimer1).claim(epochId, proof, recipient);
+    context('when successful', function () {
+      beforeEach(async function () {
+        await helpers.time.increase(110);
+      });
 
-  //     const canClaim = await this.contract.canClaim(epochId, claimer1);
-  //     expect(canClaim).to.equal(3);
-  //   });
+      it('should update the claimed state', async function () {
+        const claimedBefore = await this.contract.claimed(leaf);
+        await this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof);
+        const claimedAfter = await this.contract.claimed(leaf);
 
-  //   it('returns ClaimError.ExceededMintSupply(4) if number of claimed tokens is equal to total supply', async function () {
-  //     await helpers.time.increase(110);
+        expect(claimedBefore).to.equal(false);
+        expect(claimedAfter).to.equal(true);
+      });
 
-  //     let recipient, epochId, proof;
-  //     ({recipient, epochId, proof} = this.merkleClaimDataArr[0]);
-  //     await this.contract.connect(claimer1).claim(epochId, proof, recipient);
+      it('should have invoked safeTransferFrom() of checkmate token', async function () {
+        await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
+          .to.emit(this.checkmateTokenContract, 'TransferMock')
+          .withArgs(payoutWallet, this.stakingPoolContract, amount);
+      });
 
-  //     const canClaim = await this.contract.canClaim(epochId, claimer2);
-  //     expect(canClaim).to.equal(4);
-  //   });
+      it('emits a PayoutClaimed event', async function () {
+        await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
+          .to.emit(this.contract, 'PayoutClaimed')
+          .withArgs(epochId, recipient, amount);
+      });
+    });
+  });
 
-  //   it(`returns ClaimError.NoError(0)
-  //         if not yet claimed,
-  //         and number of claimed tokens is less than total supply,
-  //         and merkle root of the claim window has been set,
-  //         and block time is within claim window`, async function () {
-  //     await helpers.time.increase(110);
+  describe('canClaim(bytes32 epochId, address recipient, uint256 amount)', function () {
+    let startTime, endTime, recipient, epochId, proof;
 
-  //     const canClaim = await this.contract.canClaim(epochId, claimer1);
-  //     expect(canClaim).to.equal(0);
-  //   });
-  // });
+    beforeEach(async function () {
+      startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
+      endTime = startTime + 100n; // unit: seconds
+      ({epochId, recipient, amount, proof} = this.merkleClaimDataArr[0]);
+
+      await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
+    });
+
+    it('returns ClaimError.EpochIdNotExists(1) if merkle root of the claim window has not been set', async function () {
+      const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
+      const canClaim = await this.contract.canClaim(invalidEpochId, recipient, amount);
+      expect(canClaim).to.equal(1);
+    });
+
+    it('returns ClaimError.OutOfClaimWindow(2) if block time is earlier than start time of claim window', async function () {
+      const canClaim = await this.contract.canClaim(epochId, recipient, amount);
+      expect(canClaim).to.equal(2);
+    });
+
+    it('returns ClaimError.OutOfClaimWindow(2) if block time is after end time of claim window', async function () {
+      await helpers.time.increase(1000);
+
+      const canClaim = await this.contract.canClaim(epochId, recipient, amount);
+      expect(canClaim).to.equal(2);
+    });
+
+    it('returns ClaimError.AlreadyClaimed(3) if already claimed', async function () {
+      await helpers.time.increase(110);
+
+      await this.contract.claimAndStake(epochId, recipient, amount, proof);
+
+      const canClaim = await this.contract.canClaim(epochId, recipient, amount);
+      expect(canClaim).to.equal(3);
+    });
+
+    it(`returns ClaimError.NoError(0)
+          if not yet claimed,
+          and merkle root of the claim window has been set,
+          and block time is within claim window`, async function () {
+      await helpers.time.increase(110);
+
+      const canClaim = await this.contract.canClaim(epochId, recipient, amount);
+      expect(canClaim).to.equal(0);
+    });
+  });
+
+  describe('canClaimWithNFT(bytes32 epochId, address recipient, uint256 amount, uint256[] calldata tokenIds)', function () {
+    let startTime, endTime, recipient, epochId, proof, validTokenId, invalidTokenId;
+
+    beforeEach(async function () {
+      startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
+      endTime = startTime + 100n; // unit: seconds
+      ({epochId, recipient, amount, proof} = this.merkleClaimDataArr[2]);
+
+      await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
+
+      await this.nftContract.setTokenOwner(recipient);
+
+      validTokenId = 1;
+      invalidTokenId = 123;
+    });
+
+    it('returns ClaimError.EpochIdNotExists(1) if merkle root of the claim window has not been set', async function () {
+      const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
+      const canClaim = await this.contract.canClaimWithNFT(invalidEpochId, recipient, amount, [validTokenId]);
+      expect(canClaim).to.equal(1);
+    });
+
+    it('returns ClaimError.OutOfClaimWindow(2) if block time is earlier than start time of claim window', async function () {
+      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, [validTokenId]);
+      expect(canClaim).to.equal(2);
+    });
+
+    it('returns ClaimError.OutOfClaimWindow(2) if block time is after end time of claim window', async function () {
+      await helpers.time.increase(1000);
+
+      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, [validTokenId]);
+      expect(canClaim).to.equal(2);
+    });
+
+    it('returns ClaimError.AlreadyClaimed(3) if already claimed', async function () {
+      await helpers.time.increase(110);
+
+      await this.contract.claimAndStakeWithNFT(epochId, recipient, amount, [validTokenId], proof);
+
+      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, [validTokenId]);
+      expect(canClaim).to.equal(3);
+    });
+
+    it('returns ClaimError.NotNFTOwner(4) if recipient does not own one of the NFT token ids', async function () {
+      await helpers.time.increase(110);
+
+      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, [invalidTokenId]);
+      expect(canClaim).to.equal(4);
+    });
+
+    it('returns ClaimError.MissingTokenIds(5) if given token ids is empty', async function () {
+      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, []);
+      expect(canClaim).to.equal(5);
+    });
+
+    it(`returns ClaimError.NoError(0)
+          if not yet claimed,
+          and merkle root of the claim window has been set,
+          and block time is within claim window
+          and token ids is not empty
+          and recipient is the owner of all token ids`, async function () {
+      await helpers.time.increase(110);
+
+      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, [validTokenId]);
+      expect(canClaim).to.equal(0);
+    });
+  });
 
   context('support meta-transactions', function () {
     it('mock: _msgData()', async function () {
-      expect(await this.contract.connect(claimer1).__msgData()).to.be.exist;
+      expect(await this.contract.__msgData()).to.be.exist;
     });
 
     it('mock: _msgSender()', async function () {
-      expect(await this.contract.connect(claimer1).__msgSender()).to.be.exist;
+      expect(await this.contract.__msgSender()).to.be.exist;
     });
   });
 });

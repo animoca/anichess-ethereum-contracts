@@ -15,6 +15,16 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     using MerkleProof for bytes32[];
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
 
+    /// @notice The return values of canClaim() function.
+    enum ClaimError {
+        NoError, // 0
+        EpochIdNotExists, // 1
+        OutOfClaimWindow, // 2
+        AlreadyClaimed, // 3
+        NotNFTOwner, // 4
+        MissingTokenIds // 5
+    }
+
     /// @notice The claim window struct.
     struct ClaimWindow {
         bytes32 merkleRoot;
@@ -76,6 +86,9 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     /// @notice Thrown when one of the provided NFT token id is not owned by recipient address.
     error NotNFTOwner();
 
+    /// @notice Thrown when provided token ids is empty.
+    error MissingTokenIds();
+
     /// @notice Error thrown when the claim window is invalid.
     error InvalidClaimWindow(uint256 startTime, uint256 endTime, uint256 currentTime);
 
@@ -105,12 +118,6 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
 
     /// @notice Error thrown when the leaf has already been claimed.
     error AlreadyClaimed(bytes32 epochId, bytes32 leaf);
-
-    /// @notice Error thrown when the claim does not pass the canClaim checks.
-    error CannotClaim(bytes32 epochId, address recipient, uint256 amount, bytes32[] proof);
-
-    /// @notice Error thrown when the claim does not pass the canClaimWithNFT checks.
-    error CannotClaimWithNFT(bytes32 epochId, address recipient, uint256 amount, uint256[] tokenIds, bytes32[] proof);
 
     /**
      *
@@ -189,8 +196,13 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     function claimAndStake(bytes32 epochId, address recipient, uint256 amount, bytes32[] calldata proof) external {
         ClaimWindow storage claimWindow = claimWindows[epochId];
         bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient, amount));
-        if (!_canClaim(claimWindow, leaf)) {
-            revert CannotClaim(epochId, recipient, amount, proof);
+        ClaimError canClaimResult = _canClaim(claimWindow, leaf);
+        if (canClaimResult == ClaimError.EpochIdNotExists) {
+            revert EpochIdNotExists(epochId);
+        } else if (canClaimResult == ClaimError.OutOfClaimWindow) {
+            revert OutOfClaimWindow(epochId, block.timestamp);
+        } else if (canClaimResult == ClaimError.AlreadyClaimed) {
+            revert AlreadyClaimed(epochId, leaf);
         }
 
         if (!proof.verifyCalldata(claimWindow.merkleRoot, leaf)) {
@@ -209,8 +221,18 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     ) external {
         ClaimWindow storage claimWindow = claimWindows[epochId];
         bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient, amount, tokenIds));
-        if (!_canClaimWithNFT(claimWindow, recipient, tokenIds, leaf)) {
-            revert CannotClaimWithNFT(epochId, recipient, amount, tokenIds, proof);
+
+        ClaimError canClaimResult = _canClaimWithNFT(claimWindow, recipient, tokenIds, leaf);
+        if (canClaimResult == ClaimError.EpochIdNotExists) {
+            revert EpochIdNotExists(epochId);
+        } else if (canClaimResult == ClaimError.OutOfClaimWindow) {
+            revert OutOfClaimWindow(epochId, block.timestamp);
+        } else if (canClaimResult == ClaimError.AlreadyClaimed) {
+            revert AlreadyClaimed(epochId, leaf);
+        } else if (canClaimResult == ClaimError.NotNFTOwner) {
+            revert NotNFTOwner();
+        } else if (canClaimResult == ClaimError.MissingTokenIds) {
+            revert MissingTokenIds();
         }
 
         if (!proof.verifyCalldata(claimWindow.merkleRoot, leaf)) {
@@ -230,7 +252,7 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
         emit PayoutClaimed(epochId, recipient, amount);
     }
 
-    function canClaim(bytes32 epochId, address recipient, uint256 amount) public view returns (bool) {
+    function canClaim(bytes32 epochId, address recipient, uint256 amount) public view returns (ClaimError) {
         return _canClaim(claimWindows[epochId], keccak256(abi.encodePacked(epochId, recipient, amount)));
     }
 
@@ -238,11 +260,8 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
      * @notice
      * Checks if a recipient can claim a reward for a given epoch id
      */
-    function canClaimWithNFT(bytes32 epochId, address recipient, uint256 amount, uint256[] calldata tokenIds) public view returns (bool) {
-        if (!_canClaimWithNFT(claimWindows[epochId], recipient, tokenIds, keccak256(abi.encodePacked(epochId, recipient, amount, tokenIds)))) {
-            return false;
-        }
-        return true;
+    function canClaimWithNFT(bytes32 epochId, address recipient, uint256 amount, uint256[] calldata tokenIds) public view returns (ClaimError) {
+        return _canClaimWithNFT(claimWindows[epochId], recipient, tokenIds, keccak256(abi.encodePacked(epochId, recipient, amount, tokenIds)));
     }
 
     function _canClaimWithNFT(
@@ -250,29 +269,37 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
         address recipient,
         uint256[] calldata tokenIds,
         bytes32 leaf
-    ) internal view returns (bool) {
+    ) internal view returns (ClaimError) {
         uint256 len = tokenIds.length;
-        if (len == 0 || !_canClaim(claimWindow, leaf)) {
-            return false;
+        if (len == 0) {
+            return ClaimError.MissingTokenIds;
+        }
+        ClaimError canClaimResult = _canClaim(claimWindow, leaf);
+        if (canClaimResult != ClaimError.NoError) {
+            return canClaimResult;
         }
 
         for (uint256 i; i < len; ++i) {
             if (NFT.ownerOf(tokenIds[i]) != recipient) {
-                return false;
+                return ClaimError.NotNFTOwner;
             }
         }
 
-        return true;
+        return ClaimError.NoError;
     }
 
-    function _canClaim(ClaimWindow storage claimWindow, bytes32 leaf) internal view returns (bool) {
-        if (
-            claimWindow.merkleRoot == bytes32(0) || block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime || claimed[leaf]
-        ) {
-            return false;
+    function _canClaim(ClaimWindow storage claimWindow, bytes32 leaf) internal view returns (ClaimError) {
+        if (claimWindow.merkleRoot == bytes32(0)) {
+            return ClaimError.EpochIdNotExists;
+        }
+        if (block.timestamp < claimWindow.startTime || block.timestamp > claimWindow.endTime) {
+            return ClaimError.OutOfClaimWindow;
+        }
+        if (claimed[leaf]) {
+            return ClaimError.AlreadyClaimed;
         }
 
-        return true;
+        return ClaimError.NoError;
     }
 
     /// @inheritdoc ForwarderRegistryContextBase
