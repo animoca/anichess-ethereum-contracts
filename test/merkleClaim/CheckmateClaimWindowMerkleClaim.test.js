@@ -9,28 +9,43 @@ const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/
 
 describe('CheckmateClaimWindowMerkleClaim', function () {
   before(async function () {
-    [deployer, payoutWallet, newPayoutWallet, claimer1, claimer2, claimerWithNFT1, claimerWithNFT2, claimerWithNFT3, other] =
-      await ethers.getSigners();
+    [
+      deployer,
+      payoutWallet,
+      newPayoutWallet,
+      claimer1,
+      claimer2,
+      claimerWithEthernals1,
+      claimerWithEthernals2,
+      claimerWithEthernals3,
+      claimerWithEthernals4,
+      claimerWithEthernals5,
+      claimerWithEthernals6,
+      claimerWithEthernals7,
+      other,
+    ] = await ethers.getSigners();
   });
 
   const fixture = async function () {
     this.forwarderRegistryAddress = await getForwarderRegistryAddress();
 
-    this.nftContract = await deployContract('ERC721Mock');
+    this.ethernalsContract = await deployContract('ERC721Mock');
+    this.ethernalsMetadataSetterContract = await deployContract('EthernalsMetadataSetterMock');
     this.checkmateTokenContract = await deployContract('ERC20Mock');
     this.stakingPoolContract = await deployContract('ERC20ReceiverMock');
 
     this.contract = await deployContract(
       'CheckmateClaimWindowMerkleClaimMock',
       this.checkmateTokenContract,
-      this.nftContract,
+      this.ethernalsContract,
+      this.ethernalsMetadataSetterContract,
       this.stakingPoolContract,
       payoutWallet,
       this.forwarderRegistryAddress,
     );
 
     this.epochId = ethers.encodeBytes32String('test-epoch-id');
-    this.whitelistWithoutNFT = [
+    this.whitelistWithoutEthernals = [
       {
         recipient: claimer1.address,
         amount: 1,
@@ -40,32 +55,482 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
         amount: 2,
       },
     ];
-    this.whitelistWithNFT = [
+    this.whitelistWithEthernals = [
       {
-        recipient: claimerWithNFT1.address,
+        recipient: claimerWithEthernals1.address,
         amount: 1,
         tokenIds: [1],
+        metadata: [
+          {
+            hairStyle: 1,
+            expression: 1,
+            tattoo: 1,
+            outfit: 1,
+            material: 1,
+            materialElement: 1,
+            chessPiece: 1,
+            background: 0,
+            backgroundElement: 0,
+          },
+        ],
       },
       {
-        recipient: claimerWithNFT2.address,
-        amount: 2,
-        tokenIds: [100],
+        recipient: claimerWithEthernals2.address,
+        amount: 1,
+        tokenIds: [2, 3],
+        metadata: [
+          {
+            hairStyle: 1,
+            expression: 1,
+            tattoo: 1,
+            outfit: 1,
+            material: 1,
+            materialElement: 1,
+            chessPiece: 1,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 2,
+            expression: 2,
+            tattoo: 2,
+            outfit: 2,
+            material: 2,
+            materialElement: 2,
+            chessPiece: 2,
+            background: 0,
+            backgroundElement: 0,
+          },
+        ],
       },
       {
-        recipient: claimerWithNFT3.address,
-        amount: 3,
-        tokenIds: [],
+        recipient: claimerWithEthernals3.address,
+        amount: 1,
+        tokenIds: [4, 5, 6, 7],
+        metadata: [
+          {
+            hairStyle: 1,
+            expression: 1,
+            tattoo: 1,
+            outfit: 1,
+            material: 1,
+            materialElement: 1,
+            chessPiece: 1,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 2,
+            expression: 2,
+            tattoo: 2,
+            outfit: 2,
+            material: 2,
+            materialElement: 2,
+            chessPiece: 2,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 3,
+            expression: 3,
+            tattoo: 3,
+            outfit: 3,
+            material: 3,
+            materialElement: 3,
+            chessPiece: 3,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 4,
+            expression: 4,
+            tattoo: 4,
+            outfit: 4,
+            material: 4,
+            materialElement: 4,
+            chessPiece: 4,
+            background: 0,
+            backgroundElement: 0,
+          },
+        ],
+      },
+      {
+        recipient: claimerWithEthernals4.address,
+        amount: 1,
+        tokenIds: [8, 9, 10, 11, 12, 13, 14, 15],
+        metadata: [
+          {
+            hairStyle: 1,
+            expression: 1,
+            tattoo: 1,
+            outfit: 1,
+            material: 1,
+            materialElement: 1,
+            chessPiece: 1,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 2,
+            expression: 2,
+            tattoo: 2,
+            outfit: 2,
+            material: 2,
+            materialElement: 2,
+            chessPiece: 2,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 3,
+            expression: 3,
+            tattoo: 3,
+            outfit: 3,
+            material: 3,
+            materialElement: 3,
+            chessPiece: 3,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 4,
+            expression: 4,
+            tattoo: 4,
+            outfit: 4,
+            material: 4,
+            materialElement: 4,
+            chessPiece: 4,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 5,
+            expression: 5,
+            tattoo: 5,
+            outfit: 5,
+            material: 5,
+            materialElement: 5,
+            chessPiece: 5,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 6,
+            expression: 6,
+            tattoo: 6,
+            outfit: 6,
+            material: 6,
+            materialElement: 6,
+            chessPiece: 6,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 7,
+            expression: 7,
+            tattoo: 7,
+            outfit: 7,
+            material: 7,
+            materialElement: 7,
+            chessPiece: 7,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 8,
+            expression: 8,
+            tattoo: 8,
+            outfit: 8,
+            material: 8,
+            materialElement: 8,
+            chessPiece: 8,
+            background: 0,
+            backgroundElement: 0,
+          },
+        ],
+      },
+      {
+        recipient: claimerWithEthernals4.address,
+        amount: 1,
+        tokenIds: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+        metadata: [
+          {
+            hairStyle: 1,
+            expression: 1,
+            tattoo: 1,
+            outfit: 1,
+            material: 1,
+            materialElement: 1,
+            chessPiece: 1,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 2,
+            expression: 2,
+            tattoo: 2,
+            outfit: 2,
+            material: 2,
+            materialElement: 2,
+            chessPiece: 2,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 3,
+            expression: 3,
+            tattoo: 3,
+            outfit: 3,
+            material: 3,
+            materialElement: 3,
+            chessPiece: 3,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 4,
+            expression: 4,
+            tattoo: 4,
+            outfit: 4,
+            material: 4,
+            materialElement: 4,
+            chessPiece: 4,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 5,
+            expression: 5,
+            tattoo: 5,
+            outfit: 5,
+            material: 5,
+            materialElement: 5,
+            chessPiece: 5,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 6,
+            expression: 6,
+            tattoo: 6,
+            outfit: 6,
+            material: 6,
+            materialElement: 6,
+            chessPiece: 6,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 7,
+            expression: 7,
+            tattoo: 7,
+            outfit: 7,
+            material: 7,
+            materialElement: 7,
+            chessPiece: 7,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 8,
+            expression: 8,
+            tattoo: 8,
+            outfit: 8,
+            material: 8,
+            materialElement: 8,
+            chessPiece: 8,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 9,
+            expression: 9,
+            tattoo: 9,
+            outfit: 9,
+            material: 9,
+            materialElement: 9,
+            chessPiece: 9,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 10,
+            expression: 10,
+            tattoo: 10,
+            outfit: 10,
+            material: 10,
+            materialElement: 10,
+            chessPiece: 10,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 11,
+            expression: 11,
+            tattoo: 11,
+            outfit: 11,
+            material: 11,
+            materialElement: 11,
+            chessPiece: 10,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 12,
+            expression: 12,
+            tattoo: 12,
+            outfit: 12,
+            material: 12,
+            materialElement: 12,
+            chessPiece: 12,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 13,
+            expression: 13,
+            tattoo: 13,
+            outfit: 13,
+            material: 13,
+            materialElement: 13,
+            chessPiece: 13,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 14,
+            expression: 14,
+            tattoo: 14,
+            outfit: 14,
+            material: 14,
+            materialElement: 14,
+            chessPiece: 14,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 15,
+            expression: 15,
+            tattoo: 15,
+            outfit: 15,
+            material: 15,
+            materialElement: 15,
+            chessPiece: 15,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 16,
+            expression: 16,
+            tattoo: 16,
+            outfit: 16,
+            material: 16,
+            materialElement: 16,
+            chessPiece: 16,
+            background: 0,
+            backgroundElement: 0,
+          },
+        ],
+      },
+      {
+        recipient: claimerWithEthernals6.address,
+        amount: 1,
+        tokenIds: [30],
+        metadata: [
+          {
+            hairStyle: 1,
+            expression: 1,
+            tattoo: 1,
+            outfit: 1,
+            material: 1,
+            materialElement: 1,
+            chessPiece: 1,
+            background: 1,
+            backgroundElement: 0,
+          },
+        ],
+      },
+      {
+        recipient: claimerWithEthernals6.address,
+        amount: 1,
+        tokenIds: [30],
+        metadata: [
+          {
+            hairStyle: 1,
+            expression: 1,
+            tattoo: 1,
+            outfit: 1,
+            material: 1,
+            materialElement: 1,
+            chessPiece: 1,
+            background: 0,
+            backgroundElement: 1,
+          },
+        ],
+      },
+      {
+        recipient: claimerWithEthernals7.address,
+        amount: 1,
+        tokenIds: [1, 100],
+        metadata: [
+          {
+            hairStyle: 1,
+            expression: 1,
+            tattoo: 1,
+            outfit: 1,
+            material: 1,
+            materialElement: 1,
+            chessPiece: 1,
+            background: 0,
+            backgroundElement: 0,
+          },
+          {
+            hairStyle: 2,
+            expression: 2,
+            tattoo: 2,
+            outfit: 2,
+            material: 2,
+            materialElement: 2,
+            chessPiece: 2,
+            background: 0,
+            backgroundElement: 0,
+          },
+        ],
       },
     ];
-    this.whitelist = this.whitelistWithoutNFT.concat(this.whitelistWithNFT);
+    this.whitelist = this.whitelistWithoutEthernals.concat(this.whitelistWithEthernals);
 
-    this.leavesWithoutNFT = this.whitelistWithoutNFT.map((item) =>
+    this.leavesWithoutEthernals = this.whitelistWithoutEthernals.map((item) =>
       ethers.solidityPacked(['bytes32', 'address', 'uint256'], [this.epochId, item.recipient, item.amount]),
     );
-    this.leavesWithNFT = this.whitelistWithNFT.map((item) =>
-      ethers.solidityPacked(['bytes32', 'address', 'uint256', 'uint256[]'], [this.epochId, item.recipient, item.amount, item.tokenIds]),
+    this.leavesWithEthernals = this.whitelistWithEthernals.map((item) =>
+      ethers.solidityPacked(
+        ['bytes32', 'address', 'uint256', 'uint256[]', 'bytes'],
+        [
+          this.epochId,
+          item.recipient,
+          item.amount,
+          item.tokenIds,
+          ethers.AbiCoder.defaultAbiCoder().encode(
+            [
+              `tuple(
+                uint256 hairStyle,
+                uint256 expression,
+                uint256 tattoo,
+                uint256 outfit,
+                uint256 material,
+                uint256 materialElement,
+                uint256 chessPiece,
+                uint256 background,
+                uint256 backgroundElement
+              )[]`,
+            ],
+            [item.metadata],
+          ),
+        ],
+      ),
     );
-    this.leaves = this.leavesWithoutNFT.concat(this.leavesWithNFT);
+    this.leaves = this.leavesWithoutEthernals.concat(this.leavesWithEthernals);
 
     this.tree = new MerkleTree(this.leaves, keccak256, {hashLeaves: true, sortPairs: true});
     this.root = this.tree.getHexRoot();
@@ -75,6 +540,7 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
       recipient: this.whitelist[index].recipient,
       amount: this.whitelist[index].amount,
       tokenIds: this.whitelist[index].tokenIds,
+      metadata: this.whitelist[index].metadata,
       epochId: this.epochId,
     }));
 
@@ -91,7 +557,8 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
         deployContract(
           'CheckmateClaimWindowMerkleClaimMock',
           ethers.ZeroAddress,
-          this.nftContract,
+          this.ethernalsContract,
+          this.ethernalsMetadataSetterContract,
           this.stakingPoolContract,
           payoutWallet,
           this.forwarderRegistryAddress,
@@ -99,17 +566,32 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
       ).to.revertedWithCustomError(this.contract, 'InvalidCheckmateToken');
     });
 
-    it('reverts with "InvalidNFT" if NFT is zero address', async function () {
+    it('reverts with "InvalidEthernals" if Ethernals is zero address', async function () {
       await expect(
         deployContract(
           'CheckmateClaimWindowMerkleClaimMock',
           this.checkmateTokenContract,
           ethers.ZeroAddress,
+          this.ethernalsMetadataSetterContract,
           this.stakingPoolContract,
           payoutWallet,
           this.forwarderRegistryAddress,
         ),
-      ).to.revertedWithCustomError(this.contract, 'InvalidNFT');
+      ).to.revertedWithCustomError(this.contract, 'InvalidEthernals');
+    });
+
+    it('reverts with "InvalidEthernalsMetadataSetter" if Ethernals Metadata Setter is zero address', async function () {
+      await expect(
+        deployContract(
+          'CheckmateClaimWindowMerkleClaimMock',
+          this.checkmateTokenContract,
+          this.ethernalsContract,
+          ethers.ZeroAddress,
+          this.stakingPoolContract,
+          payoutWallet,
+          this.forwarderRegistryAddress,
+        ),
+      ).to.revertedWithCustomError(this.contract, 'InvalidEthernalsMetadataSetter');
     });
 
     it('reverts with "InvalidStakingPool" if staking pool is zero address', async function () {
@@ -117,7 +599,8 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
         deployContract(
           'CheckmateClaimWindowMerkleClaimMock',
           this.checkmateTokenContract,
-          this.nftContract,
+          this.ethernalsContract,
+          this.ethernalsMetadataSetterContract,
           ethers.ZeroAddress,
           payoutWallet,
           this.forwarderRegistryAddress,
@@ -130,7 +613,8 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
         deployContract(
           'CheckmateClaimWindowMerkleClaimMock',
           this.checkmateTokenContract,
-          this.nftContract,
+          this.ethernalsContract,
+          this.ethernalsMetadataSetterContract,
           this.stakingPoolContract,
           ethers.ZeroAddress,
           this.forwarderRegistryAddress,
@@ -143,8 +627,8 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
         expect(await this.contract.CHECKMATE_TOKEN()).to.equal(this.checkmateTokenContract);
       });
 
-      it('sets the NFT', async function () {
-        expect(await this.contract.NFT()).to.equal(this.nftContract);
+      it('sets the ethernals', async function () {
+        expect(await this.contract.ETHERNALS()).to.equal(this.ethernalsContract);
       });
 
       it('sets the staking pool', async function () {
@@ -298,7 +782,7 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
 
       await expect(this.contract.claimAndStake(epochId, recipient, amount, invalidProof))
         .to.revertedWithCustomError(this.contract, 'InvalidProof')
-        .withArgs(epochId, recipient, amount);
+        .withArgs(epochId, recipient);
     });
 
     it('reverts with "TransferFailed" if safeTransferFrom() returns false', async function () {
@@ -357,119 +841,269 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
   });
 
   // eslint-disable-next-line max-len
-  describe('claimAndStakeWithNFT(bytes32 epochId, address recipient, uint256 amount, uint256[] calldata tokenIds, bytes32[] calldata proof)', function () {
-    let startTime, endTime, recipient, epochId, tokenIds, proof, leaf;
+  describe('claimAndStakeWithEthernals(bytes32 epochId, address recipient, uint256 amount, uint256[] calldata tokenIds, Metadata[] calldata metadata, bytes32[] calldata claimProof, bytes32[] calldata metadataProof, bool enableSetMetadata)', function () {
+    let startTime, endTime, recipient, epochId, tokenIds, metadata, proof, leaf, enableSetMetadata;
 
     beforeEach(async function () {
       startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
       endTime = startTime + 100n; // unit: seconds
-      ({epochId, recipient, amount, tokenIds, leaf, proof} = this.merkleClaimDataArr[2]);
+      ({epochId, recipient, amount, tokenIds, metadata, leaf, proof} = this.merkleClaimDataArr[2]);
 
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
-      await this.nftContract.setTokenOwner(recipient);
+      await this.ethernalsContract.setTokenOwner(recipient);
     });
 
-    it('reverts with "EpochIdNotExists" if the epoch has not been set', async function () {
-      const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
-
-      await expect(this.contract.claimAndStakeWithNFT(invalidEpochId, recipient, amount, tokenIds, proof))
-        .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
-        .withArgs(invalidEpochId);
-    });
-
-    it('reverts with "OutOfClaimWindow" if the epoch has not started', async function () {
-      const currentBlockTimestamp = await helpers.time.latest();
-
-      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
-        .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
-        .withArgs(epochId, currentBlockTimestamp + 1);
-    });
-
-    it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
-      await helpers.time.increase(1000);
-
-      const currentBlockTimestamp = await helpers.time.latest();
-
-      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
-        .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
-        .withArgs(epochId, currentBlockTimestamp + 1);
-    });
-
-    it('reverts with "InvalidProof" if the proof can not be verified', async function () {
-      await helpers.time.increase(110);
-
-      const invalidProof = ['0x1234567890123456789012345678901234567890123456789012345678901234'];
-
-      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, invalidProof))
-        .to.revertedWithCustomError(this.contract, 'InvalidProofWithNFT')
-        .withArgs(epochId, recipient, amount, tokenIds);
-    });
-
-    it('reverts with "TransferFailed" if safeTransferFrom() returns false', async function () {
-      await helpers.time.increase(110);
-      await this.contract.setPayoutWallet(ethers.ZeroAddress);
-
-      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
-        .to.revertedWithCustomError(this.contract, 'TransferFailed')
-        .withArgs(ethers.ZeroAddress, recipient, amount);
-    });
-
-    it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {
-      await helpers.time.increase(110);
-
-      await this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof);
-
-      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
-        .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
-        .withArgs(this.epochId, leaf);
-    });
-
-    it('reverts with "NotNFTOwner" if the recipient does not own one of the token Ids', async function () {
-      await helpers.time.increase(110);
-
-      ({epochId, recipient, amount, tokenIds, leaf, proof} = this.merkleClaimDataArr[3]);
-
-      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof)).to.revertedWithCustomError(
-        this.contract,
-        'NotNFTOwner',
-      );
-    });
-
-    it('reverts with "MissingTokenIds" if the given token ids is empty array', async function () {
-      await helpers.time.increase(110);
-
-      ({epochId, recipient, amount, tokenIds, leaf, proof} = this.merkleClaimDataArr[4]);
-
-      await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof)).to.revertedWithCustomError(
-        this.contract,
-        'MissingTokenIds',
-      );
-    });
-
-    context('when successful', function () {
+    context('when enableSetMetadata is false', function () {
       beforeEach(async function () {
+        enableSetMetadata = false;
+      });
+
+      it('reverts with "EpochIdNotExists" if the epoch has not been set', async function () {
+        const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
+
+        await expect(this.contract.claimAndStakeWithEthernals(invalidEpochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
+          .withArgs(invalidEpochId);
+      });
+
+      it('reverts with "OutOfClaimWindow" if the epoch has not started', async function () {
+        const currentBlockTimestamp = await helpers.time.latest();
+
+        await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
+          .withArgs(epochId, currentBlockTimestamp + 1);
+      });
+
+      it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
+        await helpers.time.increase(1000);
+
+        const currentBlockTimestamp = await helpers.time.latest();
+
+        await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
+          .withArgs(epochId, currentBlockTimestamp + 1);
+      });
+
+      it('reverts with "InvalidProof" if the proof can not be verified', async function () {
         await helpers.time.increase(110);
+
+        const invalidProof = ['0x1234567890123456789012345678901234567890123456789012345678901234'];
+
+        await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, invalidProof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'InvalidProof')
+          .withArgs(epochId, recipient);
       });
 
-      it('should update the claimed state', async function () {
-        const claimedBefore = await this.contract.claimed(leaf);
-        await this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof);
-        const claimedAfter = await this.contract.claimed(leaf);
+      it('reverts with "TransferFailed" if safeTransferFrom() returns false', async function () {
+        await helpers.time.increase(110);
+        await this.contract.setPayoutWallet(ethers.ZeroAddress);
 
-        expect(claimedBefore).to.equal(false);
-        expect(claimedAfter).to.equal(true);
+        await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'TransferFailed')
+          .withArgs(ethers.ZeroAddress, recipient, amount);
       });
 
-      it('should have invoked safeTransferFrom() of checkmate token', async function () {
-        await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
-          .to.emit(this.checkmateTokenContract, 'TransferMock')
-          .withArgs(payoutWallet, this.stakingPoolContract, amount);
+      it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {
+        await helpers.time.increase(110);
+
+        await this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata);
+
+        await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
+          .withArgs(this.epochId, leaf);
       });
 
-      it('emits a PayoutClaimed event', async function () {
-        await expect(this.contract.claimAndStakeWithNFT(epochId, recipient, amount, tokenIds, proof))
-          .to.emit(this.contract, 'PayoutClaimed')
-          .withArgs(epochId, recipient, amount);
+      context('when successful', function () {
+        beforeEach(async function () {
+          await helpers.time.increase(110);
+        });
+
+        it('should update the claimed state', async function () {
+          const claimedBefore = await this.contract.claimed(leaf);
+          await this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata);
+          const claimedAfter = await this.contract.claimed(leaf);
+
+          expect(claimedBefore).to.equal(false);
+          expect(claimedAfter).to.equal(true);
+        });
+
+        it('should have invoked safeTransferFrom() of checkmate token', async function () {
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.checkmateTokenContract, 'TransferMock')
+            .withArgs(payoutWallet, this.stakingPoolContract, amount);
+        });
+
+        it('emits a PayoutClaimed event', async function () {
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.contract, 'PayoutClaimed')
+            .withArgs(epochId, recipient, amount);
+        });
+
+        it('should claim correct amount of checkmate token (own 1 ethernal)', async function () {
+          ({epochId, recipient, amount, tokenIds, metadata, leaf, proof} = this.merkleClaimDataArr[2]);
+          this.ethernalsContract.setTokenOwner(recipient);
+
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.contract, 'PayoutClaimed')
+            .withArgs(epochId, recipient, amount);
+        });
+
+        it('should claim correct amount of checkmate token (own 2 ethernals[+100])', async function () {
+          ({epochId, recipient, amount, tokenIds, metadata, leaf, proof} = this.merkleClaimDataArr[3]);
+          this.ethernalsContract.setTokenOwner(recipient);
+
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.checkmateTokenContract, 'TransferMock')
+            .withArgs(payoutWallet, this.stakingPoolContract, amount + 100);
+        });
+
+        it('should claim correct amount of checkmate token (own 4 ethernals[+200])', async function () {
+          ({epochId, recipient, amount, tokenIds, metadata, leaf, proof} = this.merkleClaimDataArr[4]);
+          this.ethernalsContract.setTokenOwner(recipient);
+
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.checkmateTokenContract, 'TransferMock')
+            .withArgs(payoutWallet, this.stakingPoolContract, amount + 200);
+        });
+
+        it('should claim correct amount of checkmate token (own 8 ethernals[+500])', async function () {
+          ({epochId, recipient, amount, tokenIds, metadata, leaf, proof} = this.merkleClaimDataArr[5]);
+          this.ethernalsContract.setTokenOwner(recipient);
+
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.checkmateTokenContract, 'TransferMock')
+            .withArgs(payoutWallet, this.stakingPoolContract, amount + 500);
+        });
+
+        it('should claim correct amount of checkmate token (own 16 ethernals[+1000])', async function () {
+          ({epochId, recipient, amount, tokenIds, metadata, leaf, proof} = this.merkleClaimDataArr[6]);
+          this.ethernalsContract.setTokenOwner(recipient);
+
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.checkmateTokenContract, 'TransferMock')
+            .withArgs(payoutWallet, this.stakingPoolContract, amount + 1000);
+        });
+
+        it('should claim correct amount of checkmate token (own 1 ethernal, background > 0[+1000])', async function () {
+          ({epochId, recipient, amount, tokenIds, metadata, leaf, proof} = this.merkleClaimDataArr[7]);
+          this.ethernalsContract.setTokenOwner(recipient);
+
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.checkmateTokenContract, 'TransferMock')
+            .withArgs(payoutWallet, this.stakingPoolContract, amount + 1000);
+        });
+
+        it('should claim correct amount of checkmate token (own 1 ethernal, backgroundElement > 0[+300])', async function () {
+          ({epochId, recipient, amount, tokenIds, metadata, leaf, proof} = this.merkleClaimDataArr[8]);
+          this.ethernalsContract.setTokenOwner(recipient);
+
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.checkmateTokenContract, 'TransferMock')
+            .withArgs(payoutWallet, this.stakingPoolContract, amount + 300);
+        });
+
+        it('should claim correct amount of checkmate token (own 1 out of 2 ethernals)', async function () {
+          ({epochId, recipient, amount, tokenIds, metadata, leaf, proof} = this.merkleClaimDataArr[9]);
+          this.ethernalsContract.setTokenOwner(recipient);
+
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.checkmateTokenContract, 'TransferMock')
+            .withArgs(payoutWallet, this.stakingPoolContract, amount);
+        });
+      });
+    });
+
+    context('when enableSetMetadata is true', function () {
+      beforeEach(async function () {
+        enableSetMetadata = true;
+      });
+
+      it('reverts with "EpochIdNotExists" if the epoch has not been set', async function () {
+        const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
+
+        await expect(this.contract.claimAndStakeWithEthernals(invalidEpochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'EpochIdNotExists')
+          .withArgs(invalidEpochId);
+      });
+
+      it('reverts with "OutOfClaimWindow" if the epoch has not started', async function () {
+        const currentBlockTimestamp = await helpers.time.latest();
+
+        await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
+          .withArgs(epochId, currentBlockTimestamp + 1);
+      });
+
+      it('reverts with "OutOfClaimWindow" if the epoch has ended', async function () {
+        await helpers.time.increase(1000);
+
+        const currentBlockTimestamp = await helpers.time.latest();
+
+        await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'OutOfClaimWindow')
+          .withArgs(epochId, currentBlockTimestamp + 1);
+      });
+
+      it('reverts with "InvalidProof" if the proof can not be verified', async function () {
+        await helpers.time.increase(110);
+
+        const invalidProof = ['0x1234567890123456789012345678901234567890123456789012345678901234'];
+
+        await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, invalidProof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'InvalidProof')
+          .withArgs(epochId, recipient);
+      });
+
+      it('reverts with "TransferFailed" if safeTransferFrom() returns false', async function () {
+        await helpers.time.increase(110);
+        await this.contract.setPayoutWallet(ethers.ZeroAddress);
+
+        await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'TransferFailed')
+          .withArgs(ethers.ZeroAddress, recipient, amount);
+      });
+
+      it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {
+        await helpers.time.increase(110);
+
+        await this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata);
+
+        await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+          .to.revertedWithCustomError(this.contract, 'AlreadyClaimed')
+          .withArgs(this.epochId, leaf);
+      });
+
+      context('when successful', function () {
+        beforeEach(async function () {
+          await helpers.time.increase(110);
+        });
+
+        it('should update the claimed state', async function () {
+          const claimedBefore = await this.contract.claimed(leaf);
+          await this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata);
+          const claimedAfter = await this.contract.claimed(leaf);
+
+          expect(claimedBefore).to.equal(false);
+          expect(claimedAfter).to.equal(true);
+        });
+
+        it('should have invoked safeTransferFrom() of checkmate token', async function () {
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.checkmateTokenContract, 'TransferMock')
+            .withArgs(payoutWallet, this.stakingPoolContract, amount);
+        });
+
+        it('emits a PayoutClaimed event', async function () {
+          await expect(this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata))
+            .to.emit(this.contract, 'PayoutClaimed')
+            .withArgs(epochId, recipient, amount);
+        });
+
+        it('should have invoked verifyAndSetMetadata() of ethernals metadata setter', async function () {
+          await expect(
+            this.contract.claimAndStakeWithEthernals(epochId, recipient, amount, tokenIds, metadata, proof, [], enableSetMetadata),
+          ).to.emit(this.ethernalsMetadataSetterContract, 'MetadataSet');
+        });
       });
     });
   });
@@ -519,74 +1153,6 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
       await helpers.time.increase(110);
 
       const canClaim = await this.contract.canClaim(epochId, recipient, amount);
-      expect(canClaim).to.equal(0);
-    });
-  });
-
-  describe('canClaimWithNFT(bytes32 epochId, address recipient, uint256 amount, uint256[] calldata tokenIds)', function () {
-    let startTime, endTime, recipient, epochId, proof, validTokenId, invalidTokenId;
-
-    beforeEach(async function () {
-      startTime = BigInt(await helpers.time.latest()) + 100n; // unit: seconds
-      endTime = startTime + 100n; // unit: seconds
-      ({epochId, recipient, amount, proof} = this.merkleClaimDataArr[2]);
-
-      await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
-
-      await this.nftContract.setTokenOwner(recipient);
-
-      validTokenId = 1;
-      invalidTokenId = 123;
-    });
-
-    it('returns ClaimError.EpochIdNotExists(1) if merkle root of the claim window has not been set', async function () {
-      const invalidEpochId = ethers.encodeBytes32String('invalid-epoch-id');
-      const canClaim = await this.contract.canClaimWithNFT(invalidEpochId, recipient, amount, [validTokenId]);
-      expect(canClaim).to.equal(1);
-    });
-
-    it('returns ClaimError.OutOfClaimWindow(2) if block time is earlier than start time of claim window', async function () {
-      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, [validTokenId]);
-      expect(canClaim).to.equal(2);
-    });
-
-    it('returns ClaimError.OutOfClaimWindow(2) if block time is after end time of claim window', async function () {
-      await helpers.time.increase(1000);
-
-      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, [validTokenId]);
-      expect(canClaim).to.equal(2);
-    });
-
-    it('returns ClaimError.AlreadyClaimed(3) if already claimed', async function () {
-      await helpers.time.increase(110);
-
-      await this.contract.claimAndStakeWithNFT(epochId, recipient, amount, [validTokenId], proof);
-
-      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, [validTokenId]);
-      expect(canClaim).to.equal(3);
-    });
-
-    it('returns ClaimError.NotNFTOwner(4) if recipient does not own one of the NFT token ids', async function () {
-      await helpers.time.increase(110);
-
-      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, [invalidTokenId]);
-      expect(canClaim).to.equal(4);
-    });
-
-    it('returns ClaimError.MissingTokenIds(5) if given token ids is empty', async function () {
-      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, []);
-      expect(canClaim).to.equal(5);
-    });
-
-    it(`returns ClaimError.NoError(0)
-          if not yet claimed,
-          and merkle root of the claim window has been set,
-          and block time is within claim window
-          and token ids is not empty
-          and recipient is the owner of all token ids`, async function () {
-      await helpers.time.increase(110);
-
-      const canClaim = await this.contract.canClaimWithNFT(epochId, recipient, amount, [validTokenId]);
       expect(canClaim).to.equal(0);
     });
   });

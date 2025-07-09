@@ -10,6 +10,8 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
 import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
+import {EthernalsMetadataSetter} from "../ethernals/EthernalsMetadataSetter.sol";
+import {Metadata} from "../ethernals/EthernalsMetadata.sol";
 
 contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwnership {
     using MerkleProof for bytes32[];
@@ -20,9 +22,7 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
         NoError, // 0
         EpochIdNotExists, // 1
         OutOfClaimWindow, // 2
-        AlreadyClaimed, // 3
-        NotNFTOwner, // 4
-        MissingTokenIds // 5
+        AlreadyClaimed // 3
     }
 
     /// @notice The claim window struct.
@@ -35,8 +35,11 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     /// @notice a reference to checkmate token contract
     IERC20SafeTransfers public immutable CHECKMATE_TOKEN;
 
-    /// @notice a reference to NFT contract
-    IERC721 public immutable NFT;
+    /// @notice a reference to ethernals contract
+    IERC721 public immutable ETHERNALS;
+
+    /// @notice a reference to ethernals metadata setter contract
+    EthernalsMetadataSetter public immutable ETHERNALS_METADATA_SETTER;
 
     /// @notice a reference to staking pool contract
     address public immutable STAKING_POOL;
@@ -70,8 +73,11 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     /// @notice Thrown when the checkmate token contract address is zero.
     error InvalidCheckmateToken();
 
-    /// @notice Thrown when the nft contract address is zero.
-    error InvalidNFT();
+    /// @notice Thrown when the ethernals contract address is zero.
+    error InvalidEthernals();
+
+    /// @notice Thrown when the ethernals metadat setter contract address is zero.
+    error InvalidEthernalsMetadataSetter();
 
     /// @notice Thrown when the staking pool address is zero.
     error InvalidStakingPool();
@@ -83,26 +89,13 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     /// @param root The root.
     error MerkleRootNotExists(bytes32 root);
 
-    /// @notice Thrown when one of the provided NFT token id is not owned by recipient address.
-    error NotNFTOwner();
-
-    /// @notice Thrown when provided token ids is empty.
-    error MissingTokenIds();
-
     /// @notice Error thrown when the claim window is invalid.
     error InvalidClaimWindow(uint256 startTime, uint256 endTime, uint256 currentTime);
 
     /// @notice Error thrown when the epoch ID already exists.
     error EpochIdAlreadyExists(bytes32 epochId);
 
-    error InvalidProof(bytes32 epochId, address recipient, uint256 amount);
-
-    /// @notice Thrown when a proof cannot be verified.
-    /// @param epochId The epoch ID for the claim.
-    /// @param recipient The recipient of the claim.
-    /// @param amount The claim amount for recipient.
-    /// @param tokenIds The list of NFT token IDs owned by the recipient that are used to boost the claim amount.
-    error InvalidProofWithNFT(bytes32 epochId, address recipient, uint256 amount, uint256[] tokenIds);
+    error InvalidProof(bytes32 epochId, address recipient);
 
     /// @notice Thrown when checkmate token transfer failed.
     /// @param payoutWallet The wallet sending out the checkmate token.
@@ -119,19 +112,10 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     /// @notice Error thrown when the leaf has already been claimed.
     error AlreadyClaimed(bytes32 epochId, bytes32 leaf);
 
-    /**
-     *
-     * @param checkmateToken_ The checkmate token contract address.
-     * @param nft_ The NFT contract address.
-     * @param stakingPool_ The staking pool contract address.
-     * @param payoutWallet_ The payout wallet address.
-     * @dev Reverts with {InvalidCheckmateTokenAddress} if the checkmate token address is zero.
-     * @dev Reverts with {InvalidStakingPoolAddress} if the staking pool address is zero.
-     * @dev Reverts with {InvalidPayoutWallet} if the payout wallet address is zero.
-     */
     constructor(
         address checkmateToken_,
-        address nft_,
+        address ethernals_,
+        address ethernalsMetadataSetter_,
         address stakingPool_,
         address payoutWallet_,
         IForwarderRegistry forwarderRegistry_
@@ -139,8 +123,11 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
         if (checkmateToken_ == address(0)) {
             revert InvalidCheckmateToken();
         }
-        if (nft_ == address(0)) {
-            revert InvalidNFT();
+        if (ethernals_ == address(0)) {
+            revert InvalidEthernals();
+        }
+        if (ethernalsMetadataSetter_ == address(0)) {
+            revert InvalidEthernalsMetadataSetter();
         }
         if (stakingPool_ == address(0)) {
             revert InvalidStakingPool();
@@ -150,7 +137,8 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
         }
 
         CHECKMATE_TOKEN = IERC20SafeTransfers(checkmateToken_);
-        NFT = IERC721(nft_);
+        ETHERNALS = IERC721(ethernals_);
+        ETHERNALS_METADATA_SETTER = EthernalsMetadataSetter(ethernalsMetadataSetter_);
         STAKING_POOL = stakingPool_;
         payoutWallet = payoutWallet_;
     }
@@ -194,8 +182,72 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     }
 
     function claimAndStake(bytes32 epochId, address recipient, uint256 amount, bytes32[] calldata proof) external {
+        _claimAndStake(epochId, recipient, amount, keccak256(abi.encodePacked(epochId, recipient, amount)), proof);
+    }
+
+    function claimAndStakeWithEthernals(
+        bytes32 epochId,
+        address recipient,
+        uint256 amount,
+        uint256[] calldata tokenIds,
+        Metadata[] calldata metadata,
+        bytes32[] calldata claimProof,
+        bytes32[] calldata metadataProof,
+        bool enableSetMetadata
+    ) external {
+        if (enableSetMetadata) {
+            ETHERNALS_METADATA_SETTER.verifyAndSetMetadata(tokenIds, metadata, metadataProof);
+        }
+
+        _claimAndStake(
+            epochId,
+            recipient,
+            amount + _calculateBonus(recipient, tokenIds, metadata),
+            keccak256(abi.encodePacked(epochId, recipient, amount, tokenIds, abi.encode(metadata))),
+            claimProof
+        );
+    }
+
+    function _calculateBonus(address recipient, uint256[] calldata tokenIds, Metadata[] calldata metadata) internal view returns (uint256 bonus) {
+        uint256 ownedCount;
+        uint256 len = tokenIds.length;
+        for (uint256 i; i < len; ++i) {
+            if (ETHERNALS.ownerOf(tokenIds[i]) == recipient) {
+                bonus += _calculateEthernalsRarityBonus(metadata[i]);
+                ++ownedCount;
+            }
+        }
+        bonus += _calculateEthernalsQuantityBonus(ownedCount);
+    }
+
+    function _calculateEthernalsRarityBonus(Metadata calldata metadata) internal pure returns (uint256) {
+        //TODO: implement correct calculation logic for ethernals boost amount
+        if (metadata.background > 0) { // legendary
+            return 1000;
+        }
+        else if (metadata.backgroundElement > 0) { // rare
+            return 300;
+        }
+        return 0;
+    }
+
+    function _calculateEthernalsQuantityBonus(uint256 ownedCount) internal pure returns (uint256) {
+        // TODO: implement correct calculation logic for ethernals quantity bonus
+        if (ownedCount >= 16) {
+            return 1000;
+        } else if (ownedCount >= 8) {
+            return 500;
+        } else if (ownedCount >= 4) {
+            return 200;
+        } else if (ownedCount >= 2) {
+            return 100;
+        }
+        return 0;
+    }
+
+    function _validateClaim(bytes32 epochId, address recipient, bytes32 leaf, bytes32[] calldata claimProof) internal view {
         ClaimWindow storage claimWindow = claimWindows[epochId];
-        bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient, amount));
+
         ClaimError canClaimResult = _canClaim(claimWindow, leaf);
         if (canClaimResult == ClaimError.EpochIdNotExists) {
             revert EpochIdNotExists(epochId);
@@ -205,87 +257,27 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
             revert AlreadyClaimed(epochId, leaf);
         }
 
-        if (!proof.verifyCalldata(claimWindow.merkleRoot, leaf)) {
-            revert InvalidProof(epochId, recipient, amount);
+        if (!claimProof.verifyCalldata(claimWindow.merkleRoot, leaf)) {
+            revert InvalidProof(epochId, recipient);
         }
-
-        _claimAndStake(epochId, recipient, amount, leaf);
     }
 
-    function claimAndStakeWithNFT(
-        bytes32 epochId,
-        address recipient,
-        uint256 amount,
-        uint256[] calldata tokenIds,
-        bytes32[] calldata proof
-    ) external {
-        ClaimWindow storage claimWindow = claimWindows[epochId];
-        bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient, amount, tokenIds));
+    function _claimAndStake(bytes32 epochId, address recipient, uint256 amount, bytes32 leaf, bytes32[] calldata claimProof) internal {
+        _validateClaim(epochId, recipient, leaf, claimProof);
 
-        ClaimError canClaimResult = _canClaimWithNFT(claimWindow, recipient, tokenIds, leaf);
-        if (canClaimResult == ClaimError.EpochIdNotExists) {
-            revert EpochIdNotExists(epochId);
-        } else if (canClaimResult == ClaimError.OutOfClaimWindow) {
-            revert OutOfClaimWindow(epochId, block.timestamp);
-        } else if (canClaimResult == ClaimError.AlreadyClaimed) {
-            revert AlreadyClaimed(epochId, leaf);
-        } else if (canClaimResult == ClaimError.NotNFTOwner) {
-            revert NotNFTOwner();
-        } else if (canClaimResult == ClaimError.MissingTokenIds) {
-            revert MissingTokenIds();
-        }
-
-        if (!proof.verifyCalldata(claimWindow.merkleRoot, leaf)) {
-            revert InvalidProofWithNFT(epochId, recipient, amount, tokenIds);
-        }
-
-        _claimAndStake(epochId, recipient, amount, leaf);
-    }
-
-    function _claimAndStake(bytes32 epochId, address recipient, uint256 amount, bytes32 leaf) internal {
         claimed[leaf] = true;
+
         address _payoutWallet = payoutWallet;
         bool success = CHECKMATE_TOKEN.safeTransferFrom(_payoutWallet, STAKING_POOL, amount, abi.encode(recipient));
         if (!success) {
             revert TransferFailed(_payoutWallet, recipient, amount);
         }
+
         emit PayoutClaimed(epochId, recipient, amount);
     }
 
     function canClaim(bytes32 epochId, address recipient, uint256 amount) public view returns (ClaimError) {
         return _canClaim(claimWindows[epochId], keccak256(abi.encodePacked(epochId, recipient, amount)));
-    }
-
-    /**
-     * @notice
-     * Checks if a recipient can claim a reward for a given epoch id
-     */
-    function canClaimWithNFT(bytes32 epochId, address recipient, uint256 amount, uint256[] calldata tokenIds) public view returns (ClaimError) {
-        return _canClaimWithNFT(claimWindows[epochId], recipient, tokenIds, keccak256(abi.encodePacked(epochId, recipient, amount, tokenIds)));
-    }
-
-    function _canClaimWithNFT(
-        ClaimWindow storage claimWindow,
-        address recipient,
-        uint256[] calldata tokenIds,
-        bytes32 leaf
-    ) internal view returns (ClaimError) {
-        uint256 len = tokenIds.length;
-        if (len == 0) {
-            return ClaimError.MissingTokenIds;
-        }
-        ClaimError canClaimResult = _canClaim(claimWindow, leaf);
-        if (canClaimResult != ClaimError.NoError) {
-            return canClaimResult;
-        }
-
-        for (uint256 i; i < len; ++i) {
-            if (NFT.ownerOf(tokenIds[i]) != recipient) {
-                return ClaimError.NotNFTOwner;
-            }
-        }
-
-        return ClaimError.NoError;
     }
 
     function _canClaim(ClaimWindow storage claimWindow, bytes32 leaf) internal view returns (ClaimError) {

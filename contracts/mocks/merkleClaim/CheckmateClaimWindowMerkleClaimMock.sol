@@ -7,11 +7,12 @@ import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/i
 contract CheckmateClaimWindowMerkleClaimMock is CheckmateClaimWindowMerkleClaim {
     constructor(
         address checkmateToken_,
-        address nft_,
+        address ethernals_,
+        address ethernalsMetadataSetter_,
         address stakingPool_,
         address payoutWallet_,
         IForwarderRegistry forwarderRegistry_
-    ) CheckmateClaimWindowMerkleClaim(checkmateToken_, nft_, stakingPool_, payoutWallet_, forwarderRegistry_) {}
+    ) CheckmateClaimWindowMerkleClaim(checkmateToken_, ethernals_, ethernalsMetadataSetter_, stakingPool_, payoutWallet_, forwarderRegistry_) {}
 
     function __msgSender() external view returns (address) {
         return _msgSender();
