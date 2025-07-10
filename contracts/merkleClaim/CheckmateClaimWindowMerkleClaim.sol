@@ -217,29 +217,30 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
                 ++ownedCount;
             }
         }
-        bonus += _calculateEthernalsQuantityBonus(ownedCount);
+        bonus += _calculateEthernalsQuantityBonus(len, ownedCount);
     }
 
     function _calculateEthernalsRarityBonus(Metadata calldata metadata) internal pure returns (uint256) {
         //TODO: implement correct calculation logic for ethernals boost amount
-        if (metadata.background > 0) { // legendary
+        if (metadata.background > 0) {
+            // legendary
             return 1000;
-        }
-        else if (metadata.backgroundElement > 0) { // rare
+        } else if (metadata.element > 0) {
+            // rare
             return 300;
         }
         return 0;
     }
 
-    function _calculateEthernalsQuantityBonus(uint256 ownedCount) internal pure returns (uint256) {
+    function _calculateEthernalsQuantityBonus(uint256 commitedTokenNum, uint256 ownedCount) internal pure returns (uint256) {
         // TODO: implement correct calculation logic for ethernals quantity bonus
-        if (ownedCount >= 16) {
+        if (commitedTokenNum >= 16 && ownedCount >= 16) {
             return 1000;
-        } else if (ownedCount >= 8) {
+        } else if (commitedTokenNum >= 8 && ownedCount >= 8) {
             return 500;
-        } else if (ownedCount >= 4) {
+        } else if (commitedTokenNum >= 4 && ownedCount >= 4) {
             return 200;
-        } else if (ownedCount >= 2) {
+        } else if (commitedTokenNum >= 2 && ownedCount >= 2) {
             return 100;
         }
         return 0;
