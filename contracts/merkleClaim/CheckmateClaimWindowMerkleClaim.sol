@@ -14,7 +14,7 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     using MerkleProof for bytes32[];
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
 
-    /// @notice The return values of canClaim() function.
+    /// @notice The return values of _canClaim() function.
     enum ClaimError {
         NoError, // 0
         EpochIdNotExists, // 1
@@ -70,9 +70,8 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     /// @notice Thrown when the payout wallet address is zero.
     error InvalidPayoutWallet();
 
-    /// @notice Thrown when the merkle root does not exist.
-    /// @param root The root.
-    error MerkleRootNotExists(bytes32 root);
+    /// @notice Thrown when the merkle root is zero.
+    error InvalidMerkleRoot();
 
     /// @notice Error thrown when the claim window is invalid.
     error InvalidClaimWindow(uint256 startTime, uint256 endTime, uint256 currentTime);
@@ -80,7 +79,8 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     /// @notice Error thrown when the epoch ID already exists.
     error EpochIdAlreadyExists(bytes32 epochId);
 
-    error InvalidProof(bytes32 epochId, address recipient);
+    /// @notice Error thrown when the proof provided for the claim is invalid.
+    error InvalidProof(bytes32 epochId, address recipient, uint256 amount);
 
     /// @notice Thrown when checkmate token transfer failed.
     /// @param payoutWallet The wallet sending out the checkmate token.
@@ -121,6 +121,8 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     /**
      * @notice Sets the merkle root for a specific epoch with start and end time.
      * @dev Reverts if _msgSender() is not the owner.
+     * @dev Reverts if the merkle root is zero.
+     * @dev Reverts if the claim window is invalid.
      * @dev Reverts if the epoch ID has already been set.
      * @dev Emits a {EpochMerkleRootSet} event.
      * @param epochId The epoch ID for the claim.
@@ -130,6 +132,10 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
      */
     function setEpochMerkleRoot(bytes32 epochId, bytes32 merkleRoot, uint256 startTime, uint256 endTime) external {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
+
+        if (merkleRoot == bytes32(0)) {
+            revert InvalidMerkleRoot();
+        }
 
         if (startTime >= endTime || endTime <= block.timestamp) {
             revert InvalidClaimWindow(startTime, endTime, block.timestamp);
@@ -144,10 +150,12 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
         emit EpochMerkleRootSet(epochId, merkleRoot, startTime, endTime);
     }
 
-    /// @notice Sets the new payout wallet.
-    /// @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
-    /// @dev Emits a {PayoutWalletSet} event.
-    /// @param newPayoutWallet The payout wallet to be set.
+    /**
+     * @notice Sets the new payout wallet.
+     * @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
+     * @dev Emits a {PayoutWalletSet} event.
+     * @param newPayoutWallet The payout wallet to be set.
+     */
     function setPayoutWallet(address newPayoutWallet) external {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
 
@@ -156,6 +164,19 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
         emit PayoutWalletSet(newPayoutWallet);
     }
 
+    /**
+     * @notice Claims the payout for a specific epoch and stake.
+     * @dev Reverts with {EpochIdNotExists} if epoch id does not exist.
+     * @dev Reverts with {OutOfClaimWindow} if current block time is beyond claim window.
+     * @dev Reverts with {AlreadyClaimed} if the specified payout has already been claimed.
+     * @dev Reverts with {InvalidProof} if the merkle proof has failed the verification.
+     * @dev Reverts with {TransferFailed} if checkmate token transfer fails.
+     * @dev Emits a {PayoutClaimed} event.
+     * @param epochId The unique epoch ID associated with the claim window.
+     * @param recipient The recipient of the checkmate token.
+     * @param amount The amount of checkmate token to be claimed.
+     * @param proof The Merkle proof for the claim.
+     */
     function claimAndStake(bytes32 epochId, address recipient, uint256 amount, bytes32[] calldata proof) external {
         bytes32 leaf = keccak256(abi.encodePacked(epochId, recipient, amount));
 
@@ -171,7 +192,7 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
         }
 
         if (!proof.verifyCalldata(claimWindow.merkleRoot, leaf)) {
-            revert InvalidProof(epochId, recipient);
+            revert InvalidProof(epochId, recipient, amount);
         }
 
         claimed[leaf] = true;
@@ -185,9 +206,26 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
         emit PayoutClaimed(epochId, recipient, amount);
     }
 
+    /**
+     * @notice Checks if a recipient can claim a reward for a given epoch id
+     * @param epochId The unique epoch ID associated with the claim window.
+     * @param recipient The recipient of the checkmate token.
+     * @param amount The amount of checkmate token to be claimed.
+     */
     function canClaim(bytes32 epochId, address recipient, uint256 amount) public view returns (ClaimError) {
         return _canClaim(claimWindows[epochId], keccak256(abi.encodePacked(epochId, recipient, amount)));
     }
+
+    /**
+     * @notice
+     * 1) Returns ClaimError.EpochIdNotExists if merkle root of the claim window has not been set,
+     * 2) Returns ClaimError.OutOfClaimWindow if current time is beyond start time and end time of the claim window,
+     * 3) Returns ClaimError.AlreadyClaimed if recipent has already claimed,
+     * 4) Returns ClaimError.ExceededMintSupply if number of token claimed equals to total supply, and
+     * 5) Returns ClaimError.NoError otherwise.
+     * @param claimWindow The claim window of the claim.
+     * @param leaf The leaf of the claim.
+     */
 
     function _canClaim(ClaimWindow storage claimWindow, bytes32 leaf) internal view returns (ClaimError) {
         if (claimWindow.merkleRoot == bytes32(0)) {

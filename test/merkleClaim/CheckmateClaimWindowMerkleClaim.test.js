@@ -122,6 +122,15 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
         .withArgs(other.address);
     });
 
+    it('reverts with "InvalidMerkleRoot" if the merkle root is zero', async function () {
+      await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
+
+      await expect(this.contract.setEpochMerkleRoot(this.epochId, ethers.ZeroHash, startTime, endTime)).to.revertedWithCustomError(
+        this.contract,
+        'InvalidMerkleRoot',
+      );
+    });
+
     it('reverts with "EpochIdAlreadyExists" if the epoch has already started', async function () {
       await this.contract.setEpochMerkleRoot(this.epochId, this.root, startTime, endTime);
 
@@ -248,7 +257,7 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
 
       await expect(this.contract.claimAndStake(epochId, recipient, amount, invalidProof))
         .to.revertedWithCustomError(this.contract, 'InvalidProof')
-        .withArgs(epochId, recipient);
+        .withArgs(epochId, recipient, amount);
     });
 
     it('reverts with "TransferFailed" if safeTransferFrom() returns false', async function () {
