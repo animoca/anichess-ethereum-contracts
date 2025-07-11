@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.4.0
+
+### New features
+
+- Checkmate Claim Window Merkle Claim contract.
+
 ## 3.3.0
 
 ### New features
