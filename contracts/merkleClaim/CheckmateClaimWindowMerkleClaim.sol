@@ -57,9 +57,10 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
 
     /// @notice Emitted when a payout is claimed.
     /// @param epochId The unique epoch ID associated with the claim window.
+    /// @param root The merkle root of the claim window.
     /// @param recipient The recipient of the checkmate token.
     /// @param amount The amount of checkmate token is claimed.
-    event PayoutClaimed(bytes32 indexed epochId, address indexed recipient, uint256 indexed amount);
+    event PayoutClaimed(bytes32 indexed epochId, bytes32 indexed root, address indexed recipient, uint256 amount);
 
     /// @notice Thrown when the checkmate token contract address is zero.
     error InvalidCheckmateToken();
@@ -191,7 +192,8 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
             revert AlreadyClaimed(epochId, leaf);
         }
 
-        if (!proof.verifyCalldata(claimWindow.merkleRoot, leaf)) {
+        bytes32 root = claimWindow.merkleRoot;
+        if (!proof.verifyCalldata(root, leaf)) {
             revert InvalidProof(epochId, recipient, amount);
         }
 
@@ -203,7 +205,7 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
             revert TransferFailed(_payoutWallet, recipient, amount);
         }
 
-        emit PayoutClaimed(epochId, recipient, amount);
+        emit PayoutClaimed(epochId, root, recipient, amount);
     }
 
     /**
