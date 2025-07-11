@@ -214,7 +214,7 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
      * @param recipient The recipient of the checkmate token.
      * @param amount The amount of checkmate token to be claimed.
      */
-    function canClaim(bytes32 epochId, address recipient, uint256 amount) public view returns (ClaimError) {
+    function canClaim(bytes32 epochId, address recipient, uint256 amount) external view returns (ClaimError) {
         return _canClaim(claimWindows[epochId], keccak256(abi.encodePacked(epochId, recipient, amount)));
     }
 
