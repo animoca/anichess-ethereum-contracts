@@ -26,7 +26,7 @@ contract ERC20Mock {
     //     return true;
     // }
     function safeTransferFrom(address from, address to, uint256 value, bytes calldata data) external returns (bool) {
-        if (from == address(0)) {
+        if (from == address(1)) {
             return false;
         }
 

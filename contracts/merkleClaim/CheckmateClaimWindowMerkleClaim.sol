@@ -9,10 +9,13 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
 import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
+import {PayoutWallet} from "@animoca/ethereum-contracts/contracts/payment/PayoutWallet.sol";
+import {PayoutWalletStorage} from "@animoca/ethereum-contracts/contracts/payment/libraries/PayoutWalletStorage.sol";
 
-contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwnership {
+contract CheckmateClaimWindowMerkleClaim is PayoutWallet, ForwarderRegistryContext {
     using MerkleProof for bytes32[];
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
+    using PayoutWalletStorage for PayoutWalletStorage.Layout;
 
     /// @notice The return values of _canClaim() function.
     enum ClaimError {
@@ -35,9 +38,6 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     /// @notice a reference to staking pool contract
     address public immutable STAKING_POOL;
 
-    /// @notice Store the payout wallet address for transfering checkmate token
-    address public payoutWallet;
-
     /// @notice Mapping from the epoch ID to the claim window.
     mapping(bytes32 epochId => ClaimWindow) public claimWindows;
 
@@ -51,10 +51,6 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     /// @param endTime The end time of the claim window.
     event EpochMerkleRootSet(bytes32 indexed epochId, bytes32 indexed merkleRoot, uint256 startTime, uint256 indexed endTime);
 
-    /// @notice Emitted when a new payout wallet is set.
-    /// @param newPayoutWallet The new payout wallet.
-    event PayoutWalletSet(address indexed newPayoutWallet);
-
     /// @notice Emitted when a payout is claimed.
     /// @param epochId The unique epoch ID associated with the claim window.
     /// @param root The merkle root of the claim window.
@@ -67,9 +63,6 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
 
     /// @notice Thrown when the staking pool address is zero.
     error InvalidStakingPool();
-
-    /// @notice Thrown when the payout wallet address is zero.
-    error InvalidPayoutWallet();
 
     /// @notice Thrown when the merkle root is zero.
     error InvalidMerkleRoot();
@@ -101,22 +94,18 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
     constructor(
         address checkmateToken_,
         address stakingPool_,
-        address payoutWallet_,
+        address payable payoutWallet_,
         IForwarderRegistry forwarderRegistry_
-    ) ForwarderRegistryContext(forwarderRegistry_) ContractOwnership(msg.sender) {
+    ) PayoutWallet(payoutWallet_) ForwarderRegistryContext(forwarderRegistry_) ContractOwnership(msg.sender) {
         if (checkmateToken_ == address(0)) {
             revert InvalidCheckmateToken();
         }
         if (stakingPool_ == address(0)) {
             revert InvalidStakingPool();
         }
-        if (payoutWallet_ == address(0)) {
-            revert InvalidPayoutWallet();
-        }
 
         CHECKMATE_TOKEN = IERC20SafeTransfers(checkmateToken_);
         STAKING_POOL = stakingPool_;
-        payoutWallet = payoutWallet_;
     }
 
     /**
@@ -149,20 +138,6 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
         claimWindows[epochId] = ClaimWindow(merkleRoot, startTime, endTime);
 
         emit EpochMerkleRootSet(epochId, merkleRoot, startTime, endTime);
-    }
-
-    /**
-     * @notice Sets the new payout wallet.
-     * @dev Reverts with {NotContractOwner} if the sender is not the contract owner.
-     * @dev Emits a {PayoutWalletSet} event.
-     * @param newPayoutWallet The payout wallet to be set.
-     */
-    function setPayoutWallet(address newPayoutWallet) external {
-        ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
-
-        payoutWallet = newPayoutWallet;
-
-        emit PayoutWalletSet(newPayoutWallet);
     }
 
     /**
@@ -199,10 +174,10 @@ contract CheckmateClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOw
 
         claimed[leaf] = true;
 
-        address _payoutWallet = payoutWallet;
-        bool success = CHECKMATE_TOKEN.safeTransferFrom(_payoutWallet, STAKING_POOL, amount, abi.encode(recipient));
+        address payoutWallet = PayoutWalletStorage.layout().payoutWallet();
+        bool success = CHECKMATE_TOKEN.safeTransferFrom(payoutWallet, STAKING_POOL, amount, abi.encode(recipient));
         if (!success) {
-            revert TransferFailed(_payoutWallet, recipient, amount);
+            revert TransferFailed(payoutWallet, recipient, amount);
         }
 
         emit PayoutClaimed(epochId, root, recipient, amount);

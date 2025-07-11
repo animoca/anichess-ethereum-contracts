@@ -80,18 +80,6 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
       ).to.revertedWithCustomError(this.contract, 'InvalidStakingPool');
     });
 
-    it('reverts with "InvalidPayoutWallet" if payout wallet is zero address', async function () {
-      await expect(
-        deployContract(
-          'CheckmateClaimWindowMerkleClaimMock',
-          this.checkmateTokenContract,
-          this.stakingPoolContract,
-          ethers.ZeroAddress,
-          this.forwarderRegistryAddress,
-        ),
-      ).to.revertedWithCustomError(this.contract, 'InvalidPayoutWallet');
-    });
-
     context('when successful', function () {
       it('sets the checkmate token', async function () {
         expect(await this.contract.CHECKMATE_TOKEN()).to.equal(this.checkmateTokenContract);
@@ -262,11 +250,13 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
 
     it('reverts with "TransferFailed" if safeTransferFrom() returns false', async function () {
       await helpers.time.increase(110);
-      await this.contract.setPayoutWallet(ethers.ZeroAddress);
+
+      const payoutWallet = '0x0000000000000000000000000000000000000001';
+      await this.contract.setPayoutWallet(payoutWallet);
 
       await expect(this.contract.claimAndStake(epochId, recipient, amount, proof))
         .to.revertedWithCustomError(this.contract, 'TransferFailed')
-        .withArgs(ethers.ZeroAddress, recipient, amount);
+        .withArgs(payoutWallet, recipient, amount);
     });
 
     it('reverts with "AlreadyClaimed" if the recipient has already claimed the reward', async function () {

@@ -8,7 +8,7 @@ contract CheckmateClaimWindowMerkleClaimMock is CheckmateClaimWindowMerkleClaim 
     constructor(
         address checkmateToken_,
         address stakingPool_,
-        address payoutWallet_,
+        address payable payoutWallet_,
         IForwarderRegistry forwarderRegistry_
     ) CheckmateClaimWindowMerkleClaim(checkmateToken_, stakingPool_, payoutWallet_, forwarderRegistry_) {}
 
