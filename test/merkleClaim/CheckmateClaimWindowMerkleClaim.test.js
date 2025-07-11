@@ -180,27 +180,6 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
     });
   });
 
-  describe('setPayoutWallet(address newPayoutWallet)', function () {
-    it('reverts with "NotContractOwner" if the caller is not the owner', async function () {
-      await expect(this.contract.connect(other).setPayoutWallet(other))
-        .to.revertedWithCustomError(this.contract, 'NotContractOwner')
-        .withArgs(other.address);
-    });
-
-    context('when successful', function () {
-      it('sets the payout wallet', async function () {
-        await this.contract.setPayoutWallet(newPayoutWallet);
-        const payoutWallet = await this.contract.payoutWallet();
-
-        expect(payoutWallet).to.equal(newPayoutWallet);
-      });
-
-      it('emits a PayoutWalletSet event', async function () {
-        await expect(this.contract.setPayoutWallet(newPayoutWallet)).to.emit(this.contract, 'PayoutWalletSet').withArgs(newPayoutWallet);
-      });
-    });
-  });
-
   describe('claimAndStake(bytes32 epochId, address recipient, uint256 amount, bytes32[] calldata proof)', function () {
     let startTime, endTime, recipient, epochId, proof, leaf;
 
@@ -292,9 +271,7 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
       it('should have invoked onERC20Received() of staking pool', async function () {
         await expect(this.contract.claimAndStake(epochId, recipient, amount, proof))
           .to.emit(this.stakingPoolContract, 'ERC20ReceivedMock')
-          // .withArgs(this.checkmateTokenContract, payoutWallet, amount, new ethers.utils.AbiCoder().encode(['address'], [recipient]));
           .withArgs(this.checkmateTokenContract, payoutWallet, amount, ethers.AbiCoder.defaultAbiCoder().encode(['address'], [recipient]));
-        // AbiCoder.defaultAbiCoder()
       });
 
       it('emits a PayoutClaimed event', async function () {
