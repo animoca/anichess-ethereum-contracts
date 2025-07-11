@@ -310,7 +310,7 @@ describe('CheckmateClaimWindowMerkleClaim', function () {
       it('emits a PayoutClaimed event', async function () {
         await expect(this.contract.claimAndStake(epochId, recipient, amount, proof))
           .to.emit(this.contract, 'PayoutClaimed')
-          .withArgs(epochId, recipient, amount);
+          .withArgs(epochId, this.root, recipient, amount);
       });
     });
   });
