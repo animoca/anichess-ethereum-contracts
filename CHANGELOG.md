@@ -4,7 +4,7 @@
 
 ### New features
 
-- Checkmate Claim Window Merkle Claim contract.
+- ERC20 Claim Window Merkle Claim contract.
 
 ## 3.3.0
 
