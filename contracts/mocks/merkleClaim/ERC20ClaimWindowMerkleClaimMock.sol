@@ -6,11 +6,11 @@ import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/i
 
 contract ERC20ClaimWindowMerkleClaimMock is ERC20ClaimWindowMerkleClaim {
     constructor(
-        address erc20Token_,
+        address rewardToken_,
         address stakingPool_,
         address tokenHolderWallet_,
         IForwarderRegistry forwarderRegistry_
-    ) ERC20ClaimWindowMerkleClaim(erc20Token_, stakingPool_, tokenHolderWallet_, forwarderRegistry_) {}
+    ) ERC20ClaimWindowMerkleClaim(rewardToken_, stakingPool_, tokenHolderWallet_, forwarderRegistry_) {}
 
     function __msgSender() external view returns (address) {
         return _msgSender();
