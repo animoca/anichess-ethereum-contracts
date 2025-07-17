@@ -57,10 +57,10 @@ describe('ERC20ClaimWindowMerkleClaim', function () {
   });
 
   describe('constructor', function () {
-    it('reverts with "InvalidERC20Token" if erc20 token is zero address', async function () {
+    it('reverts with "InvalidRewardToken" if reward token is zero address', async function () {
       await expect(
         deployContract('ERC20ClaimWindowMerkleClaimMock', ethers.ZeroAddress, stakingPool, tokenHolderWallet, this.forwarderRegistryAddress),
-      ).to.revertedWithCustomError(this.contract, 'InvalidERC20Token');
+      ).to.revertedWithCustomError(this.contract, 'InvalidRewardToken');
     });
 
     it('reverts with "InvalidStakingPool" if staking pool is zero address', async function () {
@@ -70,8 +70,8 @@ describe('ERC20ClaimWindowMerkleClaim', function () {
     });
 
     context('when successful', function () {
-      it('sets the erc20 token', async function () {
-        expect(await this.contract.ERC20_TOKEN()).to.equal(this.erc20Token);
+      it('sets the reward token', async function () {
+        expect(await this.contract.REWARD_TOKEN()).to.equal(this.erc20Token);
       });
 
       it('sets the staking pool', async function () {

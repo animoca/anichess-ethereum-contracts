@@ -30,7 +30,7 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
     }
 
     /// @notice a reference to the reward token contract
-    IERC20SafeTransfers public immutable ERC20_TOKEN;
+    IERC20SafeTransfers public immutable REWARD_TOKEN;
 
     /// @notice a reference to the staking pool contract
     address public immutable STAKING_POOL;
@@ -38,10 +38,10 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
     /// @notice The address of the token holder wallet.
     address public tokenHolderWallet;
 
-    /// @notice Mapping from the epoch ID to the claim window.
+    /// @notice Mapping of the epoch ID to the claim window.
     mapping(bytes32 epochId => ClaimWindow) public claimWindows;
 
-    /// @notice leaf hash to claimed state
+    /// @notice Mapping of leaf hash to claimed state
     mapping(bytes32 leaf => bool claimed) public claimed;
 
     /// @notice Event emitted when the token holder wallet is set.
@@ -62,8 +62,8 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
     /// @param amount The amount of token is claimed.
     event PayoutClaimed(bytes32 indexed epochId, bytes32 indexed root, address indexed recipient, uint256 amount);
 
-    /// @notice Thrown when the erc20 token contract address is zero.
-    error InvalidERC20Token();
+    /// @notice Thrown when the reward token contract address is zero.
+    error InvalidRewardToken();
 
     /// @notice Thrown when the staking pool address is zero.
     error InvalidStakingPool();
@@ -90,15 +90,15 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
     error AlreadyClaimed(bytes32 epochId, bytes32 leaf);
 
     constructor(
-        address erc20Token_,
+        address rewardToken_,
         address stakingPool_,
         address tokenHolderWallet_,
         IForwarderRegistry forwarderRegistry_
     ) ForwarderRegistryContext(forwarderRegistry_) ContractOwnership(msg.sender) {
-        if (erc20Token_ == address(0)) {
-            revert InvalidERC20Token();
+        if (rewardToken_ == address(0)) {
+            revert InvalidRewardToken();
         }
-        ERC20_TOKEN = IERC20SafeTransfers(erc20Token_);
+        REWARD_TOKEN = IERC20SafeTransfers(rewardToken_);
 
         if (stakingPool_ == address(0)) {
             revert InvalidStakingPool();
@@ -185,7 +185,7 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
 
         claimed[leaf] = true;
 
-        ERC20_TOKEN.safeTransferFrom(tokenHolderWallet, STAKING_POOL, amount, abi.encode(recipient));
+        REWARD_TOKEN.safeTransferFrom(tokenHolderWallet, STAKING_POOL, amount, abi.encode(recipient));
         emit PayoutClaimed(epochId, root, recipient, amount);
     }
 
