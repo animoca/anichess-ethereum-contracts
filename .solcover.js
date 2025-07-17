@@ -1,5 +1,4 @@
 module.exports = {
-  configureYulOptimizer: true,
   mocha: {
     enableTimeouts: false,
     grep: '@skip-on-coverage', // Find everything with this tag
