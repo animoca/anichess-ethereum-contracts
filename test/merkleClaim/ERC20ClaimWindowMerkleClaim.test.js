@@ -15,16 +15,16 @@ describe('ERC20ClaimWindowMerkleClaim', function () {
   const fixture = async function () {
     this.forwarderRegistryAddress = await getForwarderRegistryAddress();
 
-    this.erc20Token = await deployContract('ERC20FixedSupply', '', '', 18, [tokenHolderWallet], [3n], this.forwarderRegistryAddress);
+    this.rewardToken = await deployContract('ERC20FixedSupply', '', '', 18, [tokenHolderWallet], [3n], this.forwarderRegistryAddress);
 
     this.contract = await deployContract(
       'ERC20ClaimWindowMerkleClaimMock',
-      this.erc20Token,
+      this.rewardToken,
       stakingPool,
       tokenHolderWallet,
       this.forwarderRegistryAddress,
     );
-    await this.erc20Token.connect(tokenHolderWallet).approve(this.contract, 3n);
+    await this.rewardToken.connect(tokenHolderWallet).approve(this.contract, 3n);
 
     this.epochId = ethers.encodeBytes32String('test-epoch-id');
     this.whitelist = [
@@ -65,13 +65,13 @@ describe('ERC20ClaimWindowMerkleClaim', function () {
 
     it('reverts with "InvalidStakingPool" if staking pool is zero address', async function () {
       await expect(
-        deployContract('ERC20ClaimWindowMerkleClaimMock', this.erc20Token, ethers.ZeroAddress, tokenHolderWallet, this.forwarderRegistryAddress),
+        deployContract('ERC20ClaimWindowMerkleClaimMock', this.rewardToken, ethers.ZeroAddress, tokenHolderWallet, this.forwarderRegistryAddress),
       ).to.revertedWithCustomError(this.contract, 'InvalidStakingPool');
     });
 
     context('when successful', function () {
       it('sets the reward token', async function () {
-        expect(await this.contract.REWARD_TOKEN()).to.equal(this.erc20Token);
+        expect(await this.contract.REWARD_TOKEN()).to.equal(this.rewardToken);
       });
 
       it('sets the staking pool', async function () {
