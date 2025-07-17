@@ -12,7 +12,7 @@ import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contract
 
 contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwnership {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
-    using MerkleProof for bytes32[];    
+    using MerkleProof for bytes32[];
 
     /// @notice The status of the claim
     enum ClaimError {
