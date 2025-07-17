@@ -39,7 +39,7 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
     address public tokenHolderWallet;
 
     /// @notice Mapping of the epoch ID to the claim window.
-    mapping(bytes32 epochId => ClaimWindow) public claimWindows;
+    mapping(bytes32 epochId => ClaimWindow claimWindow) public claimWindows;
 
     /// @notice Mapping of leaf hash to claimed state
     mapping(bytes32 leaf => bool claimed) public claimed;
@@ -48,18 +48,18 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
     /// @param newTokenHolderWallet The address of the new token holder wallet.
     event TokenHolderWalletSet(address indexed newTokenHolderWallet);
 
-    /// @notice Event emitted when a claim window is set.
-    /// @param epochId The unique epoch ID associated with the specified claim window.
+    /// @notice Event emitted when an epoch id is set with its merkle root and claim window.
+    /// @param epochId The unique epoch ID.
     /// @param merkleRoot The merkle root in the claim window.
     /// @param startTime The start time of the claim window.
     /// @param endTime The end time of the claim window.
     event EpochMerkleRootSet(bytes32 indexed epochId, bytes32 indexed merkleRoot, uint256 startTime, uint256 indexed endTime);
 
     /// @notice Emitted when a payout is claimed.
-    /// @param epochId The unique epoch ID associated with the claim window.
-    /// @param root The merkle root of the claim window.
+    /// @param epochId The epoch ID being claimed.
+    /// @param root The merkle root of the claim.
     /// @param recipient The recipient of the claim.
-    /// @param amount The amount of token is claimed.
+    /// @param amount The amount of token claimed.
     event PayoutClaimed(bytes32 indexed epochId, bytes32 indexed root, address indexed recipient, uint256 amount);
 
     /// @notice Thrown when the reward token contract address is zero.
@@ -71,22 +71,22 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
     /// @notice Thrown when the merkle root is zero.
     error InvalidMerkleRoot();
 
-    /// @notice Error thrown when the claim window is invalid.
+    /// @notice Thrown when the claim window is invalid.
     error InvalidClaimWindow(uint256 startTime, uint256 endTime, uint256 currentTime);
 
-    /// @notice Error thrown when the epoch ID already exists.
+    /// @notice Thrown when the epoch ID already exists.
     error EpochIdAlreadyExists(bytes32 epochId);
 
-    /// @notice Error thrown when the proof provided for the claim is invalid.
+    /// @notice Thrown when the proof provided for the claim is invalid.
     error InvalidProof(bytes32 epochId, address recipient, uint256 amount);
 
-    /// @notice Error thrown when the epoch ID does not exist.
+    /// @notice Thrown when the epoch ID does not exist.
     error EpochIdNotExists(bytes32 epochId);
 
-    /// @notice Error thrown when the claim window is closed or has not yet opened.
+    /// @notice Thrown when the claim happens on outside the claim window
     error OutOfClaimWindow(bytes32 epochId, uint256 currentTime);
 
-    /// @notice Error thrown when the leaf has already been claimed.
+    /// @notice Thrown when the leaf is claimed already.
     error AlreadyClaimed(bytes32 epochId, bytes32 leaf);
 
     constructor(
@@ -114,10 +114,10 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
      * @dev Reverts if _msgSender() is not the owner.
      * @dev Reverts if the merkle root is zero.
      * @dev Reverts if the claim window is invalid.
-     * @dev Reverts if the epoch ID has already been set.
+     * @dev Reverts if the epoch ID is set.
      * @dev Emits a {EpochMerkleRootSet} event.
-     * @param epochId The epoch ID for the claim.
-     * @param merkleRoot The Merkle root of the claim.
+     * @param epochId The epoch ID assigned for the claim window.
+     * @param merkleRoot The Merkle root of the claim window.
      * @param startTime The start time of the claim window.
      * @param endTime The end time of the claim window.
      */
@@ -154,11 +154,11 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
     }
 
     /**
-     * @notice Claims the payout for a specific epoch and stake.
+     * @notice Claim and stake the payout with a given epoch ID
      * @dev Reverts with {EpochIdNotExists} if epoch id does not exist.
-     * @dev Reverts with {OutOfClaimWindow} if current block time is beyond claim window.
+     * @dev Reverts with {OutOfClaimWindow} if current block time is outside of the claim window.
      * @dev Reverts with {AlreadyClaimed} if the specified payout has already been claimed.
-     * @dev Reverts with {InvalidProof} if the merkle proof has failed the verification.
+     * @dev Reverts with {InvalidProof} if the merkle leaf/proof is invalid.
      * @dev Emits a {PayoutClaimed} event.
      * @param epochId The unique epoch ID associated with the claim window.
      * @param recipient The recipient of the claim.
@@ -204,12 +204,10 @@ contract ERC20ClaimWindowMerkleClaim is ForwarderRegistryContext, ContractOwners
      * 1) Returns ClaimError.EpochIdNotExists if merkle root of the claim window has not been set,
      * 2) Returns ClaimError.OutOfClaimWindow if current time is beyond start time and end time of the claim window,
      * 3) Returns ClaimError.AlreadyClaimed if recipient has already claimed,
-     * 4) Returns ClaimError.ExceededMintSupply if number of token claimed equals to total supply, and
-     * 5) Returns ClaimError.NoError otherwise.
+     * 4) Returns ClaimError.NoError
      * @param claimWindow The claim window of the claim.
      * @param leaf The leaf of the claim.
      */
-
     function _canClaim(ClaimWindow storage claimWindow, bytes32 leaf) internal view returns (ClaimError) {
         if (claimWindow.merkleRoot == bytes32(0)) {
             return ClaimError.EpochIdNotExists;
