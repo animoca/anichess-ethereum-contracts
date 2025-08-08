@@ -14,6 +14,12 @@ import {IPoints} from "./../points/interface/IPoints.sol";
 contract ERC20StakingPointsRewardsLinearPool is ERC20StakingLinearPool, LinearPool_PointsRewards {
     address public immutable CLAIM_CONTRACT;
 
+    /// @dev Reverts with {InvalidPointsContract} if the points contract address is zero.
+    /// @param claimContract The address of the claim contract.
+    /// @param stakingToken The ERC20 token used for staking.
+    /// @param pointsContract The address of the points contract.
+    /// @param depositReasonCode The reason code for the deposit.
+    /// @param forwarderRegistry The address of the forwarder registry.
     constructor(
         address claimContract,
         IERC20 stakingToken,
@@ -24,6 +30,7 @@ contract ERC20StakingPointsRewardsLinearPool is ERC20StakingLinearPool, LinearPo
         CLAIM_CONTRACT = claimContract;
     }
 
+    /// @inheritdoc ERC20StakingLinearPool
     function onERC20Received(address operator, address from, uint256 value, bytes calldata data) external virtual override returns (bytes4) {
         require(msg.sender == address(STAKING_TOKEN), InvalidToken());
         bool requiresTransfer = false;
@@ -36,6 +43,7 @@ contract ERC20StakingPointsRewardsLinearPool is ERC20StakingLinearPool, LinearPo
         return this.onERC20Received.selector;
     }
 
+    /// @inheritdoc LinearPool_PointsRewards
     function _computeClaim(
         address staker,
         uint256 reward
@@ -43,6 +51,7 @@ contract ERC20StakingPointsRewardsLinearPool is ERC20StakingLinearPool, LinearPo
         return LinearPool_PointsRewards._computeClaim(staker, reward);
     }
 
+    /// @inheritdoc LinearPool_PointsRewards
     function _computeAddReward(address rewarder, uint256 reward, uint256 dust) internal virtual override(LinearPool, LinearPool_PointsRewards) {
         LinearPool_PointsRewards._computeAddReward(rewarder, reward, dust);
     }

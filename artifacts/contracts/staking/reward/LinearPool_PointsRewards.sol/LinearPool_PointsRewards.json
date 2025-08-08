@@ -5,6 +5,11 @@
   "abi": [
     {
       "inputs": [],
+      "name": "InvalidPointsContract",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "DEPOSIT_REASON_CODE",
       "outputs": [
         {

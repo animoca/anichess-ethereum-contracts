@@ -40,6 +40,21 @@ describe('ERC20StakingPointsRewardsLimitedLinearPool', function () {
     await loadFixture(fixture, this);
   });
 
+  describe('constructor', function () {
+    it('reverts with a zero address Points contract', async function () {
+      await expect(
+        deployContract(
+          'ERC20StakingPointsRewardsLinearPool',
+          alice.getAddress(),
+          await this.stakingToken.getAddress(),
+          ethers.ZeroAddress,
+          this.depositReasonCode,
+          await getForwarderRegistryAddress(),
+        ),
+      ).to.revertedWithCustomError(this.contract, 'InvalidPointsContract');
+    });
+  });
+
   describe('stake(bytes)', function () {
     it('reverts if called', async function () {
       await expect(this.contract.stake('0x')).to.be.revertedWithCustomError(this.contract, 'OnlyReceiverInterface');
