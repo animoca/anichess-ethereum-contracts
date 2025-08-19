@@ -28,6 +28,15 @@ artifacts/*
 !artifacts/contracts/
 !artifacts/build-info/
 
+# zksolc
+cache-zk/
+artifacts-zk/*
+!artifacts-zk/contracts/
+!artifacts-zk/build-info/
+
+# zksyncLocal
+deployments-zk/
+
 # solidity-coverage
 coverage*/
 coverage.json

@@ -1,6 +1,6 @@
 {
   "name": "@animoca/anichess-ethereum-contracts",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "Solidity contracts for the Anichess project.",
   "author": "Animoca Brands",
   "license": "MIT",
@@ -27,6 +27,7 @@
     "flatten": "hardhat flatten-all --show-stack-traces",
     "test": "hardhat test --show-stack-traces",
     "test-p": "hardhat test --parallel --show-stack-traces",
+    "test-zk": "hardhat test test-zk/**/*.js --show-stack-traces --network zksyncLocal",
     "coverage": "cross-env COVERAGE=true hardhat coverage --show-stack-traces",
     "docgen:sol": "hardhat docgen --show-stack-traces",
     "docgen": "run-s docgen:sol",
@@ -39,12 +40,14 @@
     "clean:coverage": "rm -rf 'coverage*' coverage coverage.json artifacts.coverage cache.coverage",
     "clean:docgen": "rm -rf \"docs\"",
     "clean": "run-p clean:compile clean:artifacts:soft clean:hardhat clean:flatten clean:coverage clean:docgen",
-    "run-all": "run-s clean clean:artifacts:hard lint:fix compile docgen flatten test-p coverage",
+    "run-all": "run-s clean clean:artifacts:hard lint:fix compile docgen test-p test-zk coverage",
     "prepack": "run-s clean:artifacts:hard compile clean"
   },
   "devDependencies": {
     "@animoca/ethereum-contract-helpers": "^1.0.5",
     "@animoca/ethereum-contracts": "=4.2.2",
+    "@matterlabs/hardhat-zksync": "^1.6.2",
+    "@matterlabs/zksync-contracts": "^28.0.1",
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
     "@nomicfoundation/hardhat-ethers": "^3.0.8",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
@@ -65,7 +68,8 @@
     "prettier-plugin-solidity": "^1.4.2",
     "solhint": "^5.0.5",
     "solidity-coverage": "^0.8.14",
-    "solidity-docgen": "^0.6.0-beta.36"
+    "solidity-docgen": "^0.6.0-beta.36",
+    "zksync-ethers": "^6.20.1"
   },
   "resolutions": {
     "**/@ethersproject/abi": "^5.8.0",
