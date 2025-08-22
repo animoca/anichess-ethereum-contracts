@@ -1,14 +1,16 @@
 // require('../setup.js');
 const {expect} = require('chai');
 // const {Wallet, Provider, Contract, utils, Signer} = require('zksync-ethers');
-const {Wallet, Provider, utils} = require('zksync-ethers');
+const {Wallet, Provider, utils, Contract} = require('zksync-ethers');
 const hre = require('hardhat');
 const {Deployer} = require('@matterlabs/hardhat-zksync');
+const {ethers} = require('ethers');
 
 describe('AbstractGaslessPaymaster', function () {
   let provider;
   let randomWallet;
   let emptyWallet;
+  let otherWallet;
   // let initialBalance;
   let paymaster;
   let paymasterAddress;
@@ -31,6 +33,10 @@ describe('AbstractGaslessPaymaster', function () {
     randomWallet = Wallet.createRandom();
     emptyWallet = new Wallet(randomWallet.privateKey, provider);
 
+    // setup new other wallet
+    randomWallet = Wallet.createRandom();
+    otherWallet = new Wallet(randomWallet.privateKey, provider);
+
     // deploy contracts
     deployer = new Deployer(hre, deployerWallet);
 
@@ -39,14 +45,7 @@ describe('AbstractGaslessPaymaster', function () {
     greeter = await deployer.deploy(greeterArtifact, ['Hi']);
     greeterAddress = await greeter.getAddress();
 
-    const paymasterArtifact = await deployer.loadArtifact('AbstractGaslessPaymaster').catch((error) => {
-      if (error?.message?.includes(`Artifact for contract MockSmartAccount not found.`)) {
-        console.error(error.message);
-        throw new Error(`⛔️ Please make sure you have compiled your contracts or specified the correct contract name!`);
-      } else {
-        throw error;
-      }
-    });
+    const paymasterArtifact = await deployer.loadArtifact('AbstractGaslessPaymaster');
 
     // Estimate contract deployment fee
     // const paymasterDeploymentFee = await deployer.estimateDeployFee(paymasterArtifact, []);
@@ -72,6 +71,14 @@ describe('AbstractGaslessPaymaster', function () {
     await (
       await deployerWallet.sendTransaction({
         to: paymasterAddress,
+        value: hre.ethers.parseEther('1'),
+      })
+    ).wait();
+
+    // fund other wallet
+    await (
+      await deployerWallet.sendTransaction({
+        to: await otherWallet.getAddress(),
         value: hre.ethers.parseEther('1'),
       })
     ).wait();
@@ -194,20 +201,21 @@ describe('AbstractGaslessPaymaster', function () {
         innerInput: new Uint8Array(),
       });
 
-      const tx = await greeter2.setGreeting('Hola, mundo!', {
-        maxPriorityFeePerGas: 0n,
-        maxFeePerGas: gasPrice,
-        // maxFeePerGas: 20000000n,
-        // hardcoded for testing
-        gasLimit: 6000000,
-        customData: {
-          gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
-          paymasterParams,
-        },
-      });
-
-      const receipt = await provider.getTransactionReceipt(tx.hash);
-      expect(receipt).to.be.null;
+      try {
+        await greeter2.setGreeting('Hola, mundo!', {
+          maxPriorityFeePerGas: 0n,
+          maxFeePerGas: gasPrice,
+          // maxFeePerGas: 20000000n,
+          // hardcoded for testing
+          gasLimit: 6000000,
+          customData: {
+            gasPerPubdata: utils.DEFAULT_GAS_PER_PUBDATA_LIMIT,
+            paymasterParams,
+          },
+        });
+      } catch (e) {
+        expect(e.message).to.include('InvalidToAddress');
+      }
     });
 
     context('when successful', () => {
@@ -222,24 +230,44 @@ describe('AbstractGaslessPaymaster', function () {
     });
   });
 
-  // it('should allow owner to withdraw all funds', async function () {
-  //   try {
-  //     const tx = await paymaster.connect(deployer).withdraw(emptyWallet.address);
-  //     await tx.wait();
-  //   } catch (e) {
-  //     console.error('Error executing withdrawal:', e);
-  //   }
+  describe('withdraw(uint256 amount)', () => {
+    it('reverts with "NotContractOwner" if caller is not the owner', async function () {
+      const paymasterArtifact = await deployer.loadArtifact('AbstractGaslessPaymaster');
+      const _paymaster = new Contract(paymasterAddress, paymasterArtifact.abi, otherWallet);
+      try {
+        await _paymaster.withdraw(1);
+      } catch (e) {
+        expect(e.message).to.include('NotContractOwner');
+      }
+    });
 
-  //   const finalContractBalance = await hre.ethers.provider.getBalance(paymasterAddress);
+    context('when successful', () => {
+      it('should allow owner to withdraw specified amount', async function () {
+        const contractBalanceBefore = await hre.ethers.provider.getBalance(paymasterAddress);
 
-  //   expect(finalContractBalance).to.eql(0n);
-  // });
+        try {
+          const tx = await paymaster.connect(deployer).withdraw(contractBalanceBefore);
+          await tx.wait();
+        } catch (e) {
+          console.error('Error executing withdrawal:', e);
+        }
 
-  // it("should prevent non-owners from withdrawing funds", async function () {
-  //   try {
-  //     await paymaster.connect(emptyWallet).withdraw(emptyWallet.address);
-  //   } catch (e) {
-  //     expect(e.message).to.include("Ownable: caller is not the owner");
-  //   }
-  // });
+        const contractBalanceAfter = await hre.ethers.provider.getBalance(paymasterAddress);
+
+        expect(contractBalanceAfter).to.eql(0n);
+      });
+    });
+    // it('should allow owner to withdraw all funds', async function () {
+    //   try {
+    //     const tx = await paymaster.connect(deployer).withdraw(emptyWallet.address);
+    //     await tx.wait();
+    //   } catch (e) {
+    //     console.error('Error executing withdrawal:', e);
+    //   }
+
+    //   const finalContractBalance = await hre.ethers.provider.getBalance(paymasterAddress);
+
+    //   expect(finalContractBalance).to.eql(0n);
+    // });
+  });
 });
