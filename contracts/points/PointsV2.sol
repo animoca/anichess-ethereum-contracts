@@ -19,10 +19,8 @@ contract PointsV2 is AccessControl, ForwarderRegistryContext, EIP712, IPointsV2 
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using AccessControlStorage for AccessControlStorage.Layout;
 
-    bytes32 private constant CONSUME_TYPEHASH =
-        keccak256("Consume(address holder,address spender,uint256 amount,uint256 deadline,uint256 nonce)");
-    bytes32 private constant PERMIT_TYPEHASH =
-        keccak256("Permit(address holder,address spender,uint256 amount,uint256 deadline,uint256 nonce)");
+    bytes32 private constant CONSUME_TYPEHASH = keccak256("Consume(address holder,address spender,uint256 amount,uint256 deadline,uint256 nonce)");
+    bytes32 private constant PERMIT_TYPEHASH = keccak256("Permit(address holder,address spender,uint256 amount,uint256 deadline,uint256 nonce)");
 
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
@@ -122,21 +120,21 @@ contract PointsV2 is AccessControl, ForwarderRegistryContext, EIP712, IPointsV2 
     /// @dev Reverts if balance is insufficient.
     /// @dev Reverts if the consume reason code is not allowed.
     /// @dev Emits a {Consumed} event if the consumption is successful.
-    /// @param operator The operator address.
+    /// @param spender The spender address.
     /// @param holder The balance holder address to deposit to.
     /// @param amount The amount to consume.
-    function _consume(address operator, address holder, uint256 amount) internal {
+    function _consume(address spender, address holder, uint256 amount) internal {
         uint256 balance = balances[holder];
         if (balance < amount) {
             revert InsufficientBalance(holder, amount);
         }
-        if (operator != holder && allowances[holder][operator] < amount) {
+        if (spender != holder && allowances[holder][spender] < amount) {
             revert NotEnoughAllowance();
         }
 
         balances[holder] = balance - amount;
 
-        emit Consumed(operator, holder, amount);
+        emit Consumed(spender, holder, amount);
     }
 
     /// @notice Called with a signature by an appointed spender to consume a given amount from the balance of a given holder address.
@@ -153,7 +151,7 @@ contract PointsV2 is AccessControl, ForwarderRegistryContext, EIP712, IPointsV2 
         if (block.timestamp > deadline) {
             revert ExpiredSignature();
         }
-        
+
         uint256 nonce = nonces[holder];
         address spender = _msgSender();
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CONSUME_TYPEHASH, holder, spender, amount, deadline, nonce)));
@@ -166,14 +164,14 @@ contract PointsV2 is AccessControl, ForwarderRegistryContext, EIP712, IPointsV2 
         nonces[holder] = nonce + 1;
     }
 
-    /// @notice Called by the balance holder to consume a given amount from his balance.
+    /// @notice Called by the a spender to consume a given amount from holder's balance.
     /// @dev Reverts if sender does not have enough balance
-    /// @dev Reverts if the consumeReasonCode value is false in the mapping
+    /// @dev Reverts if the allwowance is not enough.
     /// @dev Emits a {Consumed} event if the consumption is successful.
     /// @param amount The amount to consume.
-    function consume(uint256 amount) external {
-        address sender = _msgSender();
-        _consume(sender, sender, amount);
+    function consume(address holder, uint256 amount) external {
+        address spender = _msgSender();
+        _consume(spender, holder, amount);
     }
 
     function approve(address spender, uint256 amount) external {
@@ -206,6 +204,4 @@ contract PointsV2 is AccessControl, ForwarderRegistryContext, EIP712, IPointsV2 
 
         emit Permitted(holder, spender, amount);
     }
-
 }
-
