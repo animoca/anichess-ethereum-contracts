@@ -20,33 +20,6 @@ describe('ERC20ToPointsV2Swap', () => {
 
     await this.pointsV2.grantRole(await this.pointsV2.ADMIN_ROLE(), admin.address);
 
-    this.domain = {
-      name: 'Points',
-      version: '2.0',
-      chainId: await getChainId(),
-      verifyingContract: await this.pointsV2.getAddress(),
-    };
-
-    this.consumeType = {
-      Consume: [
-        {name: 'holder', type: 'address'},
-        {name: 'spender', type: 'address'},
-        {name: 'amount', type: 'uint256'},
-        {name: 'deadline', type: 'uint256'},
-        {name: 'nonce', type: 'uint256'},
-      ],
-    };
-
-    this.permitType = {
-      Permit: [
-        {name: 'holder', type: 'address'},
-        {name: 'spender', type: 'address'},
-        {name: 'amount', type: 'uint256'},
-        {name: 'deadline', type: 'uint256'},
-        {name: 'nonce', type: 'uint256'},
-      ],
-    };
-
     this.erc20PermitDomain = {
       name: 'TEST',
       version: '1',
