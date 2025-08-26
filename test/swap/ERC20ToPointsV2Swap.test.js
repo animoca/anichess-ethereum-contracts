@@ -119,18 +119,18 @@ describe('ERC20ToPointsV2Swap', () => {
 
         const erc20TokenBalanceBefore = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceBefore = await this.pointsV2.balances(user.address);
+        const payoutWalletBalanceBefore = await this.erc20Token.balanceOf(payoutWallet.address);
 
         await this.contract.connect(user).swap(tokenAmountIn);
 
         const erc20TokenBalanceAfter = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceAfter = await this.pointsV2.balances(user.address);
+        const payoutWalletBalanceAfter = await this.erc20Token.balanceOf(payoutWallet.address);
 
         expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - tokenAmountIn);
         const pointsAmount = (tokenAmountIn * this.rate) / (await this.contract.ERC20_TOKEN_PRECISION()) / (await this.contract.RATE_PRECISION());
         expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmount);
-
-        const payoutWalletBalance = await this.erc20Token.balanceOf(payoutWallet.address);
-        expect(payoutWalletBalance).equal(tokenAmountIn);
+        expect(payoutWalletBalanceAfter).equal(payoutWalletBalanceBefore + tokenAmountIn);
       });
 
       it('it should swap correct balances when there is rounding', async () => {
@@ -147,17 +147,17 @@ describe('ERC20ToPointsV2Swap', () => {
 
         const erc20TokenBalanceBefore = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceBefore = await this.pointsV2.balances(user.address);
+        const payoutWalletBalanceBefore = await this.erc20Token.balanceOf(payoutWallet.address);
 
         await this.contract.connect(user).swap(tokenAmountIn);
 
         const erc20TokenBalanceAfter = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceAfter = await this.pointsV2.balances(user.address);
+        const payoutWalletBalanceAfter = await this.erc20Token.balanceOf(payoutWallet.address);
 
         expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - expectedTokenAmountIn);
         expect(pointsBalanceAfter).equal(pointsBalanceBefore + expectedPointsAmount);
-
-        const payoutWalletBalance = await this.erc20Token.balanceOf(payoutWallet.address);
-        expect(payoutWalletBalance).equal(expectedTokenAmountIn);
+        expect(payoutWalletBalanceAfter).equal(payoutWalletBalanceBefore + expectedTokenAmountIn);
       });
 
       it('it should emit a Swapped event', async () => {
