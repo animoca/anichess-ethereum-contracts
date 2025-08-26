@@ -2,7 +2,6 @@ const {ethers} = require('hardhat');
 const {expect} = require('chai');
 const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
-const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
 
 describe('PointsV2', () => {
   before(async function () {
@@ -10,9 +9,7 @@ describe('PointsV2', () => {
   });
 
   const fixture = async () => {
-    this.forwarderRegistryAddress = await getForwarderRegistryAddress();
-
-    this.contract = await deployContract('PointsV2Mock', this.forwarderRegistryAddress);
+    this.contract = await deployContract('PointsV2');
     this.depositReasonCode = '0x0000000000000000000000000000000000000000000000000000000000000001';
 
     await this.contract.grantRole(await this.contract.ADMIN_ROLE(), admin.address);
@@ -48,12 +45,6 @@ describe('PointsV2', () => {
 
   beforeEach(async () => {
     await loadFixture(fixture, this);
-  });
-
-  describe('constructor', () => {
-    it('reverts if the forwarder registry address is 0', async () => {
-      await expect(deployContract('PointsV2Mock', ethers.ZeroAddress)).to.be.revertedWithCustomError(this.contract, 'InvalidForwarderRegistry');
-    });
   });
 
   describe('deposit(address holder, uint256 amount, bytes32 depositReasonCode)', () => {
@@ -361,16 +352,6 @@ describe('PointsV2', () => {
           .to.emit(this.contract, 'Permitted')
           .withArgs(holder.address, spender.address, amount);
       });
-    });
-  });
-
-  context('support meta-transactions', () => {
-    it('mock: _msgData()', async () => {
-      expect(await this.contract.connect(holder).__msgData()).to.exist;
-    });
-
-    it('mock: _msgSender()', async () => {
-      expect(await this.contract.connect(holder).__msgSender()).to.exist;
     });
   });
 });

@@ -2,7 +2,6 @@ const {ethers} = require('hardhat');
 const {expect} = require('chai');
 const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
-const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
 
 describe('ERC20ToPointsV2Swap', () => {
   before(async function () {
@@ -10,23 +9,23 @@ describe('ERC20ToPointsV2Swap', () => {
   });
 
   const fixture = async () => {
-    this.forwarderRegistryAddress = await getForwarderRegistryAddress();
-
+    console.log('1');
     this.erc20Token = await deployContract('ERC20PermitMock');
+    console.log('2');
     await this.erc20Token.transfer(user.address, 1000n * 10n ** (await this.erc20Token.decimals()));
-
-    this.pointsV2 = await deployContract('PointsV2', this.forwarderRegistryAddress);
+    console.log('3');
+    this.pointsV2 = await deployContract('PointsV2');
     this.depositReasonCode = ethers.encodeBytes32String('ERC20_TO_POINTSV2_SWAP');
-
+    console.log('4');
     await this.pointsV2.grantRole(await this.pointsV2.ADMIN_ROLE(), admin.address);
-
+    console.log('5');
     this.erc20PermitDomain = {
       name: 'TEST',
       version: '1',
       chainId: await getChainId(),
       verifyingContract: await this.erc20Token.getAddress(),
     };
-
+    console.log('6');
     this.erc20PermitType = {
       Permit: [
         {name: 'owner', type: 'address'},
@@ -36,19 +35,19 @@ describe('ERC20ToPointsV2Swap', () => {
         {name: 'deadline', type: 'uint256'},
       ],
     };
-
+    console.log('7');
     this.rate = 1000000n; // 100.0000
 
     this.contract = await deployContract(
-      'ERC20ToPointsV2SwapMock',
+      'ERC20ToPointsV2Swap',
       await this.erc20Token.getAddress(),
       await this.pointsV2.getAddress(),
       this.rate,
       payoutWallet.address,
-      this.forwarderRegistryAddress,
     );
-
+    console.log('8');
     await this.pointsV2.grantRole(await this.pointsV2.DEPOSITOR_ROLE(), await this.contract.getAddress());
+    console.log('9');
   };
 
   beforeEach(async () => {
@@ -58,27 +57,13 @@ describe('ERC20ToPointsV2Swap', () => {
   describe('constructor', () => {
     it('reverts if the token address is 0', async () => {
       await expect(
-        deployContract(
-          'ERC20ToPointsV2Swap',
-          ethers.ZeroAddress,
-          await this.pointsV2.getAddress(),
-          this.rate,
-          payoutWallet.address,
-          this.forwarderRegistryAddress,
-        ),
+        deployContract('ERC20ToPointsV2Swap', ethers.ZeroAddress, await this.pointsV2.getAddress(), this.rate, payoutWallet.address),
       ).to.be.revertedWithCustomError(this.contract, 'InvalidERC20Token');
     });
 
     it('reverts if the pointsV2 address is 0', async () => {
       await expect(
-        deployContract(
-          'ERC20ToPointsV2Swap',
-          await this.erc20Token.getAddress(),
-          ethers.ZeroAddress,
-          this.rate,
-          payoutWallet.address,
-          this.forwarderRegistryAddress,
-        ),
+        deployContract('ERC20ToPointsV2Swap', await this.erc20Token.getAddress(), ethers.ZeroAddress, this.rate, payoutWallet.address),
       ).to.be.revertedWithCustomError(this.contract, 'InvalidPointsV2');
     });
 
@@ -102,21 +87,21 @@ describe('ERC20ToPointsV2Swap', () => {
   });
 
   describe('setRate(uint256 newRate)', () => {
+    const newRate = 1230000;
+
     it('Reverts if sender is not the owner', async () => {
-      await expect(this.contract.connect(other).setRate(1230000))
+      await expect(this.contract.connect(other).setRate(newRate))
         .to.revertedWithCustomError(this.contract, 'NotContractOwner')
         .withArgs(other.address);
     });
 
     context('when successful', () => {
       it('it should update to correct balance', async () => {
-        const newRate = 1230000;
         await this.contract.connect(deployer).setRate(newRate);
         expect(await this.contract.rate()).equal(newRate);
       });
 
       it('it should emit an RateUpdated event', async () => {
-        const newRate = 1230000;
         await expect(this.contract.connect(deployer).setRate(newRate)).to.emit(this.contract, 'RateUpdated').withArgs(newRate);
       });
     });
@@ -144,6 +129,9 @@ describe('ERC20ToPointsV2Swap', () => {
         expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - tokenAmountIn);
         const pointsAmount = (tokenAmountIn * this.rate) / (await this.contract.ERC20_TOKEN_PRECISION()) / (await this.contract.RATE_PRECISION());
         expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmount);
+
+        const payoutWalletBalance = await this.erc20Token.balanceOf(payoutWallet.address);
+        expect(payoutWalletBalance).equal(tokenAmountIn);
       });
 
       it('it should swap correct balances when there is rounding', async () => {
@@ -168,6 +156,9 @@ describe('ERC20ToPointsV2Swap', () => {
 
         expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - expectedTokenAmountIn);
         expect(pointsBalanceAfter).equal(pointsBalanceBefore + expectedPointsAmount);
+
+        const payoutWalletBalance = await this.erc20Token.balanceOf(payoutWallet.address);
+        expect(payoutWalletBalance).equal(expectedTokenAmountIn);
       });
 
       it('it should emit a Swapped event', async () => {
@@ -307,16 +298,6 @@ describe('ERC20ToPointsV2Swap', () => {
           .to.emit(this.contract, 'Swapped')
           .withArgs(user.address, tokenAmountIn, pointsAmount);
       });
-    });
-  });
-
-  context('support meta-transactions', () => {
-    it('mock: _msgData()', async () => {
-      expect(await this.contract.connect(user).__msgData()).to.exist;
-    });
-
-    it('mock: _msgSender()', async () => {
-      expect(await this.contract.connect(user).__msgSender()).to.exist;
     });
   });
 });

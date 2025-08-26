@@ -7,15 +7,11 @@ import {AccessControlStorage} from "@animoca/ethereum-contracts/contracts/access
 import {AccessControl} from "@animoca/ethereum-contracts/contracts/access/AccessControl.sol";
 import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
 import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
-import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
-import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
-import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IPointsV2} from "./interface/IPointsV2.sol";
 
 /// @title Points
 /// @notice This contract is designed for managing the point balances of Anichess Game.
-contract PointsV2 is AccessControl, ForwarderRegistryContext, EIP712, IPointsV2 {
+contract PointsV2 is AccessControl, EIP712, IPointsV2 {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using AccessControlStorage for AccessControlStorage.Layout;
 
@@ -54,9 +50,6 @@ contract PointsV2 is AccessControl, ForwarderRegistryContext, EIP712, IPointsV2 
     /// @param amount The approved amount.
     event Permitted(address indexed holder, address indexed spender, uint256 amount);
 
-    /// @notice Thrown when the given forwarder registry address is zero address.
-    error InvalidForwarderRegistry();
-
     /// @notice Thrown when depositing zero amount
     error DepositZeroAmount();
 
@@ -78,23 +71,7 @@ contract PointsV2 is AccessControl, ForwarderRegistryContext, EIP712, IPointsV2 
     error InvalidSpender();
 
     /// @dev Reverts if the given address is invalid (equal to ZeroAddress).
-    constructor(
-        IForwarderRegistry forwarderRegistry_
-    ) ForwarderRegistryContext(forwarderRegistry_) ContractOwnership(_msgSender()) EIP712("Points", "2.0") {
-        if (address(forwarderRegistry_) == address(0)) {
-            revert InvalidForwarderRegistry();
-        }
-    }
-
-    /// @notice retrieve original msg sender of the meta transaction
-    function _msgSender() internal view virtual override(Context, ForwarderRegistryContextBase) returns (address) {
-        return ForwarderRegistryContextBase._msgSender();
-    }
-
-    /// @notice retrieve original msg calldata of the meta transaction
-    function _msgData() internal view virtual override(Context, ForwarderRegistryContextBase) returns (bytes calldata) {
-        return ForwarderRegistryContextBase._msgData();
-    }
+    constructor() ContractOwnership(_msgSender()) EIP712("Points", "2.0") {}
 
     /// @notice Called by a depositor to increase the balance of a holder.
     /// @dev Reverts if sender does not have Depositor role.

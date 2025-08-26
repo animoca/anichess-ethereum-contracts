@@ -7,14 +7,10 @@ import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC2
 import {IPointsV2} from "../points/interface/IPointsV2.sol";
 import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
 import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
-import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
-import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
-import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {PayoutWallet} from "@animoca/ethereum-contracts/contracts/payment/PayoutWallet.sol";
 import {PayoutWalletStorage} from "@animoca/ethereum-contracts/contracts/payment/libraries/PayoutWalletStorage.sol";
 
-contract ERC20ToPointsV2Swap is PayoutWallet, ForwarderRegistryContext {
+contract ERC20ToPointsV2Swap is PayoutWallet {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using PayoutWalletStorage for PayoutWalletStorage.Layout;
     using SafeERC20 for IERC20;
@@ -41,9 +37,8 @@ contract ERC20ToPointsV2Swap is PayoutWallet, ForwarderRegistryContext {
         address token_,
         address pointsV2_,
         uint256 initialRate,
-        address payable payoutWallet_,
-        IForwarderRegistry forwarderRegistry_
-    ) PayoutWallet(payoutWallet_) ContractOwnership(_msgSender()) ForwarderRegistryContext(forwarderRegistry_) {
+        address payable payoutWallet_
+    ) PayoutWallet(payoutWallet_) ContractOwnership(_msgSender()) {
         if (address(token_) == address(0)) {
             revert InvalidERC20Token();
         }
@@ -111,15 +106,5 @@ contract ERC20ToPointsV2Swap is PayoutWallet, ForwarderRegistryContext {
         IPointsV2(POINTSV2).deposit(holder, pointsAmountOut, DEPOSIT_REASON_CODE);
 
         emit Swapped(holder, actualTokenAmountIn, pointsAmountOut);
-    }
-
-    /// @notice retrieve original msg sender of the meta transaction
-    function _msgSender() internal view virtual override(Context, ForwarderRegistryContextBase) returns (address) {
-        return ForwarderRegistryContextBase._msgSender();
-    }
-
-    /// @notice retrieve original msg calldata of the meta transaction
-    function _msgData() internal view virtual override(Context, ForwarderRegistryContextBase) returns (bytes calldata) {
-        return ForwarderRegistryContextBase._msgData();
     }
 }
