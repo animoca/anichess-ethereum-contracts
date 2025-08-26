@@ -93,62 +93,27 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
         emit Deposited(depositor, depositReasonCode, holder, amount);
     }
 
-    /// @notice Called by other public functions to consume a given amount from the balance of the specified holder.
-    /// @dev Reverts if balance is insufficient.
-    /// @dev Reverts if the consume reason code is not allowed.
-    /// @dev Emits a {Consumed} event if the consumption is successful.
-    /// @param spender The spender address.
-    /// @param holder The balance holder address to deposit to.
-    /// @param amount The amount to consume.
-    function _consume(address spender, address holder, uint256 amount) internal {
-        uint256 balance = balances[holder];
-        if (balance < amount) {
-            revert InsufficientBalance(holder, amount);
-        }
-        if (spender != holder && allowances[holder][spender] < amount) {
-            revert NotEnoughAllowance();
-        }
-
-        balances[holder] = balance - amount;
-
-        emit Consumed(spender, holder, amount);
-    }
-
-    /// @notice Called with a signature by an appointed spender to consume a given amount from the balance of a given holder address.
-    /// @dev Reverts if deadline of the signature has passed.
-    /// @dev Reverts if sender is not appointed spender.
-    /// @dev Reverts if signature is not correct (holder, spender, amount, reaconCode, current nonce).
-    /// @dev Reverts if signer does not have enough balance
-    /// @dev Emits a {Consumed} event if the consumption is successful.
-    /// @param holder The holder to consume from.
-    /// @param amount The amount to consume.
-    /// @param deadline The deadline of the signature.
-    /// @param signature The signature from the holder
-    function consume(address holder, uint256 amount, uint256 deadline, bytes calldata signature) external {
-        if (block.timestamp > deadline) {
-            revert ExpiredSignature();
-        }
-
-        uint256 nonce = nonces[holder];
-        address spender = _msgSender();
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CONSUME_TYPEHASH, holder, spender, amount, deadline, nonce)));
-        bool isValid = SignatureChecker.isValidSignatureNow(holder, digest, signature);
-        if (!isValid) {
-            revert InvalidSignature();
-        }
-
-        _consume(spender, holder, amount);
-        nonces[holder] = nonce + 1;
-    }
-
     /// @notice Called by the a spender to consume a given amount from holder's balance.
     /// @dev Reverts if sender does not have enough balance
     /// @dev Reverts if the allwowance is not enough.
     /// @dev Emits a {Consumed} event if the consumption is successful.
+    /// @param holder The balance holder address to consume.
     /// @param amount The amount to consume.
     function consume(address holder, uint256 amount) external {
+        uint256 balance = balances[holder];
+        if (balance < amount) {
+            revert InsufficientBalance(holder, amount);
+        }
+
         address spender = _msgSender();
-        _consume(spender, holder, amount);
+        if (allowances[holder][spender] < amount) {
+            revert NotEnoughAllowance();
+        }
+
+        balances[holder] = balance - amount;
+        allowances[holder][spender] -= amount;
+
+        emit Consumed(spender, holder, amount);
     }
 
     function approve(address spender, uint256 amount) external {

@@ -78,124 +78,6 @@ describe('PointsV2', () => {
     });
   });
 
-  describe('consume(address holder, uint256 amount, uint256 deadline, bytes calldata signature)', () => {
-    it('Reverts if the deadline of the signature has passed', async () => {
-      const amount = 100;
-      const deadline = 0;
-      const nonce = 0;
-
-      const signature = await holder.signTypedData(this.domain, this.consumeType, {
-        holder: holder.address,
-        spender: spender.address,
-        amount: amount,
-        deadline: deadline,
-        nonce: nonce,
-      });
-
-      await expect(this.contract.connect(spender).consume(holder.address, amount, deadline, signature)).to.revertedWithCustomError(
-        this.contract,
-        'ExpiredSignature',
-      );
-    });
-
-    it('Reverts if signer could not be recovered from the signature', async () => {
-      const amount = 100;
-      const deadline = 999999999999999;
-      const signature =
-        '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
-      await expect(this.contract.connect(spender).consume(holder.address, amount, deadline, signature)).to.revertedWithCustomError(
-        this.contract,
-        'InvalidSignature',
-      );
-    });
-
-    it('Reverts if the signature does not match with holder', async () => {
-      const wrongHolder = other.address;
-      const amount = 100;
-      const deadline = 999999999999999;
-      const nonce = 0;
-
-      const signature = await holder.signTypedData(this.domain, this.consumeType, {
-        holder: wrongHolder,
-        spender: spender.address,
-        amount: amount,
-        deadline: deadline,
-        nonce: nonce,
-      });
-
-      await expect(this.contract.connect(spender).consume(holder.address, amount, deadline, signature)).to.revertedWithCustomError(
-        this.contract,
-        'InvalidSignature',
-      );
-    });
-
-    it('Reverts if the signer does not have enough balance', async () => {
-      const amount = 100;
-      const deadline = 999999999999999;
-      const nonce = 0;
-
-      const signature = await holder.signTypedData(this.domain, this.consumeType, {
-        holder: holder.address,
-        spender: spender.address,
-        amount: amount,
-        deadline: deadline,
-        nonce: nonce,
-      });
-
-      await expect(this.contract.connect(spender).consume(holder.address, amount, deadline, signature))
-        .to.revertedWithCustomError(this.contract, 'InsufficientBalance')
-        .withArgs(holder.address, amount);
-      const balance = await this.contract.balances(holder.address);
-      expect(balance).equal(0);
-    });
-
-    context('when successful', () => {
-      it('it should update to correct balance', async () => {
-        const amount = 100;
-        await this.contract.connect(depositor).deposit(holder.address, amount, this.depositReasonCode);
-
-        await this.contract.connect(holder).approve(spender.address, amount);
-
-        const deadline = 999999999999999;
-        const nonce = 0;
-
-        const signature = await holder.signTypedData(this.domain, this.consumeType, {
-          holder: holder.address,
-          spender: spender.address,
-          amount: amount,
-          deadline: deadline,
-          nonce: nonce,
-        });
-
-        await this.contract.connect(spender).consume(holder.address, amount, deadline, signature);
-        const balance = await this.contract.balances(holder.address);
-        expect(balance).equal(0);
-      });
-
-      it('it should emit an Comsumed event', async () => {
-        const amount = 100;
-        await this.contract.connect(depositor).deposit(holder.address, amount, this.depositReasonCode);
-
-        await this.contract.connect(holder).approve(spender.address, amount);
-
-        const deadline = 999999999999999;
-        const nonce = 0;
-
-        const signature = await holder.signTypedData(this.domain, this.consumeType, {
-          holder: holder.address,
-          spender: spender.address,
-          amount: amount,
-          deadline: deadline,
-          nonce: nonce,
-        });
-
-        await expect(this.contract.connect(spender).consume(holder.address, amount, deadline, signature))
-          .to.emit(this.contract, 'Consumed')
-          .withArgs(spender.address, holder.address, amount);
-      });
-    });
-  });
-
   describe('consume(address holder, uint256 amount)', () => {
     it('Reverts if sender does not have enough balance', async () => {
       const amount = 100;
@@ -216,14 +98,20 @@ describe('PointsV2', () => {
 
     context('when successful', () => {
       it('it should update to correct balance', async () => {
-        const amount = 100;
+        const amount = 100n;
         await this.contract.connect(depositor).deposit(holder.address, amount, this.depositReasonCode);
 
         await this.contract.connect(holder).approve(spender.address, amount);
 
+        const allowanceBefore = await this.contract.allowances(holder.address, spender.address);
+
         await this.contract.connect(spender).consume(holder.address, amount);
+
         const balance = await this.contract.balances(holder.address);
         expect(balance).equal(0);
+
+        const allowanceAfter = await this.contract.allowances(holder.address, spender.address);
+        expect(allowanceAfter).equal(allowanceBefore - amount);
       });
 
       it('it should emit an Comsumed event', async () => {

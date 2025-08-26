@@ -9,23 +9,23 @@ describe('ERC20ToPointsV2Swap', () => {
   });
 
   const fixture = async () => {
-    console.log('1');
     this.erc20Token = await deployContract('ERC20PermitMock');
-    console.log('2');
+
     await this.erc20Token.transfer(user.address, 1000n * 10n ** (await this.erc20Token.decimals()));
-    console.log('3');
+
     this.pointsV2 = await deployContract('PointsV2');
+
     this.depositReasonCode = ethers.encodeBytes32String('ERC20_TO_POINTSV2_SWAP');
-    console.log('4');
+
     await this.pointsV2.grantRole(await this.pointsV2.ADMIN_ROLE(), admin.address);
-    console.log('5');
+
     this.erc20PermitDomain = {
       name: 'TEST',
       version: '1',
       chainId: await getChainId(),
       verifyingContract: await this.erc20Token.getAddress(),
     };
-    console.log('6');
+
     this.erc20PermitType = {
       Permit: [
         {name: 'owner', type: 'address'},
@@ -35,7 +35,7 @@ describe('ERC20ToPointsV2Swap', () => {
         {name: 'deadline', type: 'uint256'},
       ],
     };
-    console.log('7');
+
     this.rate = 1000000n; // 100.0000
 
     this.contract = await deployContract(
@@ -45,9 +45,8 @@ describe('ERC20ToPointsV2Swap', () => {
       this.rate,
       payoutWallet.address,
     );
-    console.log('8');
+
     await this.pointsV2.grantRole(await this.pointsV2.DEPOSITOR_ROLE(), await this.contract.getAddress());
-    console.log('9');
   };
 
   beforeEach(async () => {
