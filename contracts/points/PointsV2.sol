@@ -15,10 +15,7 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
     using AccessControlStorage for AccessControlStorage.Layout;
 
-    bytes32 private constant CONSUME_TYPEHASH = keccak256("Consume(address holder,address spender,uint256 amount,uint256 deadline,uint256 nonce)");
     bytes32 private constant PERMIT_TYPEHASH = keccak256("Permit(address holder,address spender,uint256 amount,uint256 deadline,uint256 nonce)");
-
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
 
     mapping(address holder => uint256 balance) public balances;
@@ -33,21 +30,21 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
     event Deposited(address indexed sender, bytes32 indexed reasonCode, address indexed holder, uint256 amount);
 
     /// @notice Emitted when an amount is consumed from a balance.
+    /// @param spender The spender of the balance.
     /// @param holder The holder address of the balance consumed from.
-    /// @param operator The sender of the consumption.
     /// @param amount The amount consumed.
-    event Consumed(address indexed operator, address indexed holder, uint256 amount);
+    event Consumed(address indexed spender, address indexed holder, uint256 amount);
 
-    /// @notice Emitted when an amount is approved by a holder.
+    /// @notice Emitted when an amount is approved by holder.
     /// @param holder The holder.
     /// @param spender The spender.
     /// @param amount The approved amount.
     event Approved(address indexed holder, address indexed spender, uint256 amount);
 
-    /// @notice Emitted when an amount is permitted by a holder.
+    /// @notice Emitted when an amount is permitted by holder.
     /// @param holder The holder.
     /// @param spender The spender.
-    /// @param amount The approved amount.
+    /// @param amount The permitted amount.
     event Permitted(address indexed holder, address indexed spender, uint256 amount);
 
     /// @notice Thrown when depositing zero amount
@@ -70,16 +67,20 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
     /// @notice Thrown when the spender is invalid.
     error InvalidSpender();
 
-    /// @dev Reverts if the given address is invalid (equal to ZeroAddress).
-    constructor() ContractOwnership(_msgSender()) EIP712("Points", "2.0") {}
+    /**
+     * @notice Constructor of the PointsV2 contract.
+     */
+    constructor() ContractOwnership(msg.sender) EIP712("Points", "2.0") {}
 
-    /// @notice Called by a depositor to increase the balance of a holder.
-    /// @dev Reverts if sender does not have Depositor role.
-    /// @dev Reverts if deposit amount is zero.
-    /// @dev Emits a {Deposited} event if amount has been successfully added to the holder's balance
-    /// @param holder The holder of the balance to deposit to.
-    /// @param amount The amount to deposit.
-    /// @param depositReasonCode The reason code of the deposit.
+    /**
+     * @notice Called by a depositor to increase the balance of a holder.
+     * @dev Reverts if sender does not have Depositor role.
+     * @dev Reverts if deposit amount is zero.
+     * @dev Emits a {Deposited} event if amount has been successfully added to the holder's balance
+     * @param holder The holder of the balance to deposit to.
+     * @param amount The amount to deposit.
+     * @param depositReasonCode The reason code of the deposit.
+     */
     function deposit(address holder, uint256 amount, bytes32 depositReasonCode) external {
         address depositor = _msgSender();
         AccessControlStorage.layout().enforceHasRole(DEPOSITOR_ROLE, depositor);
@@ -93,12 +94,14 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
         emit Deposited(depositor, depositReasonCode, holder, amount);
     }
 
-    /// @notice Called by the a spender to consume a given amount from holder's balance.
-    /// @dev Reverts if sender does not have enough balance
-    /// @dev Reverts if the allwowance is not enough.
-    /// @dev Emits a {Consumed} event if the consumption is successful.
-    /// @param holder The balance holder address to consume.
-    /// @param amount The amount to consume.
+    /**
+     * @notice Called by a spender to consume a given amount from holder's balance.
+     * @dev Reverts if holder does not have enough balance
+     * @dev Reverts if sender does not have enough allwowance from holder.
+     * @dev Emits a {Consumed} event if the consumption is successful.
+     * @param holder The balance holder.
+     * @param amount The amount to consume.
+     */
     function consume(address holder, uint256 amount) external {
         uint256 balance = balances[holder];
         if (balance < amount) {
@@ -106,19 +109,27 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
         }
 
         address spender = _msgSender();
-        if (allowances[holder][spender] < amount) {
+        uint256 allowance = allowances[holder][spender];
+        if (allowance < amount) {
             revert NotEnoughAllowance();
         }
 
         balances[holder] = balance - amount;
-        allowances[holder][spender] -= amount;
+        allowances[holder][spender] = allowance - amount;
 
         emit Consumed(spender, holder, amount);
     }
 
+    /**
+     * @notice Called by the a holder to approve a spender to consume a given amount of holder's balance.
+     * @dev Reverts if spender is zero address.
+     * @dev Emits a {Approved} event if the approval is successful.
+     * @param spender The spender.
+     * @param amount The amount to be approved.
+     */
     function approve(address spender, uint256 amount) external {
         address holder = _msgSender();
-        if (spender == address(0) || spender == holder) {
+        if (spender == address(0)) {
             revert InvalidSpender();
         }
 
@@ -127,7 +138,22 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
         emit Approved(holder, spender, amount);
     }
 
+    /**
+     * @notice Called by anyone to increase allowance to spender to consume a given amount of holder's balance.
+     * @dev Reverts if spender is zero address.
+     * @dev Reverts if deadline has already passed.
+     * @dev Reverts if signature is invalid.
+     * @dev Emits a {Permitted} event if the permission granting is successful.
+     * @param holder The balance holder.
+     * @param spender The spender.
+     * @param amount The amount to be approved.
+     * @param deadline The deadline of the signature.
+     * @param signature The signature by holder.
+     */
     function permit(address holder, address spender, uint256 amount, uint256 deadline, bytes calldata signature) external {
+        if (spender == address(0)) {
+            revert InvalidSpender();
+        }
         if (block.timestamp > deadline) {
             revert ExpiredSignature();
         }

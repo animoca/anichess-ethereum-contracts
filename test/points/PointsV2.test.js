@@ -5,14 +5,13 @@ const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtu
 
 describe('PointsV2', () => {
   before(async function () {
-    [deployer, owner, admin, holder, spender, depositor, other] = await ethers.getSigners();
+    [deployer, holder, spender, depositor, other] = await ethers.getSigners();
   });
 
   const fixture = async () => {
     this.contract = await deployContract('PointsV2');
     this.depositReasonCode = '0x0000000000000000000000000000000000000000000000000000000000000001';
 
-    await this.contract.grantRole(await this.contract.ADMIN_ROLE(), admin.address);
     await this.contract.grantRole(await this.contract.DEPOSITOR_ROLE(), depositor.address);
 
     this.domain = {
@@ -132,10 +131,6 @@ describe('PointsV2', () => {
       await expect(this.contract.connect(holder).approve(ethers.ZeroAddress, 100)).to.be.revertedWithCustomError(this.contract, 'InvalidSpender');
     });
 
-    it('reverts if spender is equal to sender', async () => {
-      await expect(this.contract.connect(holder).approve(holder.address, 100)).to.be.revertedWithCustomError(this.contract, 'InvalidSpender');
-    });
-
     context('when successful', () => {
       it('should update to correct allowance', async () => {
         const amount = 100;
@@ -154,6 +149,25 @@ describe('PointsV2', () => {
   });
 
   describe('permit(address holder, address spender, uint256 amount, uint256 deadline, bytes calldata signature)', () => {
+    it('Reverts if spender is zero address', async () => {
+      const amount = 100;
+      const deadline = 0;
+      const nonce = 0;
+
+      const signature = await holder.signTypedData(this.domain, this.permitType, {
+        holder: holder.address,
+        spender: ethers.ZeroAddress,
+        amount: amount,
+        deadline: deadline,
+        nonce: nonce,
+      });
+
+      await expect(this.contract.connect(other).permit(holder.address, ethers.ZeroAddress, amount, deadline, signature)).to.revertedWithCustomError(
+        this.contract,
+        'InvalidSpender',
+      );
+    });
+
     it('Reverts if the deadline of the signature has passed', async () => {
       const amount = 100;
       const deadline = 0;

@@ -28,17 +28,25 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
     uint256 public constant RATE_PRECISION = 1e4;
 
     address public immutable ERC20_TOKEN;
-    uint256 public immutable ERC20_TOKEN_PRECISION;
     address public immutable POINTSV2;
 
     uint256 public rate; // Number of points per token, 4 d.p.
 
+    /**
+     * @notice Constructor of the ERC20ToPointsV2Swap contract.
+     * @dev Reverts if token_ is zero.
+     * @dev Reverts if pointsV2_ is zero.
+     * @param token_ The ERC20 token contract address.
+     * @param pointsV2_ The PointsV2 contract address.
+     * @param initialRate The initial rate.
+     * @param payoutWallet_ The payout wallet address.
+     */
     constructor(
         address token_,
         address pointsV2_,
         uint256 initialRate,
         address payable payoutWallet_
-    ) PayoutWallet(payoutWallet_) ContractOwnership(_msgSender()) {
+    ) PayoutWallet(payoutWallet_) ContractOwnership(msg.sender) {
         if (address(token_) == address(0)) {
             revert InvalidERC20Token();
         }
@@ -47,11 +55,16 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
         }
 
         ERC20_TOKEN = token_;
-        ERC20_TOKEN_PRECISION = 10 ** ERC20(token_).decimals();
         POINTSV2 = pointsV2_;
         rate = initialRate;
     }
 
+    /**
+     * @notice Called by owner to update exchange rate.
+     * @dev Reverts if sender is not the owner.
+     * @dev Emits a {RateUpdated} event if the approval is successful.
+     * @param newRate The new exchange rate.
+     */
     function setRate(uint256 newRate) external {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
 
@@ -60,26 +73,43 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
         emit RateUpdated(newRate);
     }
 
-    function swap(uint256 tokenAmountIn) external {
+    /**
+     * @notice Called by anyone to swap holder's ERC20 token to points.
+     * @notice Pre-approval of transferring ERC20 token by this contract is required.
+     * @dev Reverts if tokenAmountIn is zero.
+     * @dev Emits a {Swapped} event if the swap is successful.
+     * @param holder The token holder.
+     * @param tokenAmountIn The desired token amount to be swapped to points.
+     */
+    function swap(address holder, uint256 tokenAmountIn) public {
         if (tokenAmountIn == 0) {
             revert InvalidAmount();
         }
 
-        uint256 pointsAmountOut = (tokenAmountIn * rate) / ERC20_TOKEN_PRECISION / RATE_PRECISION;
-        uint256 actualTokenAmountIn = (pointsAmountOut * ERC20_TOKEN_PRECISION * RATE_PRECISION) / rate;
+        uint256 erc20TokenPrecision = 10 ** ERC20(ERC20_TOKEN).decimals();
+        uint256 pointsAmountOut = (tokenAmountIn * rate) / erc20TokenPrecision / RATE_PRECISION;
+        uint256 actualTokenAmountIn = (pointsAmountOut * erc20TokenPrecision * RATE_PRECISION) / rate;
 
-        address sender = _msgSender();
-        IERC20(ERC20_TOKEN).safeTransferFrom(sender, PayoutWalletStorage.layout().payoutWallet(), actualTokenAmountIn);
-        IPointsV2(POINTSV2).deposit(sender, pointsAmountOut, DEPOSIT_REASON_CODE);
+        IERC20(ERC20_TOKEN).safeTransferFrom(holder, PayoutWalletStorage.layout().payoutWallet(), actualTokenAmountIn);
+        IPointsV2(POINTSV2).deposit(holder, pointsAmountOut, DEPOSIT_REASON_CODE);
 
-        emit Swapped(sender, actualTokenAmountIn, pointsAmountOut);
+        emit Swapped(holder, actualTokenAmountIn, pointsAmountOut);
     }
 
+    /**
+     * @notice Called by anyone to swap holder's ERC20 token to points with
+     * @notice the give signature as the permit to transfer the token.
+     * @notice Calls the other swap function after executing token.permit().
+     * @dev Reverts if signature length is not 65.
+     * @dev Reverts if v (recovery id) value of ECDSA signature is not 27 or 28.
+     * @dev Reverts if tokenAmountIn is zero.
+     * @dev Emits a {Swapped} event if the swap is successful.
+     * @param holder The token holder.
+     * @param tokenAmountIn The desired token amount to be swapped to points.
+     * @param deadline The deadline of the signature.
+     * @param signature The signature by holder.
+     */
     function swap(address holder, uint256 tokenAmountIn, uint256 deadline, bytes memory signature) external {
-        if (tokenAmountIn == 0) {
-            revert InvalidAmount();
-        }
-
         if (signature.length != 65) {
             revert InvalidSignatureLength();
         }
@@ -98,13 +128,6 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
         }
 
         IERC20Permit(ERC20_TOKEN).permit(holder, address(this), tokenAmountIn, deadline, v, r, s);
-
-        uint256 pointsAmountOut = (tokenAmountIn * rate) / ERC20_TOKEN_PRECISION / RATE_PRECISION;
-        uint256 actualTokenAmountIn = (pointsAmountOut * ERC20_TOKEN_PRECISION * RATE_PRECISION) / rate;
-
-        IERC20(ERC20_TOKEN).safeTransferFrom(holder, PayoutWalletStorage.layout().payoutWallet(), actualTokenAmountIn);
-        IPointsV2(POINTSV2).deposit(holder, pointsAmountOut, DEPOSIT_REASON_CODE);
-
-        emit Swapped(holder, actualTokenAmountIn, pointsAmountOut);
+        swap(holder, tokenAmountIn);
     }
 }

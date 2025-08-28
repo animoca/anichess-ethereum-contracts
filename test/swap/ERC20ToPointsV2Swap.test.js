@@ -5,7 +5,7 @@ const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtu
 
 describe('ERC20ToPointsV2Swap', () => {
   before(async function () {
-    [deployer, owner, admin, depositor, user, payoutWallet, other] = await ethers.getSigners();
+    [deployer, user, payoutWallet, other] = await ethers.getSigners();
   });
 
   const fixture = async () => {
@@ -16,8 +16,6 @@ describe('ERC20ToPointsV2Swap', () => {
     this.pointsV2 = await deployContract('PointsV2');
 
     this.depositReasonCode = ethers.encodeBytes32String('ERC20_TO_POINTSV2_SWAP');
-
-    await this.pointsV2.grantRole(await this.pointsV2.ADMIN_ROLE(), admin.address);
 
     this.erc20PermitDomain = {
       name: 'TEST',
@@ -106,9 +104,9 @@ describe('ERC20ToPointsV2Swap', () => {
     });
   });
 
-  describe('swap(uint256 tokenAmountIn)', () => {
+  describe('swap(address holder, uint256 tokenAmountIn)', () => {
     it('Reverts if the tokenAmountIn is zero', async () => {
-      await expect(this.contract.connect(deployer).swap(0)).to.revertedWithCustomError(this.contract, 'InvalidAmount');
+      await expect(this.contract.connect(deployer).swap(user.address, 0)).to.revertedWithCustomError(this.contract, 'InvalidAmount');
     });
 
     context('when successful', () => {
@@ -121,14 +119,15 @@ describe('ERC20ToPointsV2Swap', () => {
         const pointsBalanceBefore = await this.pointsV2.balances(user.address);
         const payoutWalletBalanceBefore = await this.erc20Token.balanceOf(payoutWallet.address);
 
-        await this.contract.connect(user).swap(tokenAmountIn);
+        await this.contract.connect(other).swap(user.address, tokenAmountIn);
 
         const erc20TokenBalanceAfter = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceAfter = await this.pointsV2.balances(user.address);
         const payoutWalletBalanceAfter = await this.erc20Token.balanceOf(payoutWallet.address);
 
         expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - tokenAmountIn);
-        const pointsAmount = (tokenAmountIn * this.rate) / (await this.contract.ERC20_TOKEN_PRECISION()) / (await this.contract.RATE_PRECISION());
+        const erc20TokenPrecision = 10n ** (await this.erc20Token.decimals());
+        const pointsAmount = (tokenAmountIn * this.rate) / erc20TokenPrecision / (await this.contract.RATE_PRECISION());
         expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmount);
         expect(payoutWalletBalanceAfter).equal(payoutWalletBalanceBefore + tokenAmountIn);
       });
@@ -137,11 +136,10 @@ describe('ERC20ToPointsV2Swap', () => {
         const newRate = 1234567n; // 123.4567
         await this.contract.connect(deployer).setRate(newRate);
 
-        const tokenAmountIn = 123456789n * 10n ** ((await this.erc20Token.decimals()) - 6n); // 123.456789
-        const expectedPointsAmount =
-          (tokenAmountIn * newRate) / (await this.contract.ERC20_TOKEN_PRECISION()) / (await this.contract.RATE_PRECISION());
-        const expectedTokenAmountIn =
-          (expectedPointsAmount * (await this.contract.ERC20_TOKEN_PRECISION()) * (await this.contract.RATE_PRECISION())) / newRate;
+        const erc20TokenPrecision = 10n ** (await this.erc20Token.decimals());
+        const tokenAmountIn = (123456789n * erc20TokenPrecision) / 1000000n; // 123.456789
+        const expectedPointsAmount = (tokenAmountIn * newRate) / erc20TokenPrecision / (await this.contract.RATE_PRECISION());
+        const expectedTokenAmountIn = (expectedPointsAmount * erc20TokenPrecision * (await this.contract.RATE_PRECISION())) / newRate;
 
         await this.erc20Token.connect(user).approve(await this.contract.getAddress(), tokenAmountIn);
 
@@ -149,7 +147,7 @@ describe('ERC20ToPointsV2Swap', () => {
         const pointsBalanceBefore = await this.pointsV2.balances(user.address);
         const payoutWalletBalanceBefore = await this.erc20Token.balanceOf(payoutWallet.address);
 
-        await this.contract.connect(user).swap(tokenAmountIn);
+        await this.contract.connect(other).swap(user.address, tokenAmountIn);
 
         const erc20TokenBalanceAfter = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceAfter = await this.pointsV2.balances(user.address);
@@ -165,9 +163,10 @@ describe('ERC20ToPointsV2Swap', () => {
 
         await this.erc20Token.connect(user).approve(await this.contract.getAddress(), tokenAmountIn);
 
-        const pointsAmount = (tokenAmountIn * this.rate) / (await this.contract.ERC20_TOKEN_PRECISION()) / (await this.contract.RATE_PRECISION());
+        const erc20TokenPrecision = 10n ** (await this.erc20Token.decimals());
+        const pointsAmount = (tokenAmountIn * this.rate) / erc20TokenPrecision / (await this.contract.RATE_PRECISION());
 
-        await expect(this.contract.connect(user).swap(tokenAmountIn))
+        await expect(this.contract.connect(other).swap(user.address, tokenAmountIn))
           .to.emit(this.contract, 'Swapped')
           .withArgs(user.address, tokenAmountIn, pointsAmount);
       });
@@ -241,7 +240,8 @@ describe('ERC20ToPointsV2Swap', () => {
         const allowanceAfter = await this.erc20Token.allowance(user.address, await this.contract.getAddress());
 
         expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - tokenAmountIn);
-        const pointsAmount = (tokenAmountIn * this.rate) / (await this.contract.ERC20_TOKEN_PRECISION()) / (await this.contract.RATE_PRECISION());
+        const erc20TokenPrecision = 10n ** (await this.erc20Token.decimals());
+        const pointsAmount = (tokenAmountIn * this.rate) / erc20TokenPrecision / (await this.contract.RATE_PRECISION());
         expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmount);
         expect(allowanceAfter).equal(allowanceBefore);
       });
@@ -250,11 +250,10 @@ describe('ERC20ToPointsV2Swap', () => {
         const newRate = 1234567n; // 123.4567
         await this.contract.connect(deployer).setRate(newRate);
 
-        const tokenAmountIn = 123456789n * 10n ** ((await this.erc20Token.decimals()) - 6n); // 123.456789
-        const expectedPointsAmount =
-          (tokenAmountIn * newRate) / (await this.contract.ERC20_TOKEN_PRECISION()) / (await this.contract.RATE_PRECISION());
-        const expectedTokenAmountIn =
-          (expectedPointsAmount * (await this.contract.ERC20_TOKEN_PRECISION()) * (await this.contract.RATE_PRECISION())) / newRate;
+        const erc20TokenPrecision = 10n ** (await this.erc20Token.decimals());
+        const tokenAmountIn = (123456789n * erc20TokenPrecision) / 1000000n; // 123.456789
+        const expectedPointsAmount = (tokenAmountIn * newRate) / erc20TokenPrecision / (await this.contract.RATE_PRECISION());
+        const expectedTokenAmountIn = (expectedPointsAmount * erc20TokenPrecision * (await this.contract.RATE_PRECISION())) / newRate;
 
         const erc20TokenBalanceBefore = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceBefore = await this.pointsV2.balances(user.address);
@@ -292,7 +291,8 @@ describe('ERC20ToPointsV2Swap', () => {
           deadline: deadline,
         });
 
-        const pointsAmount = (tokenAmountIn * this.rate) / (await this.contract.ERC20_TOKEN_PRECISION()) / (await this.contract.RATE_PRECISION());
+        const erc20TokenPrecision = 10n ** (await this.erc20Token.decimals());
+        const pointsAmount = (tokenAmountIn * this.rate) / erc20TokenPrecision / (await this.contract.RATE_PRECISION());
         await expect(this.contract.connect(other).swap(user.address, tokenAmountIn, deadline, signature))
           .to.emit(this.contract, 'Swapped')
           .withArgs(user.address, tokenAmountIn, pointsAmount);
