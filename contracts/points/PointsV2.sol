@@ -29,11 +29,11 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
     /// @param amount The amount deposited.
     event Deposited(address indexed sender, bytes32 indexed reasonCode, address indexed holder, uint256 amount);
 
-    /// @notice Emitted when an amount is consumed from a balance.
+    /// @notice Emitted when an amount is spent from a balance.
     /// @param spender The spender of the balance.
-    /// @param holder The holder address of the balance consumed from.
-    /// @param amount The amount consumed.
-    event Consumed(address indexed spender, address indexed holder, uint256 amount);
+    /// @param holder The holder address of the balance spent from.
+    /// @param amount The amount spent.
+    event Spent(address indexed spender, address indexed holder, uint256 amount);
 
     /// @notice Emitted when an amount is approved by holder.
     /// @param holder The holder.
@@ -95,33 +95,37 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
     }
 
     /**
-     * @notice Called by a spender to consume a given amount from holder's balance.
+     * @notice Called by a spender to spend a given amount from holder's balance.
+     * @notice Holder can spend his own balance without approval.
      * @dev Reverts if holder does not have enough balance
      * @dev Reverts if sender does not have enough allwowance from holder.
-     * @dev Emits a {Consumed} event if the consumption is successful.
+     * @dev Emits a {Spendt} event if the spending is successful.
      * @param holder The balance holder.
-     * @param amount The amount to consume.
+     * @param amount The amount to spend.
      */
-    function consume(address holder, uint256 amount) external {
+    function spend(address holder, uint256 amount) external {
         uint256 balance = balances[holder];
         if (balance < amount) {
             revert InsufficientBalance(holder, amount);
         }
 
         address spender = _msgSender();
-        uint256 allowance = allowances[holder][spender];
-        if (allowance < amount) {
-            revert NotEnoughAllowance();
+        if (spender != holder) {
+            uint256 allowance = allowances[holder][spender];
+            if (allowance < amount) {
+                revert NotEnoughAllowance();
+            }
+
+            allowances[holder][spender] = allowance - amount;
         }
 
         balances[holder] = balance - amount;
-        allowances[holder][spender] = allowance - amount;
 
-        emit Consumed(spender, holder, amount);
+        emit Spent(spender, holder, amount);
     }
 
     /**
-     * @notice Called by the a holder to approve a spender to consume a given amount of holder's balance.
+     * @notice Called by the a holder to approve a spender to spend a given amount of holder's balance.
      * @dev Reverts if spender is zero address.
      * @dev Emits a {Approved} event if the approval is successful.
      * @param spender The spender.
@@ -139,7 +143,7 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
     }
 
     /**
-     * @notice Called by anyone to increase allowance to spender to consume a given amount of holder's balance.
+     * @notice Called by anyone to increase allowance to spender to spend a given amount of holder's balance.
      * @dev Reverts if spender is zero address.
      * @dev Reverts if deadline has already passed.
      * @dev Reverts if signature is invalid.

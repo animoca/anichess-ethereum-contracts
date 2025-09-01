@@ -21,16 +21,6 @@ describe('PointsV2', () => {
       verifyingContract: await this.contract.getAddress(),
     };
 
-    this.consumeType = {
-      Consume: [
-        {name: 'holder', type: 'address'},
-        {name: 'spender', type: 'address'},
-        {name: 'amount', type: 'uint256'},
-        {name: 'deadline', type: 'uint256'},
-        {name: 'nonce', type: 'uint256'},
-      ],
-    };
-
     this.permitType = {
       Permit: [
         {name: 'holder', type: 'address'},
@@ -77,11 +67,11 @@ describe('PointsV2', () => {
     });
   });
 
-  describe('consume(address holder, uint256 amount)', () => {
+  describe('spend(address holder, uint256 amount)', () => {
     it('Reverts if sender does not have enough balance', async () => {
       const amount = 100;
 
-      await expect(this.contract.connect(spender).consume(holder.address, amount))
+      await expect(this.contract.connect(spender).spend(holder.address, amount))
         .to.revertedWithCustomError(this.contract, 'InsufficientBalance')
         .withArgs(holder.address, amount);
     });
@@ -92,11 +82,11 @@ describe('PointsV2', () => {
 
       await this.contract.connect(holder).approve(spender.address, amount - 1);
 
-      await expect(this.contract.connect(spender).consume(holder.address, amount)).to.revertedWithCustomError(this.contract, 'NotEnoughAllowance');
+      await expect(this.contract.connect(spender).spend(holder.address, amount)).to.revertedWithCustomError(this.contract, 'NotEnoughAllowance');
     });
 
     context('when successful', () => {
-      it('it should update to correct balance', async () => {
+      it('should update to correct balance and allowance', async () => {
         const amount = 100n;
         await this.contract.connect(depositor).deposit(holder.address, amount, this.depositReasonCode);
 
@@ -104,7 +94,7 @@ describe('PointsV2', () => {
 
         const allowanceBefore = await this.contract.allowances(holder.address, spender.address);
 
-        await this.contract.connect(spender).consume(holder.address, amount);
+        await this.contract.connect(spender).spend(holder.address, amount);
 
         const balance = await this.contract.balances(holder.address);
         expect(balance).equal(0);
@@ -113,14 +103,24 @@ describe('PointsV2', () => {
         expect(allowanceAfter).equal(allowanceBefore - amount);
       });
 
-      it('it should emit an Comsumed event', async () => {
+      it('should update to correct balance without allowance if sender is holder', async () => {
+        const amount = 100n;
+        await this.contract.connect(depositor).deposit(holder.address, amount, this.depositReasonCode);
+
+        await this.contract.connect(holder).spend(holder.address, amount);
+
+        const balance = await this.contract.balances(holder.address);
+        expect(balance).equal(0);
+      });
+
+      it('should emit an Spent event', async () => {
         const amount = 100;
         await this.contract.connect(depositor).deposit(holder.address, amount, this.depositReasonCode);
 
         await this.contract.connect(holder).approve(spender.address, amount);
 
-        await expect(this.contract.connect(spender).consume(holder.address, amount))
-          .to.emit(this.contract, 'Consumed')
+        await expect(this.contract.connect(spender).spend(holder.address, amount))
+          .to.emit(this.contract, 'Spent')
           .withArgs(spender.address, holder.address, amount);
       });
     });
