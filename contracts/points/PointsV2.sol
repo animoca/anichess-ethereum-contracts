@@ -99,11 +99,11 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
      * @notice Holder can spend his own balance without approval.
      * @dev Reverts if holder does not have enough balance
      * @dev Reverts if sender does not have enough allwowance from holder.
-     * @dev Emits a {Spendt} event if the spending is successful.
+     * @dev Emits a {Spent} event if the spending is successful.
      * @param holder The balance holder.
      * @param amount The amount to spend.
      */
-    function spend(address holder, uint256 amount) external {
+    function spend(address holder, uint256 amount) public {
         uint256 balance = balances[holder];
         if (balance < amount) {
             revert InsufficientBalance(holder, amount);
@@ -123,6 +123,17 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
 
         emit Spent(spender, holder, amount);
     }
+
+    /**
+     * @notice Called by a spender to spend a given amount from holder's balance with the give permit.
+     * @notice Calls the other spend() after executing permit().
+     * @param holder The balance holder.
+     * @param amount The amount to spend.
+     */
+    // function spend(address holder, address spender, uint256 amount, uint256 deadline, bytes calldata signature) external {
+    //     permit(holder, spender, amount, deadline, signature);
+    //     spend(holder, amount);
+    // }
 
     /**
      * @notice Called by the a holder to approve a spender to spend a given amount of holder's balance.
@@ -154,7 +165,7 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
      * @param deadline The deadline of the signature.
      * @param signature The signature by holder.
      */
-    function permit(address holder, address spender, uint256 amount, uint256 deadline, bytes calldata signature) external {
+    function permit(address holder, address spender, uint256 amount, uint256 deadline, bytes calldata signature) public {
         if (spender == address(0)) {
             revert InvalidSpender();
         }

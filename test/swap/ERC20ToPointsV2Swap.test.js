@@ -104,95 +104,95 @@ describe('ERC20ToPointsV2Swap', () => {
     });
   });
 
-  describe('swap(uint256 pointsAmountOut)', () => {
-    it('Reverts if the pointsAmountOut is zero', async () => {
+  describe('swap(uint256 pointsAmount)', () => {
+    it('Reverts if the pointsAmountO is zero', async () => {
       await expect(this.contract.connect(user).swap(0)).to.revertedWithCustomError(this.contract, 'InvalidAmount');
     });
 
     context('when successful', () => {
       it('it should swap correct balances without rounding', async () => {
-        const pointsAmountOut = 100n;
-        const expectedErc20TokenAmountIn = 1n * 10n ** (await this.erc20Token.decimals());
+        const pointsAmount = 100n;
+        const expectedErc20TokenAmount = 1n * 10n ** (await this.erc20Token.decimals());
 
-        await this.erc20Token.connect(user).approve(await this.contract.getAddress(), expectedErc20TokenAmountIn);
+        await this.erc20Token.connect(user).approve(await this.contract.getAddress(), expectedErc20TokenAmount);
 
         const erc20TokenBalanceBefore = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceBefore = await this.pointsV2.balances(user.address);
         const payoutWalletBalanceBefore = await this.erc20Token.balanceOf(payoutWallet.address);
 
-        await this.contract.connect(user).swap(pointsAmountOut);
+        await this.contract.connect(user).swap(pointsAmount);
 
         const erc20TokenBalanceAfter = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceAfter = await this.pointsV2.balances(user.address);
         const payoutWalletBalanceAfter = await this.erc20Token.balanceOf(payoutWallet.address);
 
-        expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - expectedErc20TokenAmountIn);
-        expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmountOut);
-        expect(payoutWalletBalanceAfter).equal(payoutWalletBalanceBefore + expectedErc20TokenAmountIn);
+        expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - expectedErc20TokenAmount);
+        expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmount);
+        expect(payoutWalletBalanceAfter).equal(payoutWalletBalanceBefore + expectedErc20TokenAmount);
       });
 
       it('it should swap correct balances with rounding', async () => {
         const newRate = 1234567n; // 123.4567
         await this.contract.connect(deployer).setRate(newRate);
 
-        const pointsAmountOut = 100000n; // 100.0000
+        const pointsAmount = 100000n; // 100.0000
 
         const erc20TokenPrecision = 10n ** (await this.erc20Token.decimals());
-        const expectedErc20TokenAmountIn = (pointsAmountOut * erc20TokenPrecision * (await this.contract.RATE_PRECISION())) / newRate;
+        const expectedErc20TokenAmount = (pointsAmount * erc20TokenPrecision * (await this.contract.RATE_PRECISION())) / newRate;
 
-        await this.erc20Token.connect(user).approve(await this.contract.getAddress(), expectedErc20TokenAmountIn);
+        await this.erc20Token.connect(user).approve(await this.contract.getAddress(), expectedErc20TokenAmount);
 
         const erc20TokenBalanceBefore = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceBefore = await this.pointsV2.balances(user.address);
         const payoutWalletBalanceBefore = await this.erc20Token.balanceOf(payoutWallet.address);
 
-        await this.contract.connect(user).swap(pointsAmountOut);
+        await this.contract.connect(user).swap(pointsAmount);
 
         const erc20TokenBalanceAfter = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceAfter = await this.pointsV2.balances(user.address);
         const payoutWalletBalanceAfter = await this.erc20Token.balanceOf(payoutWallet.address);
 
-        expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - expectedErc20TokenAmountIn);
-        expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmountOut);
-        expect(payoutWalletBalanceAfter).equal(payoutWalletBalanceBefore + expectedErc20TokenAmountIn);
+        expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - expectedErc20TokenAmount);
+        expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmount);
+        expect(payoutWalletBalanceAfter).equal(payoutWalletBalanceBefore + expectedErc20TokenAmount);
       });
 
       it('it should emit a Swapped event', async () => {
-        const pointsAmountOut = 100n;
-        const expectedErc20TokenAmountIn = 1n * 10n ** (await this.erc20Token.decimals());
+        const pointsAmount = 100n;
+        const expectedErc20TokenAmount = 1n * 10n ** (await this.erc20Token.decimals());
 
-        await this.erc20Token.connect(user).approve(await this.contract.getAddress(), expectedErc20TokenAmountIn);
+        await this.erc20Token.connect(user).approve(await this.contract.getAddress(), expectedErc20TokenAmount);
 
-        await expect(this.contract.connect(user).swap(pointsAmountOut))
+        await expect(this.contract.connect(user).swap(pointsAmount))
           .to.emit(this.contract, 'Swapped')
-          .withArgs(user.address, expectedErc20TokenAmountIn, pointsAmountOut);
+          .withArgs(user.address, expectedErc20TokenAmount, pointsAmount);
       });
     });
   });
 
-  describe('swap(address holder, uint256 pointsAmountOut, uint256 permittedTokenAmountIn, uint256 deadline, bytes memory signature)', () => {
-    it('Reverts if the pointsAmountOut is zero', async () => {
-      const pointsAmountOut = 0n;
-      const expectedErc20TokenAmountIn = 0n;
+  describe('swap(address holder, uint256 pointsAmount, uint256 permittedTokenAmount, uint256 deadline, bytes memory signature)', () => {
+    it('Reverts if the pointsAmount is zero', async () => {
+      const pointsAmount = 0n;
+      const expectedErc20TokenAmount = 0n;
 
       const deadline = 999999999999999;
       const signature = await user.signTypedData(this.erc20PermitDomain, this.erc20PermitType, {
         owner: user.address,
         spender: await this.contract.getAddress(),
-        value: expectedErc20TokenAmountIn,
+        value: expectedErc20TokenAmount,
         nonce: await this.erc20Token.nonces(user.address),
         deadline: deadline,
       });
 
       const sig = ethers.Signature.from(signature);
       await expect(
-        this.contract.connect(other).swap(user.address, pointsAmountOut, expectedErc20TokenAmountIn, deadline, sig.v, sig.r, sig.s),
+        this.contract.connect(user).swap(pointsAmount, expectedErc20TokenAmount, deadline, sig.v, sig.r, sig.s),
       ).to.revertedWithCustomError(this.contract, 'InvalidAmount');
     });
 
     it('Reverts if the signature is not valid', async () => {
-      const pointsAmountOut = 100n;
-      const expectedErc20TokenAmountIn = 1n * 10n ** (await this.erc20Token.decimals());
+      const pointsAmount = 100n;
+      const expectedErc20TokenAmount = 1n * 10n ** (await this.erc20Token.decimals());
 
       const deadline = 999999999999999;
       const signature = '0x'.padEnd(132, '0');
@@ -200,14 +200,14 @@ describe('ERC20ToPointsV2Swap', () => {
       const sig = ethers.Signature.from(signature);
 
       await expect(
-        this.contract.connect(other).swap(user.address, pointsAmountOut, expectedErc20TokenAmountIn, deadline, sig.v, sig.r, sig.s),
+        this.contract.connect(user).swap(pointsAmount, expectedErc20TokenAmount, deadline, sig.v, sig.r, sig.s),
       ).to.revertedWithCustomError(this.erc20Token, 'ECDSAInvalidSignature');
     });
 
     context('when successful', () => {
       it('it should swap correct balances without rounding', async () => {
-        const pointsAmountOut = 100n;
-        const expectedErc20TokenAmountIn = 1n * 10n ** (await this.erc20Token.decimals());
+        const pointsAmount = 100n;
+        const expectedErc20TokenAmount = 1n * 10n ** (await this.erc20Token.decimals());
 
         const erc20TokenBalanceBefore = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceBefore = await this.pointsV2.balances(user.address);
@@ -217,21 +217,21 @@ describe('ERC20ToPointsV2Swap', () => {
         const signature = await user.signTypedData(this.erc20PermitDomain, this.erc20PermitType, {
           owner: user.address,
           spender: await this.contract.getAddress(),
-          value: expectedErc20TokenAmountIn,
+          value: expectedErc20TokenAmount,
           nonce: await this.erc20Token.nonces(user.address),
           deadline: deadline,
         });
 
         const sig = ethers.Signature.from(signature);
 
-        await this.contract.connect(other).swap(user.address, pointsAmountOut, expectedErc20TokenAmountIn, deadline, sig.v, sig.r, sig.s);
+        await this.contract.connect(user).swap(pointsAmount, expectedErc20TokenAmount, deadline, sig.v, sig.r, sig.s);
 
         const erc20TokenBalanceAfter = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceAfter = await this.pointsV2.balances(user.address);
         const allowanceAfter = await this.erc20Token.allowance(user.address, await this.contract.getAddress());
 
-        expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - expectedErc20TokenAmountIn);
-        expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmountOut);
+        expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - expectedErc20TokenAmount);
+        expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmount);
         expect(allowanceAfter).equal(allowanceBefore);
       });
 
@@ -239,10 +239,10 @@ describe('ERC20ToPointsV2Swap', () => {
         const newRate = 1234567n; // 123.4567
         await this.contract.connect(deployer).setRate(newRate);
 
-        const pointsAmountOut = 123n;
+        const pointsAmount = 123n;
 
         const erc20TokenPrecision = 10n ** (await this.erc20Token.decimals());
-        const expectedTokenAmountIn = (pointsAmountOut * erc20TokenPrecision * (await this.contract.RATE_PRECISION())) / newRate;
+        const expectedTokenAmount = (pointsAmount * erc20TokenPrecision * (await this.contract.RATE_PRECISION())) / newRate;
 
         const erc20TokenBalanceBefore = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceBefore = await this.pointsV2.balances(user.address);
@@ -252,41 +252,41 @@ describe('ERC20ToPointsV2Swap', () => {
         const signature = await user.signTypedData(this.erc20PermitDomain, this.erc20PermitType, {
           owner: user.address,
           spender: await this.contract.getAddress(),
-          value: expectedTokenAmountIn,
+          value: expectedTokenAmount,
           nonce: await this.erc20Token.nonces(user.address),
           deadline: deadline,
         });
 
         const sig = ethers.Signature.from(signature);
 
-        await this.contract.connect(other).swap(user.address, pointsAmountOut, expectedTokenAmountIn, deadline, sig.v, sig.r, sig.s);
+        await this.contract.connect(user).swap(pointsAmount, expectedTokenAmount, deadline, sig.v, sig.r, sig.s);
 
         const erc20TokenBalanceAfter = await this.erc20Token.balanceOf(user.address);
         const pointsBalanceAfter = await this.pointsV2.balances(user.address);
         const allowanceAfter = await this.erc20Token.allowance(user.address, await this.contract.getAddress());
 
-        expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - expectedTokenAmountIn);
-        expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmountOut);
+        expect(erc20TokenBalanceAfter).equal(erc20TokenBalanceBefore - expectedTokenAmount);
+        expect(pointsBalanceAfter).equal(pointsBalanceBefore + pointsAmount);
         expect(allowanceAfter).equal(allowanceBefore);
       });
 
       it('emits a Swapped event', async () => {
-        const pointsAmountOut = 100n;
-        const expectedErc20TokenAmountIn = 1n * 10n ** (await this.erc20Token.decimals());
+        const pointsAmount = 100n;
+        const expectedErc20TokenAmount = 1n * 10n ** (await this.erc20Token.decimals());
 
         const deadline = 999999999999999;
         const signature = await user.signTypedData(this.erc20PermitDomain, this.erc20PermitType, {
           owner: user.address,
           spender: await this.contract.getAddress(),
-          value: expectedErc20TokenAmountIn,
+          value: expectedErc20TokenAmount,
           nonce: await this.erc20Token.nonces(user.address),
           deadline: deadline,
         });
 
         const sig = ethers.Signature.from(signature);
-        await expect(this.contract.connect(other).swap(user.address, pointsAmountOut, expectedErc20TokenAmountIn, deadline, sig.v, sig.r, sig.s))
+        await expect(this.contract.connect(user).swap(pointsAmount, expectedErc20TokenAmount, deadline, sig.v, sig.r, sig.s))
           .to.emit(this.contract, 'Swapped')
-          .withArgs(user.address, expectedErc20TokenAmountIn, pointsAmountOut);
+          .withArgs(user.address, expectedErc20TokenAmount, pointsAmount);
       });
     });
   });

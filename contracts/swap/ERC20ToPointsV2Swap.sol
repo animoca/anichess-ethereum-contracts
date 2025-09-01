@@ -24,7 +24,7 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
     event RateUpdated(uint256 indexed newRate);
     event Swapped(address indexed user, uint256 indexed tokenAmount, uint256 indexed pointsAmount);
 
-    bytes32 public constant DEPOSIT_REASON_CODE = keccak256("ERC20_TO_POINTSV2_SWAP");
+    bytes32 public constant DEPOSIT_REASON_CODE = bytes32("ERC20_TO_POINTSV2_SWAP");
     uint256 public constant RATE_PRECISION = 1e4;
 
     address public immutable ERC20_TOKEN;
@@ -75,52 +75,52 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
 
     /**
      * @notice Called by external swap functions.
-     * @dev Reverts if pointsAmountOut is zero.
+     * @dev Reverts if pointsAmount is zero.
      * @dev Emits a {Swapped} event if the swap is successful.
      * @param holder The token holder.
-     * @param pointsAmountOut The desired token amount to be swapped from ERC20 tokens.
+     * @param pointsAmount The desired token amount to be swapped from ERC20 tokens.
      */
-    function _swap(address holder, uint256 pointsAmountOut) internal {
-        if (pointsAmountOut == 0) {
+    function _swap(address holder, uint256 pointsAmount) internal {
+        if (pointsAmount == 0) {
             revert InvalidAmount();
         }
 
-        uint256 erc20TokenPrecision = 10 ** ERC20(ERC20_TOKEN).decimals();
-        uint256 tokenAmountIn = (pointsAmountOut * erc20TokenPrecision * RATE_PRECISION) / rate;
+        uint256 tokenAmount = (pointsAmount * 10 ** ERC20(ERC20_TOKEN).decimals() * RATE_PRECISION) / rate;
 
-        IERC20(ERC20_TOKEN).safeTransferFrom(holder, PayoutWalletStorage.layout().payoutWallet(), tokenAmountIn);
-        IPointsV2(POINTSV2).deposit(holder, pointsAmountOut, DEPOSIT_REASON_CODE);
+        IERC20(ERC20_TOKEN).safeTransferFrom(holder, PayoutWalletStorage.layout().payoutWallet(), tokenAmount);
+        IPointsV2(POINTSV2).deposit(holder, pointsAmount, DEPOSIT_REASON_CODE);
 
-        emit Swapped(holder, tokenAmountIn, pointsAmountOut);
+        emit Swapped(holder, tokenAmount, pointsAmount);
     }
 
     /**
      * @notice Called by balance holder to swap his ERC20 token to points.
      * @notice Pre-approval of transferring ERC20 token by this contract is required.
-     * @dev Reverts if pointsAmountOut is zero.
+     * @notice Calls _swap().
+     * @dev Reverts if pointsAmount is zero.
      * @dev Emits a {Swapped} event if the swap is successful.
-     * @param pointsAmountOut The desired token amount to be swapped from ERC20 tokens.
+     * @param pointsAmount The desired token amount to be swapped from ERC20 tokens.
      */
-    function swap(uint256 pointsAmountOut) external {
-        _swap(_msgSender(), pointsAmountOut);
+    function swap(uint256 pointsAmount) external {
+        _swap(_msgSender(), pointsAmount);
     }
 
     /**
-     * @notice Called by anyone to swap holder's ERC20 token to points.
+     * @notice Called by balance holder to swap his ERC20 token to points.
      * @notice the give signature as the permit to transfer the token.
-     * @notice Calls the other swap function after executing token.permit().
-     * @dev Reverts if pointsAmountOut is zero.
+     * @notice Calls _swap() after executing token.permit().
+     * @dev Reverts if pointsAmount is zero.
      * @dev Emits a {Swapped} event if the swap is successful.
-     * @param holder The token holder.
-     * @param pointsAmountOut The desired points amount to be swapped from tokens.
-     * @param permittedTokenAmountIn The permitted token amount to be swapped to points.
+     * @param pointsAmount The desired points amount to be swapped from tokens.
+     * @param permittedTokenAmount The permitted token amount to be swapped to points.
      * @param deadline The deadline of the signature.
      * @param v The v value of ECDSA signature by holder.
      * @param r The r value of ECDSA signature by holder.
      * @param s The s value of ECDSA signature by holder.
      */
-    function swap(address holder, uint256 pointsAmountOut, uint256 permittedTokenAmountIn, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
-        IERC20Permit(ERC20_TOKEN).permit(holder, address(this), permittedTokenAmountIn, deadline, v, r, s);
-        _swap(holder, pointsAmountOut);
+    function swap(uint256 pointsAmount, uint256 permittedTokenAmount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
+        address sender = _msgSender();
+        IERC20Permit(ERC20_TOKEN).permit(sender, address(this), permittedTokenAmount, deadline, v, r, s);
+        _swap(sender, pointsAmount);
     }
 }
