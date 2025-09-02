@@ -85,6 +85,7 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
 
     /**
      * @notice Called by external swap functions.
+     * @notice Calls calculateRequiredTokenAmount() to get the token amount.
      * @dev Reverts if pointsAmount is zero.
      * @dev Emits a {Swapped} event if the swap is successful.
      * @param holder The points holder.

@@ -154,7 +154,7 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
      * @param deadline The deadline of the signature.
      * @param signature The signature by holder.
      */
-    function permit(address holder, address spender, uint256 amount, uint256 deadline, bytes calldata signature) public {
+    function permit(address holder, address spender, uint256 amount, uint256 deadline, bytes calldata signature) external {
         if (spender == address(0)) {
             revert InvalidSpender();
         }
