@@ -65,6 +65,10 @@ describe('ERC20ToPointsV2Swap', () => {
     });
 
     context('when successful', () => {
+      it('should have set the correct deposit reason code', async () => {
+        expect(await this.contract.DEPOSIT_REASON_CODE()).to.equal(this.depositReasonCode);
+      });
+
       it('should have set the correct token address', async () => {
         expect(await this.contract.ERC20_TOKEN()).to.equal(await this.erc20Token.getAddress());
       });
@@ -83,34 +87,44 @@ describe('ERC20ToPointsV2Swap', () => {
     });
   });
 
+  describe('calculateRequiredTokenAmount(uint256 pointsAmount)', () => {
+    it('should return correct token amount', async () => {
+      const pointsAmount = 100n;
+      const expectedErc20TokenAmount =
+        (pointsAmount * 10n ** (await this.erc20Token.decimals()) * (await this.contract.RATE_PRECISION())) / this.rate;
+      const erc20TokenAmount = await this.contract.calculateRequiredTokenAmount(pointsAmount);
+      expect(erc20TokenAmount).equal(expectedErc20TokenAmount);
+    });
+  });
+
   describe('setRate(uint256 newRate)', () => {
     const newRate = 1230000;
 
-    it('Reverts if sender is not the owner', async () => {
+    it('reverts if sender is not the owner', async () => {
       await expect(this.contract.connect(other).setRate(newRate))
         .to.revertedWithCustomError(this.contract, 'NotContractOwner')
         .withArgs(other.address);
     });
 
     context('when successful', () => {
-      it('it should update to correct balance', async () => {
+      it('should update to correct balance', async () => {
         await this.contract.connect(deployer).setRate(newRate);
         expect(await this.contract.rate()).equal(newRate);
       });
 
-      it('it should emit an RateUpdated event', async () => {
-        await expect(this.contract.connect(deployer).setRate(newRate)).to.emit(this.contract, 'RateUpdated').withArgs(newRate);
+      it('should emit an RateUpdated event', async () => {
+        await expect(this.contract.connect(deployer).setRate(newRate)).to.emit(this.contract, 'RateUpdated').withArgs(this.rate, newRate);
       });
     });
   });
 
   describe('swap(uint256 pointsAmount)', () => {
-    it('Reverts if the pointsAmountO is zero', async () => {
+    it('reverts if the pointsAmountO is zero', async () => {
       await expect(this.contract.connect(user).swap(0)).to.revertedWithCustomError(this.contract, 'InvalidAmount');
     });
 
     context('when successful', () => {
-      it('it should swap correct balances without rounding', async () => {
+      it('should swap correct balances without rounding', async () => {
         const pointsAmount = 100n;
         const expectedErc20TokenAmount = 1n * 10n ** (await this.erc20Token.decimals());
 
@@ -131,7 +145,7 @@ describe('ERC20ToPointsV2Swap', () => {
         expect(payoutWalletBalanceAfter).equal(payoutWalletBalanceBefore + expectedErc20TokenAmount);
       });
 
-      it('it should swap correct balances with rounding', async () => {
+      it('should swap correct balances with rounding', async () => {
         const newRate = 1234567n; // 123.4567
         await this.contract.connect(deployer).setRate(newRate);
 
@@ -157,7 +171,7 @@ describe('ERC20ToPointsV2Swap', () => {
         expect(payoutWalletBalanceAfter).equal(payoutWalletBalanceBefore + expectedErc20TokenAmount);
       });
 
-      it('it should emit a Swapped event', async () => {
+      it('should emit a Swapped event', async () => {
         const pointsAmount = 100n;
         const expectedErc20TokenAmount = 1n * 10n ** (await this.erc20Token.decimals());
 
@@ -171,7 +185,7 @@ describe('ERC20ToPointsV2Swap', () => {
   });
 
   describe('swap(address holder, uint256 pointsAmount, uint256 permittedTokenAmount, uint256 deadline, bytes memory signature)', () => {
-    it('Reverts if the pointsAmount is zero', async () => {
+    it('reverts if the pointsAmount is zero', async () => {
       const pointsAmount = 0n;
       const expectedErc20TokenAmount = 0n;
 
@@ -190,7 +204,7 @@ describe('ERC20ToPointsV2Swap', () => {
       ).to.revertedWithCustomError(this.contract, 'InvalidAmount');
     });
 
-    it('Reverts if the signature is not valid', async () => {
+    it('reverts if the signature is not valid', async () => {
       const pointsAmount = 100n;
       const expectedErc20TokenAmount = 1n * 10n ** (await this.erc20Token.decimals());
 
@@ -205,7 +219,7 @@ describe('ERC20ToPointsV2Swap', () => {
     });
 
     context('when successful', () => {
-      it('it should swap correct balances without rounding', async () => {
+      it('should swap correct balances without rounding', async () => {
         const pointsAmount = 100n;
         const expectedErc20TokenAmount = 1n * 10n ** (await this.erc20Token.decimals());
 
@@ -235,7 +249,7 @@ describe('ERC20ToPointsV2Swap', () => {
         expect(allowanceAfter).equal(allowanceBefore);
       });
 
-      it('it should swap correct balances with rounding', async () => {
+      it('should swap correct balances with rounding', async () => {
         const newRate = 1234567n; // 123.4567
         await this.contract.connect(deployer).setRate(newRate);
 

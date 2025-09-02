@@ -103,7 +103,7 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
      * @param holder The balance holder.
      * @param amount The amount to spend.
      */
-    function spend(address holder, uint256 amount) public {
+    function spend(address holder, uint256 amount) external {
         uint256 balance = balances[holder];
         if (balance < amount) {
             revert InsufficientBalance(holder, amount);
@@ -123,17 +123,6 @@ contract PointsV2 is AccessControl, EIP712, IPointsV2 {
 
         emit Spent(spender, holder, amount);
     }
-
-    /**
-     * @notice Called by a spender to spend a given amount from holder's balance with the give permit.
-     * @notice Calls the other spend() after executing permit().
-     * @param holder The balance holder.
-     * @param amount The amount to spend.
-     */
-    // function spend(address holder, address spender, uint256 amount, uint256 deadline, bytes calldata signature) external {
-    //     permit(holder, spender, amount, deadline, signature);
-    //     spend(holder, amount);
-    // }
 
     /**
      * @notice Called by the a holder to approve a spender to spend a given amount of holder's balance.

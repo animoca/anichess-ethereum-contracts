@@ -21,7 +21,7 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
     error InvalidSignatureLength();
     error InvalidSignature();
 
-    event RateUpdated(uint256 indexed newRate);
+    event RateUpdated(uint256 indexed oldRate, uint256 indexed newRate);
     event Swapped(address indexed user, uint256 indexed tokenAmount, uint256 indexed pointsAmount);
 
     bytes32 public constant DEPOSIT_REASON_CODE = bytes32("ERC20_TO_POINTSV2_SWAP");
@@ -62,31 +62,40 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
     /**
      * @notice Called by owner to update exchange rate.
      * @dev Reverts if sender is not the owner.
-     * @dev Emits a {RateUpdated} event if the approval is successful.
+     * @dev Emits a {RateUpdated} event.
      * @param newRate The new exchange rate.
      */
     function setRate(uint256 newRate) external {
         ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
 
+        uint256 oldRate = rate;
+
         rate = newRate;
 
-        emit RateUpdated(newRate);
+        emit RateUpdated(oldRate, newRate);
+    }
+
+    /**
+     * @notice View function for calculating required token amount to get the given points amount.
+     * @param pointsAmount The desired points amount.
+     */
+    function calculateRequiredTokenAmount(uint256 pointsAmount) public view returns (uint256) {
+        return (pointsAmount * 10 ** ERC20(ERC20_TOKEN).decimals() * RATE_PRECISION) / rate;
     }
 
     /**
      * @notice Called by external swap functions.
      * @dev Reverts if pointsAmount is zero.
      * @dev Emits a {Swapped} event if the swap is successful.
-     * @param holder The token holder.
-     * @param pointsAmount The desired token amount to be swapped from ERC20 tokens.
+     * @param holder The points holder.
+     * @param pointsAmount The desired points amount to be swapped from ERC20 tokens.
      */
     function _swap(address holder, uint256 pointsAmount) internal {
         if (pointsAmount == 0) {
             revert InvalidAmount();
         }
 
-        uint256 tokenAmount = (pointsAmount * 10 ** ERC20(ERC20_TOKEN).decimals() * RATE_PRECISION) / rate;
-
+        uint256 tokenAmount = calculateRequiredTokenAmount(pointsAmount);
         IERC20(ERC20_TOKEN).safeTransferFrom(holder, PayoutWalletStorage.layout().payoutWallet(), tokenAmount);
         IPointsV2(POINTSV2).deposit(holder, pointsAmount, DEPOSIT_REASON_CODE);
 
@@ -107,7 +116,7 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
 
     /**
      * @notice Called by balance holder to swap his ERC20 token to points.
-     * @notice the give signature as the permit to transfer the token.
+     * @notice The given signature is used as the permit to transfer the token.
      * @notice Calls _swap() after executing token.permit().
      * @dev Reverts if pointsAmount is zero.
      * @dev Emits a {Swapped} event if the swap is successful.
