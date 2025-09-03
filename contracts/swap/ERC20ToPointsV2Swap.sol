@@ -81,6 +81,7 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
     /**
      * @notice View function for calculating required token amount to get the given points amount.
      * @param pointsAmount The desired points amount.
+     * @return The required token amount.
      */
     function calculateTokenRequired(uint256 pointsAmount) public view returns (uint256) {
         return (pointsAmount * 10 ** ERC20_TOKEN_DECIMALS * RATE_PRECISION) / rate;
@@ -109,8 +110,6 @@ contract ERC20ToPointsV2Swap is PayoutWallet {
      * @notice Called by balance holder to swap his ERC20 token to points.
      * @notice Pre-approval of transferring ERC20 token by this contract is required.
      * @notice Calls _swap().
-     * @dev Reverts if pointsAmount is zero.
-     * @dev Emits a {Swapped} event if the swap is successful.
      * @param pointsAmount The desired token amount to be swapped from ERC20 tokens.
      */
     function swap(uint256 pointsAmount) external {
