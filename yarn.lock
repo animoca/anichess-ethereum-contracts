@@ -7,10 +7,10 @@
   resolved "https://registry.yarnpkg.com/@adraffy/ens-normalize/-/ens-normalize-1.10.1.tgz#63430d04bd8c5e74f8d7d049338f1cd9d4f02069"
   integrity sha512-96Z2IP3mYmF1Xg2cDm8f1gWGf/HUVedQ3FMifV4kG/PQ4yEP51xDtRAEfhVNt5f/uzpNkZHwWQuUcu6D6K+Ekw==
 
-"@animoca/ethereum-contract-helpers@^1.0.5":
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/@animoca/ethereum-contract-helpers/-/ethereum-contract-helpers-1.0.5.tgz#6b8bf225cd42b92daa8e22838d9606f870852804"
-  integrity sha512-5w0pwh1MDTvveHKcg7d2esTzthCaSCunvUcjdoEbx0g0zODVodX3OVi84vz9faUrKVvw1ZL1kcoiR7pUiktYZA==
+"@animoca/ethereum-contract-helpers@^1.0.6":
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/@animoca/ethereum-contract-helpers/-/ethereum-contract-helpers-1.0.6.tgz#794284b73e885a4e3eaf5446c90e98c8a735f7f8"
+  integrity sha512-jmCeAoJ1i2IFWQ3bmgixa9oYzJgLDHXlWwuOw2yr8pyahaa9IHjYX9SN502QzlOSdToysweZZf+/56ZpMuHLhA==
   dependencies:
     cross-env "^7.0.3"
     fs-extra "^11.3.0"
@@ -19,10 +19,15 @@
     lodash.mergewith "^4.6.2"
     npm-run-all "^4.1.5"
 
-"@animoca/ethereum-contracts@=4.2.2":
-  version "4.2.2"
-  resolved "https://registry.yarnpkg.com/@animoca/ethereum-contracts/-/ethereum-contracts-4.2.2.tgz#76c08d4614503f7d8a6b2311c0bc123c438ea43c"
-  integrity sha512-sRRdtWqr3ruRNFStWs10zvqBKHW+TQmocjuZO566fydOckNcwfggpLKQWsRJp8wcVOhUmPX9xuh+yvvaYdz+DA==
+"@animoca/ethereum-contracts@=5.0.0":
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/@animoca/ethereum-contracts/-/ethereum-contracts-5.0.0.tgz#0f083bc49a34da0ee23655a6fff8c6886acb7efd"
+  integrity sha512-K7vq2zLwJMMZ2g/bK1ZNXPJA31UeJz8MAkrmcFFarPpoJSNWWVozeBF93Kv3Occf74cujDivzoYLnWoJTIWW5A==
+
+"@animocabrands/checkmate-ethereum-migrations@^2.1.0":
+  version "2.1.0"
+  resolved "https://nexus3.animocabrands.com/repository/npm/@animocabrands/checkmate-ethereum-migrations/-/checkmate-ethereum-migrations-2.1.0.tgz#e1b6c6002e759b5a1131a33666aade19e9fd4daa"
+  integrity sha512-y2Jb3gqL5X6v9mzNTEYrlMD0mcBKw/0CqrmLr5hvrf0/AK5SWddZ6tvLGfp+RTD6giYs9R0O3kYAtH5e7IDVEw==
 
 "@babel/code-frame@^7.0.0":
   version "7.26.2"
