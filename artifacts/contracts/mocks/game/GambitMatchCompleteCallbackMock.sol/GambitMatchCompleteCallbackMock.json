@@ -1,0 +1,122 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "GambitMatchCompleteCallbackMock",
+  "sourceName": "contracts/mocks/game/GambitMatchCompleteCallbackMock.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "gambit",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "IncorrectCallbackCaller",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "matchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "winner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "loser",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "prize",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "fee",
+          "type": "uint256"
+        }
+      ],
+      "name": "OnMatchCompletedCalled",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "GAMBIT",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "matchId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "winner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "loser",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "prize",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "fee",
+          "type": "uint256"
+        }
+      ],
+      "name": "onMatchCompleted",
+      "outputs": [
+        {
+          "internalType": "bytes4",
+          "name": "",
+          "type": "bytes4"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60a034606c57601f6102a338819003918201601f19168301916001600160401b03831184841017607157808492602094604052833981010312606c57516001600160a01b0381168103606c5760805260405161021b90816100888239608051818181608001526101320152f35b600080fd5b634e487b7160e01b600052604160045260246000fdfe608080604052600436101561001357600080fd5b60003560e01c9081631aef01e1146100a9575063b989de131461003557600080fd5b346100a45760007ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100a457602060405173ffffffffffffffffffffffffffffffffffffffff7f0000000000000000000000000000000000000000000000000000000000000000168152f35b600080fd5b346100a45760a07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100a45760243573ffffffffffffffffffffffffffffffffffffffff81168091036100a4576044359173ffffffffffffffffffffffffffffffffffffffff83168093036100a45773ffffffffffffffffffffffffffffffffffffffff7f00000000000000000000000000000000000000000000000000000000000000001633036101b757606435815260843560208201527f62340c5519c6fb4c94c46850178dc869ad6e117daa6db0835e6940bbec11c591604060043592a460206040517f1aef01e1000000000000000000000000000000000000000000000000000000008152f35b7fe588902b000000000000000000000000000000000000000000000000000000006000523360045260246000fdfea2646970667358221220500d84bfc2829a8b1b8022b674cdd5c61b52b9259e7b56a4ea7d34da9464f77764736f6c634300081e0033",
+  "deployedBytecode": "0x608080604052600436101561001357600080fd5b60003560e01c9081631aef01e1146100a9575063b989de131461003557600080fd5b346100a45760007ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100a457602060405173ffffffffffffffffffffffffffffffffffffffff7f0000000000000000000000000000000000000000000000000000000000000000168152f35b600080fd5b346100a45760a07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100a45760243573ffffffffffffffffffffffffffffffffffffffff81168091036100a4576044359173ffffffffffffffffffffffffffffffffffffffff83168093036100a45773ffffffffffffffffffffffffffffffffffffffff7f00000000000000000000000000000000000000000000000000000000000000001633036101b757606435815260843560208201527f62340c5519c6fb4c94c46850178dc869ad6e117daa6db0835e6940bbec11c591604060043592a460206040517f1aef01e1000000000000000000000000000000000000000000000000000000008152f35b7fe588902b000000000000000000000000000000000000000000000000000000006000523360045260246000fdfea2646970667358221220500d84bfc2829a8b1b8022b674cdd5c61b52b9259e7b56a4ea7d34da9464f77764736f6c634300081e0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

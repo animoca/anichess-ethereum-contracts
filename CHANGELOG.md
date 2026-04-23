@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.0.0
+
+### Breaking changes
+
+- Upgraded to `solc@0.8.30`.
+- Removed previous contracts.
+
+### New features
+
+- Gambit contract.
+
 ## 3.4.0
 
 ### New features
