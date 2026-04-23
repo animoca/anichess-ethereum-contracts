@@ -24,11 +24,6 @@
   resolved "https://registry.yarnpkg.com/@animoca/ethereum-contracts/-/ethereum-contracts-5.0.0.tgz#0f083bc49a34da0ee23655a6fff8c6886acb7efd"
   integrity sha512-K7vq2zLwJMMZ2g/bK1ZNXPJA31UeJz8MAkrmcFFarPpoJSNWWVozeBF93Kv3Occf74cujDivzoYLnWoJTIWW5A==
 
-"@animocabrands/checkmate-ethereum-migrations@^2.1.0":
-  version "2.1.0"
-  resolved "https://nexus3.animocabrands.com/repository/npm/@animocabrands/checkmate-ethereum-migrations/-/checkmate-ethereum-migrations-2.1.0.tgz#e1b6c6002e759b5a1131a33666aade19e9fd4daa"
-  integrity sha512-y2Jb3gqL5X6v9mzNTEYrlMD0mcBKw/0CqrmLr5hvrf0/AK5SWddZ6tvLGfp+RTD6giYs9R0O3kYAtH5e7IDVEw==
-
 "@babel/code-frame@^7.0.0":
   version "7.26.2"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.26.2.tgz#4b5fab97d33338eff916235055f0ebc21e573a85"
