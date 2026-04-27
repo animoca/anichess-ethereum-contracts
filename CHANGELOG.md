@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.0.1
+
+### Improvements
+
+- Added ForwarderRegistry support to Gambit contract.
+
 ## 4.0.0
 
 ### Breaking changes

@@ -12,9 +12,13 @@ import {PayoutWallet} from "@animoca/ethereum-contracts/contracts/payment/Payout
 import {PayoutWalletStorage} from "@animoca/ethereum-contracts/contracts/payment/libraries/PayoutWalletStorage.sol";
 import {Pause} from "@animoca/ethereum-contracts/contracts/lifecycle/Pause.sol";
 import {PauseStorage} from "@animoca/ethereum-contracts/contracts/lifecycle/libraries/PauseStorage.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
+import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 import {IGambitMatchCompleteCallback} from "./interfaces/IGambitMatchCompleteCallback.sol";
+import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 
-contract Gambit is AccessControl, PayoutWallet, EIP712, Pause {
+contract Gambit is AccessControl, PayoutWallet, EIP712, Pause, ForwarderRegistryContext {
     using SafeERC20 for IERC20;
     using PayoutWalletStorage for PayoutWalletStorage.Layout;
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
@@ -143,8 +147,9 @@ contract Gambit is AccessControl, PayoutWallet, EIP712, Pause {
         address payable payoutAddress,
         IERC20 buyInToken,
         uint256 buyIn_,
-        uint256 platformFee_
-    ) ContractOwnership(msg.sender) EIP712("Gambit", "1") PayoutWallet(payoutAddress) Pause(true) {
+        uint256 platformFee_,
+        IForwarderRegistry forwarderRegistry
+    ) ContractOwnership(msg.sender) EIP712("Gambit", "1") PayoutWallet(payoutAddress) Pause(true) ForwarderRegistryContext(forwarderRegistry) {
         BUYIN_TOKEN = buyInToken;
         _setBuyIn(buyIn_);
         if (platformFee_ > 0) {
@@ -452,5 +457,15 @@ contract Gambit is AccessControl, PayoutWallet, EIP712, Pause {
             BUYIN_TOKEN.safeTransfer(player2, refundAmountP2);
             emit MatchRefunded(matchId, player2, refundAmountP2);
         }
+    }
+
+    /// @inheritdoc ForwarderRegistryContextBase
+    function _msgSender() internal view virtual override(Context, ForwarderRegistryContextBase) returns (address) {
+        return ForwarderRegistryContextBase._msgSender();
+    }
+
+    /// @inheritdoc ForwarderRegistryContextBase
+    function _msgData() internal view virtual override(Context, ForwarderRegistryContextBase) returns (bytes calldata) {
+        return ForwarderRegistryContextBase._msgData();
     }
 }
