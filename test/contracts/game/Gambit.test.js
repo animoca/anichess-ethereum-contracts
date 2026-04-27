@@ -1,7 +1,10 @@
 const {ethers} = require('hardhat');
 const {expect} = require('chai');
+const {getForwarderRegistryAddress} = require('@animoca/ethereum-contracts/test/helpers/registries');
 const {loadFixture} = require('@animoca/ethereum-contract-helpers/src/test/fixtures');
 const {deployContract} = require('@animoca/ethereum-contract-helpers/src/test/deploy');
+
+const contractName = 'GambitMock';
 
 const JoinMatch712Type = {
   JoinMatch: [
@@ -44,9 +47,32 @@ describe('Gambit', function () {
     this.buyIn = 1000n;
     this.platformFee = 10n;
 
-    this.token = await deployContract('ERC20FixedSupply', '', '', 18, [player1.address, player2.address], [100000n, 100000n], ethers.ZeroAddress);
-    this.contractNoFee = await deployContract('Gambit', payoutWallet.address, await this.token.getAddress(), this.buyIn, 0n);
-    this.contract = await deployContract('Gambit', payoutWallet.address, await this.token.getAddress(), this.buyIn, this.platformFee);
+    this.forwarderRegistryAddress = await getForwarderRegistryAddress();
+    this.token = await deployContract(
+      'ERC20FixedSupply',
+      '',
+      '',
+      18,
+      [player1.address, player2.address],
+      [100000n, 100000n],
+      this.forwarderRegistryAddress,
+    );
+    this.contractNoFee = await deployContract(
+      contractName,
+      payoutWallet.address,
+      await this.token.getAddress(),
+      this.buyIn,
+      0n,
+      this.forwarderRegistryAddress,
+    );
+    this.contract = await deployContract(
+      contractName,
+      payoutWallet.address,
+      await this.token.getAddress(),
+      this.buyIn,
+      this.platformFee,
+      this.forwarderRegistryAddress,
+    );
     this.receiverContract = await deployContract('GambitMatchCompleteCallbackMock', await this.contract.getAddress());
     this.invalidReceiverContract = await deployContract('InvalidGambitMatchCompleteCallbackMock', await this.contract.getAddress());
     this.receiverContractNoFee = await deployContract('GambitMatchCompleteCallbackMock', await this.contractNoFee.getAddress());
@@ -99,7 +125,14 @@ describe('Gambit', function () {
     });
 
     it('sets the platform fee correctly if it is zero', async function () {
-      const contractZeroFee = await deployContract('Gambit', payoutWallet.address, await this.token.getAddress(), 10n, 0n);
+      const contractZeroFee = await deployContract(
+        contractName,
+        payoutWallet.address,
+        await this.token.getAddress(),
+        10n,
+        0n,
+        this.forwarderRegistryAddress,
+      );
       expect(await contractZeroFee.platformFee()).to.equal(0n);
     });
   });
@@ -1752,6 +1785,12 @@ describe('Gambit', function () {
           expect(payoutWalletBalance).to.equal(this.platformFee * 2n);
         });
       });
+    });
+  });
+
+  describe('__msgData()', function () {
+    it('returns the msg.data', async function () {
+      await this.contract.__msgData();
     });
   });
 });
