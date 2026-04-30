@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.1.0
+
+### New features
+
+- PointsV2 and PointsMerkleClaimV2 contracts.
+
 ## 4.0.1
 
 ### Improvements

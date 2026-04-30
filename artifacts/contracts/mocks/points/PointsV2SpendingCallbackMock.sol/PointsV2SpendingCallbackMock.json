@@ -1,0 +1,100 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "PointsV2SpendingCallbackMock",
+  "sourceName": "contracts/mocks/points/PointsV2SpendingCallbackMock.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "contract IPointsV2",
+          "name": "points",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "IncorrectCallbackCaller",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "name": "PointsSpent",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "POINTS",
+      "outputs": [
+        {
+          "internalType": "contract IPointsV2",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "name": "onPointsSpent",
+      "outputs": [
+        {
+          "internalType": "bytes4",
+          "name": "",
+          "type": "bytes4"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60a034606c57601f6102ff38819003918201601f19168301916001600160401b03831184841017607157808492602094604052833981010312606c57516001600160a01b0381168103606c576080526040516102779081610088823960805181818160da015261021d0152f35b600080fd5b634e487b7160e01b600052604160045260246000fdfe608080604052600436101561001357600080fd5b60003560e01c9081637f6e4281146101d4575063d2741e831461003557600080fd5b346101cf5760607ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101cf5760043573ffffffffffffffffffffffffffffffffffffffff81168091036101cf5760443567ffffffffffffffff81116101cf57366023820112156101cf5780600401359067ffffffffffffffff82116101cf5736602483830101116101cf5773ffffffffffffffffffffffffffffffffffffffff7f00000000000000000000000000000000000000000000000000000000000000001633036101a15760606024917fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f857f6cc6f1cad634208db4636ace0c9994ecfe7155c78ad7c956a11ec72b5bee69e39660405196879581358752604060208801528260408801520186860137600085828601015201168101030190a260206040517fd2741e83000000000000000000000000000000000000000000000000000000008152f35b7fe588902b000000000000000000000000000000000000000000000000000000006000523360045260246000fd5b600080fd5b346101cf5760007ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101cf5760209073ffffffffffffffffffffffffffffffffffffffff7f0000000000000000000000000000000000000000000000000000000000000000168152f3fea2646970667358221220e3e5228b0b9901242cb5a8ad2819791e5be91f05da951d52b7a7954684f230fc64736f6c634300081e0033",
+  "deployedBytecode": "0x608080604052600436101561001357600080fd5b60003560e01c9081637f6e4281146101d4575063d2741e831461003557600080fd5b346101cf5760607ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101cf5760043573ffffffffffffffffffffffffffffffffffffffff81168091036101cf5760443567ffffffffffffffff81116101cf57366023820112156101cf5780600401359067ffffffffffffffff82116101cf5736602483830101116101cf5773ffffffffffffffffffffffffffffffffffffffff7f00000000000000000000000000000000000000000000000000000000000000001633036101a15760606024917fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f857f6cc6f1cad634208db4636ace0c9994ecfe7155c78ad7c956a11ec72b5bee69e39660405196879581358752604060208801528260408801520186860137600085828601015201168101030190a260206040517fd2741e83000000000000000000000000000000000000000000000000000000008152f35b7fe588902b000000000000000000000000000000000000000000000000000000006000523360045260246000fd5b600080fd5b346101cf5760007ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101cf5760209073ffffffffffffffffffffffffffffffffffffffff7f0000000000000000000000000000000000000000000000000000000000000000168152f3fea2646970667358221220e3e5228b0b9901242cb5a8ad2819791e5be91f05da951d52b7a7954684f230fc64736f6c634300081e0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
