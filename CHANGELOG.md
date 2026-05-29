@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.2.0
+
+### New features
+
+- ERC20StakingPointsRewardsLimitedLinearPool and ERC20StakingPointsRewardsLinearPool contracts.
+
 ## 4.1.0
 
 ### New features
