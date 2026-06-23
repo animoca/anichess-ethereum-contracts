@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.3.0
+
+### New features
+
+- Scratching, RNGProvider and ScratchingBoard contracts.
+
 ## 4.2.0
 
 ### New features
