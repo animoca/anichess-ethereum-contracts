@@ -3,7 +3,7 @@ pragma solidity 0.8.30;
 
 import {ERC20StakingPointsRewardsLinearPool} from "./ERC20StakingPointsRewardsLinearPool.sol";
 import {LinearPool} from "@animoca/ethereum-contracts/contracts/staking/linear/LinearPool.sol";
-import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/ContractOwnershipStorage.sol";
+import {AccessControlStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/AccessControlStorage.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
@@ -13,7 +13,7 @@ import {IPointsV2} from "../../points/interface/IPointsV2.sol";
 /// @notice This contract is used to stake ERC20 tokens and obtain Points rewards.
 /// @notice Staking can be done either from a claim contract or directly by the staker, but only if the staker is included in a merkle tree.
 contract ERC20StakingPointsRewardsLimitedLinearPool is ERC20StakingPointsRewardsLinearPool {
-    using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
+    using AccessControlStorage for AccessControlStorage.Layout;
     using MerkleProof for bytes32[];
 
     bytes32 public root;
@@ -86,7 +86,7 @@ contract ERC20StakingPointsRewardsLimitedLinearPool is ERC20StakingPointsRewards
     /// @dev Emits a {MerkleRootSet} event.
     /// @param newRoot The new merkle root.
     function setMerkleRoot(bytes32 newRoot) external {
-        ContractOwnershipStorage.layout().enforceIsContractOwner(_msgSender());
+        AccessControlStorage.layout().enforceHasRole(REWARDER_ROLE, _msgSender());
         require(root == bytes32(0), MerkleRootAlreadySet());
         require(newRoot != bytes32(0), InvalidMerkleRoot());
         root = newRoot;
