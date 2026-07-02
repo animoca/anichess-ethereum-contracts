@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.3.1
+
+### Improvements
+
+- The rewarder can call setMerkleRoot instead of the contract owner on ERC20StakingPointsRewardsLimitedLinearPool.
+
 ## 4.3.0
 
 ### New features

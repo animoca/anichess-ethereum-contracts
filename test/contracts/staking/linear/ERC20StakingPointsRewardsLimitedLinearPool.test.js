@@ -76,7 +76,7 @@ describe('ERC20StakingPointsRewardsLimitedLinearPool', function () {
       const rawLeaf = ethers.solidityPacked(['address', 'uint256'], [alice.address, amount]);
       const tree = new MerkleTree([rawLeaf], ethers.keccak256, {hashLeaves: true, sortPairs: true});
       const root = tree.getHexRoot();
-      await this.contract.setMerkleRoot(root);
+      await this.contract.connect(rewarder).setMerkleRoot(root);
       const proof = [];
       const data = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [amount + 1n]);
       const stakeData = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'bytes'], [proof, data]);
@@ -91,7 +91,7 @@ describe('ERC20StakingPointsRewardsLimitedLinearPool', function () {
       const rawLeaf = ethers.solidityPacked(['address', 'uint256'], [alice.address, amount]);
       const tree = new MerkleTree([rawLeaf], ethers.keccak256, {hashLeaves: true, sortPairs: true});
       const root = tree.getHexRoot();
-      await this.contract.setMerkleRoot(root);
+      await this.contract.connect(rewarder).setMerkleRoot(root);
       const proof = tree.getHexProof(rawLeaf, 0);
       const data = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [amount]);
       const stakeData = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'bytes'], [proof, data]);
@@ -110,7 +110,7 @@ describe('ERC20StakingPointsRewardsLimitedLinearPool', function () {
         const rawLeaf = ethers.solidityPacked(['address', 'uint256'], [alice.address, amount]);
         const tree = new MerkleTree([rawLeaf], ethers.keccak256, {hashLeaves: true, sortPairs: true});
         const root = tree.getHexRoot();
-        await this.contract.setMerkleRoot(root);
+        await this.contract.connect(rewarder).setMerkleRoot(root);
         const proof = tree.getHexProof(rawLeaf, 0);
         const data = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [amount]);
         const stakeData = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'bytes'], [proof, data]);
@@ -187,7 +187,7 @@ describe('ERC20StakingPointsRewardsLimitedLinearPool', function () {
         const rawLeaf = ethers.solidityPacked(['address', 'uint256'], [alice.address, amount]);
         const tree = new MerkleTree([rawLeaf], ethers.keccak256, {hashLeaves: true, sortPairs: true});
         const root = tree.getHexRoot();
-        await this.contract.setMerkleRoot(root);
+        await this.contract.connect(rewarder).setMerkleRoot(root);
         const proof = [];
         const data = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [amount]);
         const stakeData = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'bytes'], [proof, data]);
@@ -201,7 +201,7 @@ describe('ERC20StakingPointsRewardsLimitedLinearPool', function () {
         const rawLeaf = ethers.solidityPacked(['address', 'uint256'], [alice.address, amount]);
         const tree = new MerkleTree([rawLeaf], ethers.keccak256, {hashLeaves: true, sortPairs: true});
         const root = tree.getHexRoot();
-        await this.contract.setMerkleRoot(root);
+        await this.contract.connect(rewarder).setMerkleRoot(root);
         const proof = tree.getHexProof(rawLeaf, 0);
         const data = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [amount]);
         const stakeData = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'bytes'], [proof, data]);
@@ -219,7 +219,7 @@ describe('ERC20StakingPointsRewardsLimitedLinearPool', function () {
           const rawLeaf = ethers.solidityPacked(['address', 'uint256'], [alice.address, amount]);
           const tree = new MerkleTree([rawLeaf], ethers.keccak256, {hashLeaves: true, sortPairs: true});
           const root = tree.getHexRoot();
-          await this.contract.setMerkleRoot(root);
+          await this.contract.connect(rewarder).setMerkleRoot(root);
           const proof = tree.getHexProof(rawLeaf, 0);
           const data = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [amount]);
           const stakeData = ethers.AbiCoder.defaultAbiCoder().encode(['bytes32[]', 'bytes'], [proof, data]);
@@ -247,27 +247,29 @@ describe('ERC20StakingPointsRewardsLimitedLinearPool', function () {
   });
 
   describe('setMerkleRoot(bytes32)', function () {
-    it('reverts if the caller is not the contract owner', async function () {
-      await expect(this.contract.connect(alice).setMerkleRoot(ethers.ZeroHash)).to.be.revertedWithCustomError(this.contract, 'NotContractOwner');
+    it('reverts if the caller does not have the REWARDER_ROLE', async function () {
+      await expect(this.contract.connect(alice).setMerkleRoot(ethers.ZeroHash))
+        .to.be.revertedWithCustomError(this.contract, 'NotRoleHolder')
+        .withArgs(this.rewarderRole, alice.address);
     });
 
     it('reverts if the merkle root has already been set', async function () {
-      await this.contract.setMerkleRoot(ethers.keccak256(ethers.toUtf8Bytes('test')));
-      await expect(this.contract.setMerkleRoot(ethers.keccak256(ethers.toUtf8Bytes('test2')))).to.be.revertedWithCustomError(
+      await this.contract.connect(rewarder).setMerkleRoot(ethers.keccak256(ethers.toUtf8Bytes('test')));
+      await expect(this.contract.connect(rewarder).setMerkleRoot(ethers.keccak256(ethers.toUtf8Bytes('test2')))).to.be.revertedWithCustomError(
         this.contract,
         'MerkleRootAlreadySet',
       );
     });
 
     it('reverts if the new merkle root is zero', async function () {
-      await expect(this.contract.setMerkleRoot(ethers.ZeroHash)).to.be.revertedWithCustomError(this.contract, 'InvalidMerkleRoot');
+      await expect(this.contract.connect(rewarder).setMerkleRoot(ethers.ZeroHash)).to.be.revertedWithCustomError(this.contract, 'InvalidMerkleRoot');
     });
 
     context('when successful', function () {
       const newRoot = ethers.keccak256(ethers.toUtf8Bytes('test'));
 
       beforeEach(async function () {
-        this.receipt = await this.contract.setMerkleRoot(newRoot);
+        this.receipt = await this.contract.connect(rewarder).setMerkleRoot(newRoot);
       });
 
       it('sets the new merkle root', async function () {
