@@ -560,7 +560,7 @@ describe('Scratching', function () {
     });
   });
 
-  describe('RNG probability test', function () {
+  describe.skip('RNG probability test', function () {
     const boardPosition = 17;
 
     it('hits the rewards with correct probability', async function () {

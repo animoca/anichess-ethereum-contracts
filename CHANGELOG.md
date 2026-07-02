@@ -5,6 +5,7 @@
 ### New features
 
 - Scratching, RNGProvider and ScratchingBoard contracts.
+- Allow staking by whitelist on ERC20StakingPointsRewardsLimitedLinearPool.
 
 ## 4.2.0
 
