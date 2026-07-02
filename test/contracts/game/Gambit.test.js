@@ -296,7 +296,7 @@ describe('Gambit', function () {
 
   describe('joinMatch', function () {
     it('revert if the match deadline has passed', async function () {
-      const matchDeadline = Math.floor(Date.now() / 1000) - 10;
+      const matchDeadline = 1;
       const signature = await signer.signTypedData(this.domain, JoinMatch712Type, {
         matchId: 0n,
         player: player1.address,
