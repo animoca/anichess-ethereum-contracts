@@ -5,25 +5,27 @@ const RequestType = {
 };
 
 const RewardType = {
-  SNOWBALL: 0,
-  ERC20: 1,
+  PROGRESS: 0,
+  X1: 1,
   X2: 2,
-  X5: 3,
-  X10: 4,
-  X20: 5,
-  X50: 6,
-  X100: 7,
+  X3: 3,
+  X5: 4,
+  X10: 5,
+  X15: 6,
+  X20: 7,
+  X50: 8,
+  JACKPOT: 9,
 };
 
 const rowPrices = [
-  1373n, // ROW 1
-  4199n, // ROW 2
-  12845n, // ROW 3
-  39293n, // ROW 4
-  120199n, // ROW 5
-  367691n, // ROW 6
-  1124777n, // ROW 7
-  3373966n, // ROW 8
+  137n, // ROW 1
+  421n, // ROW 2
+  1285n, // ROW 3
+  3929n, // ROW 4
+  12019n, // ROW 5
+  36768n, // ROW 6
+  112473n, // ROW 7
+  344054n, // ROW 8
 ];
 
 const erc20RewardDivisor = 100n;
@@ -31,564 +33,560 @@ const erc20RewardDivisor = 100n;
 const boardPositionsSetup = [
   {
     // A1
-    price: 100,
+    price: 10n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 300n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 800n, reward: 15n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // B1
-    price: 115,
+    price: 12n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 345n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 800n, reward: 17n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // C1
-    price: 132,
+    price: 13n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 397n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 800n, reward: 20n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // D1
-    price: 152,
+    price: 15n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 456n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 800n, reward: 23n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // E1
-    price: 175,
+    price: 17n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 525n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 800n, reward: 26n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // F1
-    price: 201,
+    price: 20n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 603n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 800n, reward: 30n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // G1
-    price: 231,
+    price: 23n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 694n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 800n, reward: 35n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // H1
-    price: 266,
+    price: 27n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 798n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 800n, reward: 40n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // A2
-    price: 306,
+    price: 31n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 918n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 600n, reward: 46n},
+      {type: RewardType.X1, probability: 200n, reward: 15n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // B2
-    price: 352,
+    price: 35n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 1055n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 600n, reward: 53n},
+      {type: RewardType.X1, probability: 200n, reward: 18n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // C2
-    price: 405,
+    price: 40n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 1214n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 600n, reward: 61n},
+      {type: RewardType.X1, probability: 200n, reward: 20n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // D2
-    price: 465,
+    price: 47n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 1396n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 600n, reward: 70n},
+      {type: RewardType.X1, probability: 200n, reward: 23n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // E2
-    price: 535,
+    price: 54n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 1605n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 600n, reward: 80n},
+      {type: RewardType.X1, probability: 200n, reward: 27n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // F2
-    price: 615,
+    price: 62n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 1846n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 600n, reward: 92n},
+      {type: RewardType.X1, probability: 200n, reward: 31n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // G2
-    price: 708,
+    price: 71n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 2123n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 600n, reward: 106n},
+      {type: RewardType.X1, probability: 200n, reward: 35n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // H2
-    price: 814,
+    price: 81n,
     rewards: [
-      {type: RewardType.ERC20, probability: 800n, reward: 2441n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X3, probability: 600n, reward: 122n},
+      {type: RewardType.X1, probability: 200n, reward: 41n},
+      {type: RewardType.PROGRESS, probability: 9200n, reward: 0n},
     ],
   },
   {
     // A3
-    price: 936,
+    price: 94n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 4679n},
-      {type: RewardType.X2, probability: 600n, reward: 1872n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 234n},
+      {type: RewardType.X1, probability: 850n, reward: 47n},
+      {type: RewardType.PROGRESS, probability: 9000n, reward: 0n},
     ],
   },
   {
     // B3
-    price: 1076,
+    price: 108n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 5381n},
-      {type: RewardType.X2, probability: 600n, reward: 2152n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 269n},
+      {type: RewardType.X1, probability: 850n, reward: 54n},
+      {type: RewardType.PROGRESS, probability: 9000n, reward: 0n},
     ],
   },
   {
     // C3
-    price: 1238,
+    price: 124n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 6188n},
-      {type: RewardType.X2, probability: 600n, reward: 2475n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 309n},
+      {type: RewardType.X1, probability: 850n, reward: 62n},
+      {type: RewardType.PROGRESS, probability: 9000n, reward: 0n},
     ],
   },
   {
     // D3
-    price: 1423,
+    price: 142n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 7116n},
-      {type: RewardType.X2, probability: 600n, reward: 2846n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 356n},
+      {type: RewardType.X1, probability: 850n, reward: 71n},
+      {type: RewardType.PROGRESS, probability: 9000n, reward: 0n},
     ],
   },
   {
     // E3
-    price: 1637,
+    price: 164n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 8183n},
-      {type: RewardType.X2, probability: 600n, reward: 3273n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 409n},
+      {type: RewardType.X1, probability: 850n, reward: 82n},
+      {type: RewardType.PROGRESS, probability: 9000n, reward: 0n},
     ],
   },
   {
     // F3
-    price: 1882,
+    price: 188n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 9411n},
-      {type: RewardType.X2, probability: 600n, reward: 3764n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 471n},
+      {type: RewardType.X1, probability: 850n, reward: 94n},
+      {type: RewardType.PROGRESS, probability: 9000n, reward: 0n},
     ],
   },
   {
     // G3
-    price: 2164,
+    price: 216n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 10822n},
-      {type: RewardType.X2, probability: 600n, reward: 4329n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 541n},
+      {type: RewardType.X1, probability: 850n, reward: 108n},
+      {type: RewardType.PROGRESS, probability: 9000n, reward: 0n},
     ],
   },
   {
     // H3
-    price: 2489,
+    price: 249n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 12446n},
-      {type: RewardType.X2, probability: 600n, reward: 4978n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 622n},
+      {type: RewardType.X1, probability: 850n, reward: 124n},
+      {type: RewardType.PROGRESS, probability: 9000n, reward: 0n},
     ],
   },
   {
     // A4
-    price: 2863,
+    price: 286n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 14313n},
-      {type: RewardType.X2, probability: 600n, reward: 5725n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 716n},
+      {type: RewardType.X1, probability: 1050n, reward: 143n},
+      {type: RewardType.PROGRESS, probability: 8800n, reward: 0n},
     ],
   },
   {
     // B4
-    price: 3292,
+    price: 329n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 16459n},
-      {type: RewardType.X2, probability: 600n, reward: 6584n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 823n},
+      {type: RewardType.X1, probability: 1050n, reward: 165n},
+      {type: RewardType.PROGRESS, probability: 8800n, reward: 0n},
     ],
   },
   {
     // C4
-    price: 3786,
+    price: 379n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 18928n},
-      {type: RewardType.X2, probability: 600n, reward: 7571n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 946n},
+      {type: RewardType.X1, probability: 1050n, reward: 189n},
+      {type: RewardType.PROGRESS, probability: 8800n, reward: 0n},
     ],
   },
   {
     // D4
-    price: 4354,
+    price: 435n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 21768n},
-      {type: RewardType.X2, probability: 600n, reward: 8707n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 1088n},
+      {type: RewardType.X1, probability: 1050n, reward: 218n},
+      {type: RewardType.PROGRESS, probability: 8800n, reward: 0n},
     ],
   },
   {
     // E4
-    price: 5007,
+    price: 501n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 25033n},
-      {type: RewardType.X2, probability: 600n, reward: 10013n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 1252n},
+      {type: RewardType.X1, probability: 1050n, reward: 250n},
+      {type: RewardType.PROGRESS, probability: 8800n, reward: 0n},
     ],
   },
   {
     // F4
-    price: 5758,
+    price: 576n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 28788n},
-      {type: RewardType.X2, probability: 600n, reward: 11515n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 1439n},
+      {type: RewardType.X1, probability: 1050n, reward: 288n},
+      {type: RewardType.PROGRESS, probability: 8800n, reward: 0n},
     ],
   },
   {
     // G4
-    price: 6621,
+    price: 662n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 33106n},
-      {type: RewardType.X2, probability: 600n, reward: 13242n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 1655n},
+      {type: RewardType.X1, probability: 1050n, reward: 331n},
+      {type: RewardType.PROGRESS, probability: 8800n, reward: 0n},
     ],
   },
   {
     // H4
-    price: 7614,
+    price: 761n,
     rewards: [
-      {type: RewardType.X5, probability: 200n, reward: 38072n},
-      {type: RewardType.X2, probability: 600n, reward: 15229n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X5, probability: 150n, reward: 1904n},
+      {type: RewardType.X1, probability: 1050n, reward: 381n},
+      {type: RewardType.PROGRESS, probability: 8800n, reward: 0n},
     ],
   },
-
   {
     // A5
-    price: 8757,
+    price: 876n,
     rewards: [
-      {type: RewardType.X10, probability: 200n, reward: 87565n},
-      {type: RewardType.X2, probability: 600n, reward: 17513n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X10, probability: 100n, reward: 4378n},
+      {type: RewardType.X2, probability: 1300n, reward: 876n},
+      {type: RewardType.PROGRESS, probability: 8600n, reward: 0n},
     ],
   },
   {
     // B5
-    price: 10070,
+    price: 1007n,
     rewards: [
-      {type: RewardType.X10, probability: 200n, reward: 100700n},
-      {type: RewardType.X2, probability: 600n, reward: 20140n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X10, probability: 100n, reward: 5035n},
+      {type: RewardType.X2, probability: 1300n, reward: 1007n},
+      {type: RewardType.PROGRESS, probability: 8600n, reward: 0n},
     ],
   },
   {
     // C5
-    price: 11580,
+    price: 1158n,
     rewards: [
-      {type: RewardType.X10, probability: 200n, reward: 115805n},
-      {type: RewardType.X2, probability: 600n, reward: 23161n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X10, probability: 100n, reward: 5790n},
+      {type: RewardType.X2, probability: 1300n, reward: 1158n},
+      {type: RewardType.PROGRESS, probability: 8600n, reward: 0n},
     ],
   },
   {
     // D5
-    price: 13318,
+    price: 1332n,
     rewards: [
-      {type: RewardType.X10, probability: 200n, reward: 133176n},
-      {type: RewardType.X2, probability: 600n, reward: 26635n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X10, probability: 100n, reward: 6659n},
+      {type: RewardType.X2, probability: 1300n, reward: 1332n},
+      {type: RewardType.PROGRESS, probability: 8600n, reward: 0n},
     ],
   },
   {
     // E5
-    price: 15315,
+    price: 1531n,
     rewards: [
-      {type: RewardType.X10, probability: 200n, reward: 153152n},
-      {type: RewardType.X2, probability: 600n, reward: 30630n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X10, probability: 100n, reward: 7657n},
+      {type: RewardType.X2, probability: 1300n, reward: 1531n},
+      {type: RewardType.PROGRESS, probability: 8600n, reward: 0n},
     ],
   },
   {
     // F5
-    price: 17612,
+    price: 1761n,
     rewards: [
-      {type: RewardType.X10, probability: 200n, reward: 176125n},
-      {type: RewardType.X2, probability: 600n, reward: 35225n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X10, probability: 100n, reward: 8806n},
+      {type: RewardType.X2, probability: 1300n, reward: 1761n},
+      {type: RewardType.PROGRESS, probability: 8600n, reward: 0n},
     ],
   },
   {
     // G5
-    price: 20254,
+    price: 2025n,
     rewards: [
-      {type: RewardType.X10, probability: 200n, reward: 202543n},
-      {type: RewardType.X2, probability: 600n, reward: 40509n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X10, probability: 100n, reward: 10127n},
+      {type: RewardType.X2, probability: 1300n, reward: 2025n},
+      {type: RewardType.PROGRESS, probability: 8600n, reward: 0n},
     ],
   },
   {
     // H5
-    price: 23292,
+    price: 2329n,
     rewards: [
-      {type: RewardType.X10, probability: 200n, reward: 232925n},
-      {type: RewardType.X2, probability: 600n, reward: 46585n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X10, probability: 100n, reward: 11646n},
+      {type: RewardType.X2, probability: 1300n, reward: 2329n},
+      {type: RewardType.PROGRESS, probability: 8600n, reward: 0n},
     ],
   },
   {
     // A6
-    price: 26786,
+    price: 2679n,
     rewards: [
-      {type: RewardType.X20, probability: 200n, reward: 535727n},
-      {type: RewardType.X2, probability: 600n, reward: 53573n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X20, probability: 75n, reward: 26785n},
+      {type: RewardType.X2, probability: 1525n, reward: 2679n},
+      {type: RewardType.PROGRESS, probability: 8400n, reward: 0n},
     ],
   },
   {
     // B6
-    price: 30804,
+    price: 3080n,
     rewards: [
-      {type: RewardType.X20, probability: 200n, reward: 616086n},
-      {type: RewardType.X2, probability: 600n, reward: 61609n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X20, probability: 75n, reward: 30803n},
+      {type: RewardType.X2, probability: 1525n, reward: 3080n},
+      {type: RewardType.PROGRESS, probability: 8400n, reward: 0n},
     ],
   },
   {
     // C6
-    price: 35425,
+    price: 3542n,
     rewards: [
-      {type: RewardType.X20, probability: 200n, reward: 708499n},
-      {type: RewardType.X2, probability: 600n, reward: 70850n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X20, probability: 75n, reward: 35424n},
+      {type: RewardType.X2, probability: 1525n, reward: 3542n},
+      {type: RewardType.PROGRESS, probability: 8400n, reward: 0n},
     ],
   },
   {
     // D6
-    price: 40739,
+    price: 4074n,
     rewards: [
-      {type: RewardType.X20, probability: 200n, reward: 814774n},
-      {type: RewardType.X2, probability: 600n, reward: 81477n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X20, probability: 75n, reward: 40737n},
+      {type: RewardType.X2, probability: 1525n, reward: 4074n},
+      {type: RewardType.PROGRESS, probability: 8400n, reward: 0n},
     ],
   },
   {
     // E6
-    price: 46850,
+    price: 4685n,
     rewards: [
-      {type: RewardType.X20, probability: 200n, reward: 936990n},
-      {type: RewardType.X2, probability: 600n, reward: 93699n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X20, probability: 75n, reward: 46848n},
+      {type: RewardType.X2, probability: 1525n, reward: 4685n},
+      {type: RewardType.PROGRESS, probability: 8400n, reward: 0n},
     ],
   },
   {
     // F6
-    price: 53877,
+    price: 5387n,
     rewards: [
-      {type: RewardType.X20, probability: 200n, reward: 1077539n},
-      {type: RewardType.X2, probability: 600n, reward: 107754n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X20, probability: 75n, reward: 53875n},
+      {type: RewardType.X2, probability: 1525n, reward: 5387n},
+      {type: RewardType.PROGRESS, probability: 8400n, reward: 0n},
     ],
   },
   {
     // G6
-    price: 61958,
+    price: 6196n,
     rewards: [
-      {type: RewardType.X20, probability: 200n, reward: 1239169n},
-      {type: RewardType.X2, probability: 600n, reward: 123917n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X20, probability: 75n, reward: 61956n},
+      {type: RewardType.X2, probability: 1525n, reward: 6196n},
+      {type: RewardType.PROGRESS, probability: 8400n, reward: 0n},
     ],
   },
   {
     // H6
-    price: 71252,
+    price: 7125n,
     rewards: [
-      {type: RewardType.X20, probability: 200n, reward: 1425045n},
-      {type: RewardType.X2, probability: 600n, reward: 142504n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X20, probability: 75n, reward: 71250n},
+      {type: RewardType.X2, probability: 1525n, reward: 7125n},
+      {type: RewardType.PROGRESS, probability: 8400n, reward: 0n},
     ],
   },
   {
     // A7
-    price: 81940,
+    price: 8194n,
     rewards: [
-      {type: RewardType.X50, probability: 50n, reward: 4097004n},
-      {type: RewardType.X2, probability: 750n, reward: 163880n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X50, probability: 100n, reward: 204841n},
+      {type: RewardType.X5, probability: 2800n, reward: 20484n},
+      {type: RewardType.PROGRESS, probability: 7100n, reward: 0n},
     ],
   },
   {
     // B7
-    price: 94231,
+    price: 9423n,
     rewards: [
-      {type: RewardType.X50, probability: 50n, reward: 4711554n},
-      {type: RewardType.X2, probability: 750n, reward: 188462n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X50, probability: 100n, reward: 235567n},
+      {type: RewardType.X5, probability: 2800n, reward: 23557n},
+      {type: RewardType.PROGRESS, probability: 7100n, reward: 0n},
     ],
   },
   {
     // C7
-    price: 108366,
+    price: 10836n,
     rewards: [
-      {type: RewardType.X50, probability: 50n, reward: 5418287n},
-      {type: RewardType.X2, probability: 750n, reward: 216731n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X50, probability: 100n, reward: 270902n},
+      {type: RewardType.X5, probability: 2800n, reward: 27090n},
+      {type: RewardType.PROGRESS, probability: 7100n, reward: 0n},
     ],
   },
   {
     // D7
-    price: 124621,
+    price: 12462n,
     rewards: [
-      {type: RewardType.X50, probability: 50n, reward: 6231030n},
-      {type: RewardType.X2, probability: 750n, reward: 249241n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X50, probability: 100n, reward: 311538n},
+      {type: RewardType.X5, probability: 2800n, reward: 31154n},
+      {type: RewardType.PROGRESS, probability: 7100n, reward: 0n},
     ],
   },
   {
     // E7
-    price: 143314,
+    price: 14331n,
     rewards: [
-      {type: RewardType.X50, probability: 50n, reward: 7165685n},
-      {type: RewardType.X2, probability: 750n, reward: 286627n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X50, probability: 100n, reward: 358268n},
+      {type: RewardType.X5, probability: 2800n, reward: 35827n},
+      {type: RewardType.PROGRESS, probability: 7100n, reward: 0n},
     ],
   },
   {
     // F7
-    price: 164811,
+    price: 16480n,
     rewards: [
-      {type: RewardType.X50, probability: 50n, reward: 8240538n},
-      {type: RewardType.X2, probability: 750n, reward: 329622n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X50, probability: 100n, reward: 412008n},
+      {type: RewardType.X5, probability: 2800n, reward: 41201n},
+      {type: RewardType.PROGRESS, probability: 7100n, reward: 0n},
     ],
   },
   {
     // G7
-    price: 189532,
+    price: 18952n,
     rewards: [
-      {type: RewardType.X50, probability: 50n, reward: 9476618n},
-      {type: RewardType.X2, probability: 750n, reward: 379065n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X50, probability: 100n, reward: 473810n},
+      {type: RewardType.X5, probability: 2800n, reward: 47381n},
+      {type: RewardType.PROGRESS, probability: 7100n, reward: 0n},
     ],
   },
   {
     // H7
-    price: 217962,
+    price: 21795n,
     rewards: [
-      {type: RewardType.X50, probability: 50n, reward: 10898111n},
-      {type: RewardType.X2, probability: 750n, reward: 435924n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X50, probability: 100n, reward: 544881n},
+      {type: RewardType.X5, probability: 2800n, reward: 54488n},
+      {type: RewardType.PROGRESS, probability: 7100n, reward: 0n},
     ],
   },
   {
     // A8
-    price: 250657,
+    price: 25064n,
     rewards: [
-      {type: RewardType.X100, probability: 25n, reward: 25065655n},
-      {type: RewardType.X2, probability: 750n, reward: 501313n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X15, probability: 4200n, reward: 187983n},
+      {type: RewardType.PROGRESS, probability: 5800n, reward: 0n},
     ],
   },
   {
     // B8
-    price: 288255,
+    price: 28824n,
     rewards: [
-      {type: RewardType.X100, probability: 25n, reward: 28825503n},
-      {type: RewardType.X2, probability: 750n, reward: 576510n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X15, probability: 4200n, reward: 216180n},
+      {type: RewardType.PROGRESS, probability: 5800n, reward: 0n},
     ],
   },
   {
     // C8
-    price: 331493,
+    price: 33148n,
     rewards: [
-      {type: RewardType.X100, probability: 25n, reward: 33149329n},
-      {type: RewardType.X2, probability: 750n, reward: 662987n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X15, probability: 4200n, reward: 248607n},
+      {type: RewardType.PROGRESS, probability: 5800n, reward: 0n},
     ],
   },
   {
     // D8
-    price: 381217,
+    price: 38120n,
     rewards: [
-      {type: RewardType.X100, probability: 25n, reward: 38121728n},
-      {type: RewardType.X2, probability: 750n, reward: 762435n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X15, probability: 4200n, reward: 285898n},
+      {type: RewardType.PROGRESS, probability: 5800n, reward: 0n},
     ],
   },
   {
     // E8
-    price: 438400,
+    price: 43838n,
     rewards: [
-      {type: RewardType.X100, probability: 25n, reward: 43839987n},
-      {type: RewardType.X2, probability: 750n, reward: 876800n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X15, probability: 4200n, reward: 328783n},
+      {type: RewardType.PROGRESS, probability: 5800n, reward: 0n},
     ],
   },
   {
     // F8
-    price: 504160,
+    price: 50413n,
     rewards: [
-      {type: RewardType.X100, probability: 25n, reward: 50415986n},
-      {type: RewardType.X2, probability: 750n, reward: 1008320n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X15, probability: 4200n, reward: 378100n},
+      {type: RewardType.PROGRESS, probability: 5800n, reward: 0n},
     ],
   },
   {
     // G8
-    price: 579784,
+    price: 57975n,
     rewards: [
-      {type: RewardType.X100, probability: 25n, reward: 57978383n},
-      {type: RewardType.X2, probability: 750n, reward: 1159568n},
-      {type: RewardType.SNOWBALL, probability: 9200n, reward: 0n},
+      {type: RewardType.X15, probability: 4200n, reward: 434815n},
+      {type: RewardType.PROGRESS, probability: 5800n, reward: 0n},
     ],
   },
   {
     // H8
-    price: 600000,
-    rewards: [
-      {type: RewardType.X100, probability: 25n, reward: 60000000n},
-      {type: RewardType.X5, probability: 775n, reward: 3000000n},
-      {type: RewardType.X2, probability: 9200n, reward: 1200000n},
-    ],
+    price: 66672n,
+    rewards: [{type: RewardType.JACKPOT, probability: 10000n, reward: 17857100n}],
   },
 ];
 

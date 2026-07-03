@@ -342,7 +342,7 @@ describe('Scratching', function () {
                 expect(await this.contract.pendingScratchRequest(this.tokenId)).to.equal(0);
               });
 
-              if (reward.type == RewardType.SNOWBALL) {
+              if (reward.type == RewardType.PROGRESS) {
                 it('increases the board position by 1', async function () {
                   expect(await this.contract.boardPositions(this.tokenId)).to.equal(this.scratchBoardPosition + 1n);
                 });
@@ -367,6 +367,14 @@ describe('Scratching', function () {
                 });
 
                 it('transfers the reward to the token owner', async function () {
+                  console.log(
+                    'Board position:',
+                    this.scratchBoardPosition,
+                    'Reward type:',
+                    Object.keys(RewardType)[reward.type],
+                    'Reward amount:',
+                    ethers.formatEther(reward.reward * this.erc20RewardMultiplier),
+                  );
                   await expect(this.receipt)
                     .to.emit(this.erc20, 'Transfer')
                     .withArgs(holder.address, deployer.address, reward.reward * this.erc20RewardMultiplier);
@@ -480,7 +488,7 @@ describe('Scratching', function () {
           it('emits a ScratchedRow event', async function () {
             await expect(this.receipt)
               .to.emit(this.contract, 'ScratchedRow')
-              .withArgs(this.tokenId, boardPosition, boardPosition + nbScratches - 1, RewardType.SNOWBALL, 0);
+              .withArgs(this.tokenId, boardPosition, boardPosition + nbScratches - 1, RewardType.PROGRESS, 0);
           });
         });
       }
@@ -561,14 +569,14 @@ describe('Scratching', function () {
   });
 
   describe.skip('RNG probability test', function () {
-    const boardPosition = 17;
+    const boardPosition = 17; // B3
 
     it('hits the rewards with correct probability', async function () {
       let random = BigInt('0x0e243149833c93f3086937269af326795595405c06a7aba270b06f8397074d85');
 
       const hits = {
-        [RewardType.SNOWBALL]: 0,
-        [RewardType.X2]: 0,
+        [RewardType.PROGRESS]: 0,
+        [RewardType.X1]: 0,
         [RewardType.X5]: 0,
       };
 
@@ -593,21 +601,21 @@ describe('Scratching', function () {
         random = ethers.keccak256(ethers.solidityPacked(['uint256'], [random]));
       }
 
-      const snowballRate = (hits[RewardType.SNOWBALL] * 100) / iterations;
-      const x2Rate = (hits[RewardType.X2] * 100) / iterations;
+      const progressRate = (hits[RewardType.PROGRESS] * 100) / iterations;
+      const x1Rate = (hits[RewardType.X1] * 100) / iterations;
       const x5Rate = (hits[RewardType.X5] * 100) / iterations;
 
-      const expectedSnowballRate = Number(boardPositionsSetup[boardPosition].rewards[2].probability) / 100;
-      const expectedX2Rate = Number(boardPositionsSetup[boardPosition].rewards[1].probability) / 100;
+      const expectedProgressRate = Number(boardPositionsSetup[boardPosition].rewards[2].probability) / 100;
+      const expectedX1Rate = Number(boardPositionsSetup[boardPosition].rewards[1].probability) / 100;
       const expectedX5Rate = Number(boardPositionsSetup[boardPosition].rewards[0].probability) / 100;
 
       console.log('Total iterations:', iterations);
-      console.log(`Snowball hits: ${hits[RewardType.SNOWBALL]}, rate ${snowballRate}%, expected ${expectedSnowballRate}%`);
+      console.log(`Progress hits: ${hits[RewardType.PROGRESS]}, rate ${progressRate}%, expected ${expectedProgressRate}%`);
       console.log(`X5 hits: ${hits[RewardType.X5]}, rate ${x5Rate}%, expected ${expectedX5Rate}%`);
-      console.log(`X2 hits: ${hits[RewardType.X2]}, rate ${x2Rate}%, expected ${expectedX2Rate}%`);
+      console.log(`X1 hits: ${hits[RewardType.X1]}, rate ${x1Rate}%, expected ${expectedX1Rate}%`);
 
-      expect(snowballRate).to.be.closeTo(expectedSnowballRate, 0.5);
-      expect(x2Rate).to.be.closeTo(expectedX2Rate, 0.5);
+      expect(progressRate).to.be.closeTo(expectedProgressRate, 0.5);
+      expect(x1Rate).to.be.closeTo(expectedX1Rate, 0.5);
       expect(x5Rate).to.be.closeTo(expectedX5Rate, 0.5);
     });
   });

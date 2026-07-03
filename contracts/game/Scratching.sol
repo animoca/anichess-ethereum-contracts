@@ -151,7 +151,7 @@ contract Scratching is TokenRecovery, RNGConsumer, PointsV2SpendingCallback, ISc
         uint256 scratchPosition = boardPositions[tokenId];
         ScratchingLib.ScratchResult memory result = ScratchingLib.getSingleScratchResult(scratchPosition, randomWord, ERC20_DECIMALS);
         uint256 rewardAmount = result.rewardAmount;
-        if (result.rewardType == ScratchingLib.RewardType.Snowball) {
+        if (result.rewardType == ScratchingLib.RewardType.Progress) {
             boardPositions[tokenId] = scratchPosition + 1;
         } else {
             _deliverReward(tokenId, rewardAmount);
@@ -167,7 +167,7 @@ contract Scratching is TokenRecovery, RNGConsumer, PointsV2SpendingCallback, ISc
             ERC20_DECIMALS
         );
         uint256 rewardAmount = result.rewardAmount;
-        if (result.rewardType == ScratchingLib.RewardType.Snowball) {
+        if (result.rewardType == ScratchingLib.RewardType.Progress) {
             boardPositions[tokenId] = lastScratchedPosition + 1;
         } else {
             if (lastScratchedPosition != scratchPosition) {
