@@ -8,6 +8,9 @@ import {ERC2981} from "@animoca/ethereum-contracts/contracts/token/royalty/ERC29
 import {AccessControl} from "@animoca/ethereum-contracts/contracts/access/AccessControl.sol";
 import {TokenRecovery} from "@animoca/ethereum-contracts/contracts/security/TokenRecovery.sol";
 import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
+import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 
 import {ERC721Storage} from "@animoca/ethereum-contracts/contracts/token/ERC721/libraries/ERC721Storage.sol";
 import {AccessControlStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/AccessControlStorage.sol";
@@ -16,11 +19,12 @@ import {ContractOwnershipStorage} from "@animoca/ethereum-contracts/contracts/ac
 import {ITokenMetadataResolver} from "@animoca/ethereum-contracts/contracts/token/metadata/interfaces/ITokenMetadataResolver.sol";
 import {IScratchingBoard} from "./../interfaces/IScratchingBoard.sol";
 import {IScratching} from "./../../game/interfaces/IScratching.sol";
+import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 
 import {ERC721NonExistingToken} from "@animoca/ethereum-contracts/contracts/token/ERC721/errors/ERC721Errors.sol";
 import {Transfer} from "@animoca/ethereum-contracts/contracts/token/ERC721/events/ERC721Events.sol";
 
-contract ScratchingBoard is ERC721, ERC721Metadata, ERC2981, IScratchingBoard, AccessControl, TokenRecovery {
+contract ScratchingBoard is ERC721, ERC721Metadata, ERC2981, IScratchingBoard, AccessControl, ForwarderRegistryContext, TokenRecovery {
     using ERC721Storage for ERC721Storage.Layout;
     using AccessControlStorage for AccessControlStorage.Layout;
     using ContractOwnershipStorage for ContractOwnershipStorage.Layout;
@@ -37,8 +41,9 @@ contract ScratchingBoard is ERC721, ERC721Metadata, ERC2981, IScratchingBoard, A
     constructor(
         string memory tokenName,
         string memory tokenSymbol,
-        ITokenMetadataResolver metadataResolver
-    ) ContractOwnership(msg.sender) ERC721Metadata(tokenName, tokenSymbol, metadataResolver) {}
+        ITokenMetadataResolver metadataResolver,
+        IForwarderRegistry forwarderRegistry
+    ) ContractOwnership(msg.sender) ERC721Metadata(tokenName, tokenSymbol, metadataResolver) ForwarderRegistryContext(forwarderRegistry) {}
 
     /// @notice Sets the scratching contract.
     /// @dev Reverts with {NotContractOwner} if the caller is not the contract owner.
@@ -109,5 +114,15 @@ contract ScratchingBoard is ERC721, ERC721Metadata, ERC2981, IScratchingBoard, A
             uint256 pendingRequestId = scratchingContract_.pendingScratchRequest(tokenId);
             require(pendingRequestId == 0, PendingScratchRequest(tokenId, pendingRequestId));
         }
+    }
+
+    /// @inheritdoc ForwarderRegistryContextBase
+    function _msgSender() internal view virtual override(Context, ForwarderRegistryContextBase) returns (address) {
+        return ForwarderRegistryContextBase._msgSender();
+    }
+
+    /// @inheritdoc ForwarderRegistryContextBase
+    function _msgData() internal view virtual override(Context, ForwarderRegistryContextBase) returns (bytes calldata) {
+        return ForwarderRegistryContextBase._msgData();
     }
 }

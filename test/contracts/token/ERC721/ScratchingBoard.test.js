@@ -12,7 +12,14 @@ describe('ScratchingBoard', function () {
   });
 
   const fixture = async function () {
-    this.contract = await deployContract('ScratchingBoard', '', '', await getTokenMetadataResolverWithBaseURIAddress());
+    this.forwarderRegistryAddress = await getForwarderRegistryAddress();
+    this.contract = await deployContract(
+      'ScratchingBoardMock',
+      '',
+      '',
+      await getTokenMetadataResolverWithBaseURIAddress(),
+      this.forwarderRegistryAddress,
+    );
     await this.contract.grantRole(await this.contract.MINTER_ROLE(), deployer.address);
   };
 
@@ -106,7 +113,7 @@ describe('ScratchingBoard', function () {
 
   describe('transfers', function () {
     beforeEach(async function () {
-      const erc20 = await deployContract('ERC20FixedSupply', '', '', 18, [], [], await getForwarderRegistryAddress());
+      const erc20 = await deployContract('ERC20FixedSupply', '', '', 18, [], [], this.forwarderRegistryAddress);
       this.scratchingContract = await deployContract(
         'ScratchingMock',
         ethers.ZeroAddress,
@@ -186,6 +193,12 @@ describe('ScratchingBoard', function () {
           .to.be.revertedWithCustomError(this.contract, 'PendingScratchRequest')
           .withArgs(0, 1);
       });
+    });
+  });
+
+  describe('__msgData()', function () {
+    it('returns the msg.data', async function () {
+      await this.contract.__msgData();
     });
   });
 });
