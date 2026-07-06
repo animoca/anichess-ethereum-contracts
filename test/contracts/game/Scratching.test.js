@@ -17,7 +17,7 @@ describe('Scratching', function () {
   const fixture = async function () {
     this.forwaderRegistryAddress = await getForwarderRegistryAddress();
     this.erc20 = await deployContract('ERC20FixedSupply', '', '', 18, [holder.address], [ethers.MaxUint256], this.forwaderRegistryAddress);
-    this.board = await deployContract('ScratchingBoard', '', '', await getTokenMetadataResolverWithBaseURIAddress());
+    this.board = await deployContract('ScratchingBoard', '', '', await getTokenMetadataResolverWithBaseURIAddress(), this.forwaderRegistryAddress);
     this.rng = await deployContract('RNGProvider', signer.address);
     this.rngDomain = {
       name: 'RNGProvider',

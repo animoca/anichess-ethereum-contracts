@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.4.1
+
+### New features
+
+- Enable meta-tx on ScratchingBoard.
+
 ## 4.4.0
 
 ### New features
