@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.4.0
+
+### New features
+
+- New odds for Scratching.
+
 ## 4.3.1
 
 ### Improvements
