@@ -15,9 +15,9 @@ describe('Scratching', function () {
   });
 
   const fixture = async function () {
-    this.forwaderRegistryAddress = await getForwarderRegistryAddress();
-    this.erc20 = await deployContract('ERC20FixedSupply', '', '', 18, [holder.address], [ethers.MaxUint256], this.forwaderRegistryAddress);
-    this.board = await deployContract('ScratchingBoard', '', '', await getTokenMetadataResolverWithBaseURIAddress(), this.forwaderRegistryAddress);
+    this.forwarderRegistryAddress = await getForwarderRegistryAddress();
+    this.erc20 = await deployContract('ERC20FixedSupply', '', '', 18, [holder.address], [ethers.MaxUint256], this.forwarderRegistryAddress);
+    this.board = await deployContract('ScratchingBoard', '', '', await getTokenMetadataResolverWithBaseURIAddress(), this.forwarderRegistryAddress);
     this.rng = await deployContract('RNGProvider', signer.address);
     this.rngDomain = {
       name: 'RNGProvider',
@@ -25,7 +25,7 @@ describe('Scratching', function () {
       chainId: await getChainId(),
       verifyingContract: await this.rng.getAddress(),
     };
-    this.points = await deployContract('PointsV2', this.forwaderRegistryAddress);
+    this.points = await deployContract('PointsV2', this.forwarderRegistryAddress);
     await this.points.grantRole(await this.points.DEPOSITOR_ROLE(), deployer.address);
     await this.points.deposit(deployer.address, ethers.MaxUint256, ethers.ZeroHash);
     await this.points.deposit(other.address, ethers.MaxUint256, ethers.ZeroHash);
@@ -51,7 +51,7 @@ describe('Scratching', function () {
 
   describe('constructor(address)', function () {
     it('reverts if the ERC20 token has less than 2 decimals', async function () {
-      const erc20 = await deployContract('ERC20FixedSupply', '', '', 1, [], [], this.forwaderRegistryAddress);
+      const erc20 = await deployContract('ERC20FixedSupply', '', '', 1, [], [], this.forwarderRegistryAddress);
       await expect(
         deployContract(
           'ScratchingMock',

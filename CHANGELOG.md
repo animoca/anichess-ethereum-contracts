@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.5.0
+
+### New features
+
+- ERC20ToPoints contract.
+
 ## 4.4.1
 
 ### New features
