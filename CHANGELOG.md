@@ -1,5 +1,36 @@
 # Changelog
 
+## 4.5.0
+
+### New features
+
+- ERC20ToPoints contract.
+
+## 4.4.1
+
+### New features
+
+- Enable meta-tx on ScratchingBoard.
+
+## 4.4.0
+
+### New features
+
+- New odds for Scratching.
+
+## 4.3.1
+
+### Improvements
+
+- The rewarder can call setMerkleRoot instead of the contract owner on ERC20StakingPointsRewardsLimitedLinearPool.
+
+## 4.3.0
+
+### New features
+
+- Scratching, RNGProvider and ScratchingBoard contracts.
+- Allow staking by whitelist on ERC20StakingPointsRewardsLimitedLinearPool.
+
 ## 4.2.0
 
 ### New features
