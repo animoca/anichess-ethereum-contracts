@@ -5,15 +5,19 @@ import {AccessControl} from "@animoca/ethereum-contracts/contracts/access/Access
 import {ContractOwnership} from "@animoca/ethereum-contracts/contracts/access/ContractOwnership.sol";
 import {PayoutWallet} from "@animoca/ethereum-contracts/contracts/payment/PayoutWallet.sol";
 import {Pause} from "@animoca/ethereum-contracts/contracts/lifecycle/Pause.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {ForwarderRegistryContext} from "@animoca/ethereum-contracts/contracts/metatx/ForwarderRegistryContext.sol";
+import {ForwarderRegistryContextBase} from "@animoca/ethereum-contracts/contracts/metatx/base/ForwarderRegistryContextBase.sol";
 import {AccessControlStorage} from "@animoca/ethereum-contracts/contracts/access/libraries/AccessControlStorage.sol";
 import {PayoutWalletStorage} from "@animoca/ethereum-contracts/contracts/payment/libraries/PayoutWalletStorage.sol";
 import {PauseStorage} from "@animoca/ethereum-contracts/contracts/lifecycle/libraries/PauseStorage.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IPointsV2} from "../points/interface/IPointsV2.sol";
+import {IForwarderRegistry} from "@animoca/ethereum-contracts/contracts/metatx/interfaces/IForwarderRegistry.sol";
 
 /// @title Shop
 /// @notice A shop contract for selling items in exchange for Points and/or ERC20 tokens
-contract Shop is PayoutWallet, AccessControl, Pause {
+contract Shop is PayoutWallet, AccessControl, Pause, ForwarderRegistryContext {
     using SafeERC20 for IERC20;
     using AccessControlStorage for AccessControlStorage.Layout;
     using PayoutWalletStorage for PayoutWalletStorage.Layout;
@@ -69,7 +73,11 @@ contract Shop is PayoutWallet, AccessControl, Pause {
     error InvalidSKU();
 
     /// @param payoutWallet The address that receives payments
-    constructor(IPointsV2 points, address payable payoutWallet) PayoutWallet(payoutWallet) ContractOwnership(msg.sender) Pause(true) {
+    constructor(
+        IPointsV2 points,
+        address payable payoutWallet,
+        IForwarderRegistry forwarderRegistry
+    ) PayoutWallet(payoutWallet) ContractOwnership(msg.sender) Pause(true) ForwarderRegistryContext(forwarderRegistry) {
         POINTS = points;
     }
 
@@ -80,7 +88,7 @@ contract Shop is PayoutWallet, AccessControl, Pause {
     /// @param maxPerUser The maximum purchase per user (0 for unlimited)
     /// @param active Whether the item is active for sale
     function addItem(bytes32 sku, uint256 pointsPrice, uint256 erc20Price, IERC20 erc20Token, uint256 maxPerUser, bool active) external {
-        AccessControlStorage.layout().enforceHasRole(OPERATOR_ROLE, msg.sender);
+        AccessControlStorage.layout().enforceHasRole(OPERATOR_ROLE, _msgSender());
 
         require(sku != bytes32(0), InvalidSKU());
 
@@ -103,7 +111,7 @@ contract Shop is PayoutWallet, AccessControl, Pause {
     }
 
     function setItemActiveStatus(bytes32 sku, bool active) external {
-        AccessControlStorage.layout().enforceHasRole(OPERATOR_ROLE, msg.sender);
+        AccessControlStorage.layout().enforceHasRole(OPERATOR_ROLE, _msgSender());
 
         require(_itemExists(sku), ItemDoesNotExist(sku));
 
@@ -129,7 +137,9 @@ contract Shop is PayoutWallet, AccessControl, Pause {
         Item storage item = items[sku];
         if (!item.active) revert ItemNotActive(sku);
 
-        uint256 currentUserPurchases = userPurchases[msg.sender][sku];
+        address buyer = _msgSender();
+
+        uint256 currentUserPurchases = userPurchases[buyer][sku];
         uint256 newUserPurchases = currentUserPurchases + quantity;
 
         if (item.maxPerUser != 0) {
@@ -137,20 +147,20 @@ contract Shop is PayoutWallet, AccessControl, Pause {
                 revert PurchaseLimitExceeded(sku, item.maxPerUser, currentUserPurchases, quantity);
             }
         }
-        userPurchases[msg.sender][sku] = newUserPurchases;
+        userPurchases[buyer][sku] = newUserPurchases;
         item.sold += quantity;
 
         uint256 pointsPrice = item.pointsPrice * quantity;
         if (pointsPrice != 0) {
-            POINTS.spendFrom(msg.sender, pointsPrice);
+            POINTS.spendFrom(buyer, pointsPrice);
         }
 
         uint256 erc20Price = item.erc20Price * quantity;
         if (erc20Price != 0) {
-            item.erc20Token.safeTransferFrom(msg.sender, PayoutWalletStorage.layout().payoutWallet(), erc20Price);
+            item.erc20Token.safeTransferFrom(buyer, PayoutWalletStorage.layout().payoutWallet(), erc20Price);
         }
 
-        emit ItemPurchased(sku, msg.sender, quantity, receiver);
+        emit ItemPurchased(sku, buyer, quantity, receiver);
     }
 
     /// @notice Get user's remaining purchase allowance for an item
@@ -171,5 +181,15 @@ contract Shop is PayoutWallet, AccessControl, Pause {
     function _itemExists(bytes32 sku) internal view returns (bool) {
         Item storage item = items[sku];
         return item.pointsPrice != 0 || item.erc20Price != 0;
+    }
+
+    /// @inheritdoc ForwarderRegistryContextBase
+    function _msgSender() internal view virtual override(Context, ForwarderRegistryContextBase) returns (address) {
+        return ForwarderRegistryContextBase._msgSender();
+    }
+
+    /// @inheritdoc ForwarderRegistryContextBase
+    function _msgData() internal view virtual override(Context, ForwarderRegistryContextBase) returns (bytes calldata) {
+        return ForwarderRegistryContextBase._msgData();
     }
 }

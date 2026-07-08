@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.6.0
+
+### New features
+
+- Shop contract.
+
 ## 4.5.0
 
 ### New features

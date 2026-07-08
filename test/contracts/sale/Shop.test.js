@@ -25,7 +25,7 @@ describe('Shop', function () {
       [ethers.parseEther('1000000')],
       forwarderRegistryAddress,
     );
-    this.contract = await deployContract('Shop', await this.points.getAddress(), await treasury.getAddress());
+    this.contract = await deployContract('ShopMock', await this.points.getAddress(), await treasury.getAddress(), forwarderRegistryAddress);
     await this.contract.grantRole(await this.contract.OPERATOR_ROLE(), await operator.getAddress());
   };
 
@@ -405,6 +405,12 @@ describe('Shop', function () {
       await this.contract.connect(buyer).purchase(sku, 2, await buyer.getAddress());
       const allowance = await this.contract.getUserRemainingAllowance(await buyer.getAddress(), sku);
       expect(allowance).to.equal(3);
+    });
+  });
+
+  describe('__msgData()', function () {
+    it('returns the msg.data', async function () {
+      await this.contract.__msgData();
     });
   });
 });
